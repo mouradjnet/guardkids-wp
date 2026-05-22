@@ -1,0 +1,20 @@
+# Dependências Node (build do PWA — Fase M2)
+/node_modules/
+
+# IDE / editores
+/.idea/
+/.vscode/
+
+# Logs e caches
+*.log
+/.phpunit.result.cache
+/.phpunit.cache/
+
+# Ambiente de testes wp-env (Docker)
+/.wp-env-home/
+
+# Sistema operacional
+.DS_Store
+Thumbs.db
+
+# Nota: vendor/ NÃO é ignorado — é empacotado no plugin distribuído.
