@@ -1,5 +1,5 @@
 import { Icon } from './Icon';
-import type { Child } from '../data/mockData';
+import type { Child } from '../api/types';
 
 function formatHM(min: number) {
   const h = Math.floor(min / 60);
@@ -10,7 +10,9 @@ function formatHM(min: number) {
 type ChildCardProps = { child: Child };
 
 export function ChildCard({ child }: ChildCardProps) {
-  const pct = Math.round((child.usedMinutes / child.limitMinutes) * 100);
+  const pct = child.limitMinutes > 0
+    ? Math.min(100, Math.round((child.usedMinutes / child.limitMinutes) * 100))
+    : 0;
   const offline = child.status === 'offline';
   const isPaused = offline;
 
@@ -19,13 +21,23 @@ export function ChildCard({ child }: ChildCardProps) {
       <div className="mb-6 flex items-start justify-between">
         <div className="flex items-center gap-4">
           <div className="relative">
-            <img
-              src={child.avatar}
-              alt={`${child.name} avatar`}
-              className={`h-14 w-14 rounded-full border-2 border-surface-variant object-cover ${
-                offline ? 'grayscale-[30%]' : ''
-              }`}
-            />
+            {child.avatarUrl ? (
+              <img
+                src={child.avatarUrl}
+                alt={`${child.name} avatar`}
+                className={`h-14 w-14 rounded-full border-2 border-surface-variant object-cover ${
+                  offline ? 'grayscale-[30%]' : ''
+                }`}
+              />
+            ) : (
+              <div
+                className={`flex h-14 w-14 items-center justify-center rounded-full border-2 border-surface-variant bg-surface-container font-display text-lg text-on-surface-variant ${
+                  offline ? 'grayscale-[30%]' : ''
+                }`}
+              >
+                {child.name.charAt(0).toUpperCase()}
+              </div>
+            )}
             <div
               className={`absolute bottom-0 right-0 h-3.5 w-3.5 rounded-full border-2 border-white ${
                 child.status === 'online' ? 'bg-secondary pulse-green' : 'bg-outline-variant'
@@ -54,32 +66,6 @@ export function ChildCard({ child }: ChildCardProps) {
         >
           <Icon name="more_vert" />
         </button>
-      </div>
-
-      <div
-        className={`mb-6 flex items-center gap-3 rounded-lg border p-3 ${
-          child.activity.current
-            ? 'border-outline-variant/30 bg-surface-container-low'
-            : 'border-dashed border-outline-variant bg-surface-container-lowest opacity-70'
-        }`}
-      >
-        <div
-          className={`rounded-md p-2 ${
-            child.activity.current
-              ? 'bg-primary/10 text-primary'
-              : 'bg-surface-variant text-on-surface-variant'
-          }`}
-        >
-          <Icon name={child.activity.icon} />
-        </div>
-        <div className="flex-1">
-          <div className="text-label-sm text-on-surface-variant">
-            {child.activity.current ? 'Atividade atual' : 'Última atividade'}
-          </div>
-          <div className="truncate text-body-md font-medium text-on-surface">
-            {child.activity.label}
-          </div>
-        </div>
       </div>
 
       <div className={`mb-6 flex items-center gap-6 ${offline ? 'opacity-70' : ''}`}>
