@@ -1,6 +1,8 @@
 {
   "compilerOptions": {
     "composite": true,
+    "outDir": "node_modules/.cache/tsc-node",
+    "tsBuildInfoFile": "node_modules/.cache/tsc-node/tsconfig.node.tsbuildinfo",
     "target": "ES2022",
     "lib": ["ES2023"],
     "module": "ESNext",

@@ -3,8 +3,10 @@ import react from '@vitejs/plugin-react';
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '');
-  const wpUrl = env.VITE_WP_URL ?? 'http://guardkids-wp.local';
-  const wpHost = new URL(wpUrl).host;
+  // VITE_WP_PROXY_TARGET = upstream IPv4 do nginx do site (ex.: http://127.0.0.1:10034).
+  // O router do LocalWP em :80 trava quando chamado via http-proxy do Vite no Windows,
+  // entao apontamos direto pra nginx do site (porta visivel no LocalWP -> Site -> Advanced).
+  const proxyTarget = env.VITE_WP_PROXY_TARGET ?? 'http://127.0.0.1:10034';
 
   return {
     plugins: [react()],
@@ -16,12 +18,18 @@ export default defineConfig(({ mode }) => {
     server: {
       proxy: {
         '/wp-json': {
-          // Força IPv4 (LocalWP resolve via hosts mas Node prefere IPv6 -> hang)
-          target: 'http://127.0.0.1',
-          changeOrigin: true,
+          target: proxyTarget,
+          changeOrigin: false,
           secure: false,
-          // Mantém o Host do site .local pro router nginx do LocalWP rotear
-          headers: { Host: wpHost },
+          configure: (proxy) => {
+            proxy.on('error', (err, _req, res) => {
+              console.error('[vite proxy error]', err.message);
+              if (res && !res.writableEnded) {
+                res.writeHead(502, { 'Content-Type': 'text/plain' });
+                res.end(`proxy error: ${err.message}`);
+              }
+            });
+          },
         },
       },
     },
