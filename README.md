@@ -145,6 +145,8 @@ Cobre `api/client.ts` (auth dupla, parse de WP_Error), `lib/requestDisplay.ts` (
 
 **CI** roda os dois automaticamente em cada push/PR. Status: badge no topo.
 
+**Coverage** é enviado pro Codecov via OIDC tokenless. Pra o dashboard processar, o repo precisa estar ativado uma vez em [app.codecov.io](https://app.codecov.io/login/gh) (login com GitHub → autorizar acesso). Depois disso o badge mostra o % real automaticamente.
+
 ## Roadmap
 
 Documentação detalhada em [`docs/superpowers/`](docs/superpowers/):
