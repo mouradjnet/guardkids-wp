@@ -24,25 +24,8 @@ define('GUARDKIDS_FILE', __FILE__);
 define('GUARDKIDS_DIR', plugin_dir_path(__FILE__));
 define('GUARDKIDS_URL', plugin_dir_url(__FILE__));
 
-$guardkids_autoload = GUARDKIDS_DIR . 'vendor/autoload.php';
+require_once GUARDKIDS_DIR . 'includes/Autoloader.php';
 
-if (! is_readable($guardkids_autoload)) {
-    add_action(
-        'admin_notices',
-        static function (): void {
-            printf(
-                '<div class="notice notice-error"><p>%s</p></div>',
-                esc_html__(
-                    'GuardKids WP: dependências não instaladas. Execute "composer install" na pasta do plugin.',
-                    'guardkids'
-                )
-            );
-        }
-    );
-
-    return;
-}
-
-require_once $guardkids_autoload;
+(new GuardKids\Autoloader())->register();
 
 GuardKids\Plugin::instance()->boot();

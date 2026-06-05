@@ -17,4 +17,6 @@
 .DS_Store
 Thumbs.db
 
-# Nota: vendor/ NÃO é ignorado — é empacotado no plugin distribuído.
+# Dependências PHP de desenvolvimento — o Composer só é usado em dev
+# (PHPUnit); o plugin não tem dependências de runtime.
+/vendor/

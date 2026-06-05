@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace GuardKids;
 
+use GuardKids\Database\CategoryRepository;
+use GuardKids\Database\MigrationRunner;
+
 /**
  * Bootstrap central do plugin GuardKids WP.
  *
@@ -38,6 +41,7 @@ final class Plugin
         register_activation_hook(GUARDKIDS_FILE, [$this, 'onActivate']);
         register_deactivation_hook(GUARDKIDS_FILE, [$this, 'onDeactivate']);
 
+        add_action('plugins_loaded', [$this, 'maybeRunMigrations']);
         add_action('init', [$this, 'loadTextdomain']);
     }
 
@@ -54,21 +58,82 @@ final class Plugin
     }
 
     /**
-     * Executado na ativação do plugin.
-     *
-     * Corpo preenchido na Fase B (Passo 6): executar o MigrationRunner,
-     * garantir o segredo JWT e agendar o cron de limpeza.
+     * Roda migrations no boot caso o plugin tenha sido atualizado sem reativar.
+     */
+    public function maybeRunMigrations(): void
+    {
+        $current  = (int) get_option('guardkids_db_version', 0);
+        $expected = (int) GUARDKIDS_DB_VERSION;
+        if ($current >= $expected) {
+            return;
+        }
+        (new MigrationRunner(GUARDKIDS_DIR . 'database/migrations'))->run();
+    }
+
+    /**
+     * Executado na ativação do plugin: schema + seed inicial.
      */
     public function onActivate(): void
+    {
+        (new MigrationRunner(GUARDKIDS_DIR . 'database/migrations'))->run();
+        (new CategoryRepository())->seed($this->defaultCategories());
+    }
+
+    /**
+     * Executado na desativação do plugin (preserva dados).
+     */
+    public function onDeactivate(): void
     {
     }
 
     /**
-     * Executado na desativação do plugin.
-     *
-     * Corpo preenchido na Fase B (Passo 6): limpar os agendamentos de cron.
+     * @return array<int, array<string, mixed>>
      */
-    public function onDeactivate(): void
+    private function defaultCategories(): array
     {
+        return [
+            [
+                'slug'        => 'adult-content',
+                'name'        => __('Conteúdo adulto', 'guardkids'),
+                'description' => __('Bloqueia todo conteúdo +18, sempre.', 'guardkids'),
+                'icon'        => 'no_adult_content',
+                'blocked'     => 1,
+            ],
+            [
+                'slug'        => 'gambling',
+                'name'        => __('Apostas e cassino', 'guardkids'),
+                'description' => __('Sites de jogos de azar e cassinos online.', 'guardkids'),
+                'icon'        => 'casino',
+                'blocked'     => 1,
+            ],
+            [
+                'slug'        => 'extreme-violence',
+                'name'        => __('Violência extrema', 'guardkids'),
+                'description' => __('Conteúdo gráfico, gore e similares.', 'guardkids'),
+                'icon'        => 'gpp_bad',
+                'blocked'     => 1,
+            ],
+            [
+                'slug'        => 'social-networks',
+                'name'        => __('Redes sociais', 'guardkids'),
+                'description' => __('TikTok, Instagram, Twitter, Snapchat.', 'guardkids'),
+                'icon'        => 'group',
+                'blocked'     => 1,
+            ],
+            [
+                'slug'        => 'videos',
+                'name'        => __('Vídeos (geral)', 'guardkids'),
+                'description' => __('YouTube e plataformas similares sem filtro.', 'guardkids'),
+                'icon'        => 'smart_display',
+                'blocked'     => 0,
+            ],
+            [
+                'slug'        => 'online-games',
+                'name'        => __('Jogos online', 'guardkids'),
+                'description' => __('Plataformas multiplayer com chat aberto.', 'guardkids'),
+                'icon'        => 'sports_esports',
+                'blocked'     => 0,
+            ],
+        ];
     }
 }
