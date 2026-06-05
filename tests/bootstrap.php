@@ -170,12 +170,18 @@ if (! class_exists('wpdb')) {
     }
 }
 
-// Stub mínimo do WP_REST_Request pra ChildAuth
+// Stub mínimo do WP_REST_Request pra ChildAuth + Controllers
 if (! class_exists('WP_REST_Request')) {
-    class WP_REST_Request
+    class WP_REST_Request implements ArrayAccess
     {
         /** @var array<string, string> */
         private array $headers = [];
+
+        /** @var array<string, mixed> */
+        private array $params = [];
+
+        /** @var mixed */
+        private $jsonBody = null;
 
         public function __construct(private string $method = '', private string $route = '')
         {
@@ -201,6 +207,114 @@ if (! class_exists('WP_REST_Request')) {
         {
             return $this->method;
         }
+
+        /**
+         * @param mixed $value
+         */
+        public function set_param(string $key, $value): void
+        {
+            $this->params[$key] = $value;
+        }
+
+        /**
+         * @return mixed
+         */
+        public function get_param(string $key)
+        {
+            return $this->params[$key] ?? null;
+        }
+
+        /**
+         * @param array<string, mixed> $body
+         */
+        public function set_json_params(array $body): void
+        {
+            $this->jsonBody = $body;
+        }
+
+        /**
+         * @return mixed
+         */
+        public function get_json_params()
+        {
+            return $this->jsonBody;
+        }
+
+        // ArrayAccess pra (string) $req['id'] funcionar — controllers usam isso
+        public function offsetExists(mixed $offset): bool
+        {
+            return isset($this->params[$offset]);
+        }
+
+        public function offsetGet(mixed $offset): mixed
+        {
+            return $this->params[$offset] ?? null;
+        }
+
+        public function offsetSet(mixed $offset, mixed $value): void
+        {
+            $this->params[(string) $offset] = $value;
+        }
+
+        public function offsetUnset(mixed $offset): void
+        {
+            unset($this->params[$offset]);
+        }
+    }
+}
+
+// Stub do WP_Error retornado pelos controllers em casos de erro
+if (! class_exists('WP_Error')) {
+    class WP_Error
+    {
+        public string $code;
+        public string $message;
+        /** @var array<string, mixed> */
+        public array $data;
+
+        public function __construct(string $code = '', string $message = '', array $data = [])
+        {
+            $this->code = $code;
+            $this->message = $message;
+            $this->data = $data;
+        }
+
+        public function get_error_code(): string
+        {
+            return $this->code;
+        }
+
+        public function get_error_message(): string
+        {
+            return $this->message;
+        }
+
+        public function get_error_data(): array
+        {
+            return $this->data;
+        }
+    }
+}
+
+// rest_ensure_response — usado pelos controllers
+if (! function_exists('rest_ensure_response')) {
+    function rest_ensure_response($value)
+    {
+        if ($value instanceof WP_REST_Response) {
+            return $value;
+        }
+        if ($value instanceof WP_Error) {
+            return $value;
+        }
+        return new WP_REST_Response($value);
+    }
+}
+
+// get_current_user_id — usado por RequestController::decide
+if (! function_exists('get_current_user_id')) {
+    function get_current_user_id(): int
+    {
+        return (int) ($GLOBALS['gk_current_user_id'] ?? 0);
     }
 }
 
