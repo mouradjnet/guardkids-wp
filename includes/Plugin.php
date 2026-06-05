@@ -7,6 +7,7 @@ namespace GuardKids;
 use GuardKids\Api\RestApi;
 use GuardKids\Database\CategoryRepository;
 use GuardKids\Database\MigrationRunner;
+use GuardKids\Ui\ParentApp;
 
 /**
  * Bootstrap central do plugin GuardKids WP.
@@ -46,6 +47,7 @@ final class Plugin
         add_action('init', [$this, 'loadTextdomain']);
 
         (new RestApi())->register();
+        (new ParentApp())->register();
     }
 
     /**
@@ -74,19 +76,23 @@ final class Plugin
     }
 
     /**
-     * Executado na ativação do plugin: schema + seed inicial.
+     * Executado na ativação do plugin: schema + seed inicial + flush das
+     * rewrite rules pra `/painel-pais` valer.
      */
     public function onActivate(): void
     {
         (new MigrationRunner(GUARDKIDS_DIR . 'database/migrations'))->run();
         (new CategoryRepository())->seed($this->defaultCategories());
+        (new ParentApp())->addRewriteRule();
+        flush_rewrite_rules();
     }
 
     /**
-     * Executado na desativação do plugin (preserva dados).
+     * Executado na desativação do plugin (preserva dados; limpa rewrite).
      */
     public function onDeactivate(): void
     {
+        flush_rewrite_rules();
     }
 
     /**
