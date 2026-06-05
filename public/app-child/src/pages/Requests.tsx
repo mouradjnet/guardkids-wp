@@ -1,11 +1,40 @@
-import { useState } from 'react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useState, type FormEvent } from 'react';
+import { createRequest, listMyRequests } from '../api/child';
+import { ApiError } from '../api/client';
+import type { CreateRequestInput, MyRequest, MyRequestStatus } from '../api/types';
 import { Icon } from '../components/Icon';
-import { myRequests, type MyRequest, type MyRequestStatus } from '../data/mockData';
 
-type Form = 'none' | 'time' | 'site';
+type FormKind = 'none' | 'time' | 'site';
+const TIME_PRESETS = [15, 30, 45];
+
+function formatRelative(iso: string | null): string {
+  if (!iso) return '';
+  const date = new Date(iso);
+  const diffMs = Date.now() - date.getTime();
+  if (Number.isNaN(diffMs)) return '';
+  const diffMin = Math.floor(diffMs / 60_000);
+  if (diffMin < 1) return 'agora';
+  if (diffMin < 60) return `há ${diffMin} min`;
+  const diffH = Math.floor(diffMin / 60);
+  if (diffH < 24) return `há ${diffH}h`;
+  const diffD = Math.floor(diffH / 24);
+  if (diffD < 7) return `há ${diffD}d`;
+  return date.toLocaleDateString('pt-BR');
+}
 
 export function Requests() {
-  const [openForm, setOpenForm] = useState<Form>('none');
+  const [openForm, setOpenForm] = useState<FormKind>('none');
+  const queryClient = useQueryClient();
+  const listQuery = useQuery({ queryKey: ['child', 'requests'], queryFn: listMyRequests });
+
+  const mutation = useMutation({
+    mutationFn: createRequest,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['child', 'requests'] });
+      setOpenForm('none');
+    },
+  });
 
   return (
     <main className="flex flex-1 flex-col gap-stack-lg px-container-padding-mobile py-stack-md">
@@ -28,18 +57,60 @@ export function Requests() {
         />
       </section>
 
-      {openForm === 'time' && <TimeRequestForm onClose={() => setOpenForm('none')} />}
-      {openForm === 'site' && <SiteRequestForm onClose={() => setOpenForm('none')} />}
+      {openForm === 'time' && (
+        <TimeRequestForm
+          submitting={mutation.isPending}
+          error={mutation.error}
+          onSubmit={(input) => mutation.mutate(input)}
+          onClose={() => setOpenForm('none')}
+        />
+      )}
+      {openForm === 'site' && (
+        <SiteRequestForm
+          submitting={mutation.isPending}
+          error={mutation.error}
+          onSubmit={(input) => mutation.mutate(input)}
+          onClose={() => setOpenForm('none')}
+        />
+      )}
 
       <section className="flex flex-col gap-3">
         <h3 className="px-1 font-display text-headline-md text-primary">Meus pedidos</h3>
-        <div className="glass-panel rounded-2xl shadow-ambient">
-          <ul className="divide-y divide-outline-variant/50">
-            {myRequests.map((r) => (
-              <RequestRow key={r.id} req={r} />
-            ))}
-          </ul>
-        </div>
+
+        {listQuery.isLoading && (
+          <div className="glass-panel h-24 animate-pulse rounded-2xl bg-surface-container-low" />
+        )}
+
+        {listQuery.error ? (
+          <div className="glass-panel flex flex-col items-center gap-2 rounded-2xl bg-error/5 p-4 text-error">
+            <Icon name="error" className="text-2xl" />
+            <p className="text-label-sm">
+              {listQuery.error instanceof ApiError
+                ? `${listQuery.error.message} (${listQuery.error.status})`
+                : listQuery.error instanceof Error
+                  ? listQuery.error.message
+                  : 'Erro desconhecido.'}
+            </p>
+          </div>
+        ) : null}
+
+        {listQuery.data && listQuery.data.length === 0 && (
+          <div className="glass-panel flex flex-col items-center justify-center gap-2 rounded-2xl p-6 text-center text-on-surface-variant">
+            <Icon name="inbox" className="text-3xl text-primary" filled />
+            <p className="text-label-md font-semibold">Nenhum pedido ainda</p>
+            <p className="text-label-sm">Toque acima pra fazer o seu primeiro pedido.</p>
+          </div>
+        )}
+
+        {listQuery.data && listQuery.data.length > 0 && (
+          <div className="glass-panel rounded-2xl shadow-ambient">
+            <ul className="divide-y divide-outline-variant/50">
+              {listQuery.data.map((r) => (
+                <RequestRow key={r.id} req={r} />
+              ))}
+            </ul>
+          </div>
+        )}
       </section>
     </main>
   );
@@ -82,9 +153,32 @@ function ActionCard({
   );
 }
 
-function TimeRequestForm({ onClose }: { onClose: () => void }) {
+function TimeRequestForm({
+  submitting,
+  error,
+  onSubmit,
+  onClose,
+}: {
+  submitting: boolean;
+  error: unknown;
+  onSubmit: (input: CreateRequestInput) => void;
+  onClose: () => void;
+}) {
+  const [minutes, setMinutes] = useState<number>(30);
+  const [reason, setReason] = useState('');
+
+  function submit(e: FormEvent) {
+    e.preventDefault();
+    onSubmit({
+      kind: 'extra_time',
+      description: 'Mais tempo de tela —',
+      highlight: `+${minutes} min`,
+      reason: reason.trim() || undefined,
+    });
+  }
+
   return (
-    <section className="glass-panel rounded-2xl p-5 shadow-ambient">
+    <form onSubmit={submit} className="glass-panel rounded-2xl p-5 shadow-ambient">
       <div className="mb-3 flex items-center justify-between">
         <h4 className="font-display text-label-md font-bold text-on-surface">
           Quanto tempo a mais?
@@ -99,11 +193,16 @@ function TimeRequestForm({ onClose }: { onClose: () => void }) {
         </button>
       </div>
       <div className="grid grid-cols-3 gap-2">
-        {[15, 30, 45].map((m) => (
+        {TIME_PRESETS.map((m) => (
           <button
             key={m}
             type="button"
-            className="rounded-xl border border-outline-variant bg-surface-container py-2 text-label-md font-bold text-on-surface hover:bg-surface-variant"
+            onClick={() => setMinutes(m)}
+            className={
+              minutes === m
+                ? 'rounded-xl bg-orange-warm py-2 text-label-md font-bold text-white shadow-sm'
+                : 'rounded-xl border border-outline-variant bg-surface-container py-2 text-label-md font-bold text-on-surface hover:bg-surface-variant'
+            }
           >
             +{m} min
           </button>
@@ -113,24 +212,57 @@ function TimeRequestForm({ onClose }: { onClose: () => void }) {
         <span className="text-label-sm text-on-surface-variant">Motivo (opcional)</span>
         <textarea
           rows={3}
+          value={reason}
+          onChange={(e) => setReason(e.target.value)}
           placeholder="Tô quase passando essa fase..."
           className="mt-1 w-full resize-none rounded-xl border border-outline-variant bg-surface-container-low p-3 text-label-md text-on-surface placeholder:text-on-surface-variant focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30"
         />
       </label>
+      <FormError error={error} />
       <button
-        type="button"
-        className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-orange-warm py-3 text-label-md font-bold text-white shadow-sm hover:bg-orange-warm/90"
+        type="submit"
+        disabled={submitting}
+        className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-orange-warm py-3 text-label-md font-bold text-white shadow-sm hover:bg-orange-warm/90 disabled:opacity-60"
       >
-        <Icon name="send" className="text-sm" filled />
-        Enviar pedido
+        <Icon
+          name={submitting ? 'progress_activity' : 'send'}
+          className={`text-sm ${submitting ? 'animate-spin' : ''}`}
+          filled={!submitting}
+        />
+        {submitting ? 'Enviando…' : 'Enviar pedido'}
       </button>
-    </section>
+    </form>
   );
 }
 
-function SiteRequestForm({ onClose }: { onClose: () => void }) {
+function SiteRequestForm({
+  submitting,
+  error,
+  onSubmit,
+  onClose,
+}: {
+  submitting: boolean;
+  error: unknown;
+  onSubmit: (input: CreateRequestInput) => void;
+  onClose: () => void;
+}) {
+  const [site, setSite] = useState('');
+  const [reason, setReason] = useState('');
+
+  function submit(e: FormEvent) {
+    e.preventDefault();
+    const domain = site.trim().toLowerCase();
+    if (!domain) return;
+    onSubmit({
+      kind: 'unblock_site',
+      description: 'Liberar site',
+      highlight: domain,
+      reason: reason.trim() || undefined,
+    });
+  }
+
   return (
-    <section className="glass-panel rounded-2xl p-5 shadow-ambient">
+    <form onSubmit={submit} className="glass-panel rounded-2xl p-5 shadow-ambient">
       <div className="mb-3 flex items-center justify-between">
         <h4 className="font-display text-label-md font-bold text-on-surface">
           Qual site você quer acessar?
@@ -148,7 +280,10 @@ function SiteRequestForm({ onClose }: { onClose: () => void }) {
         <span className="text-label-sm text-on-surface-variant">Site</span>
         <input
           type="text"
+          value={site}
+          onChange={(e) => setSite(e.target.value)}
           placeholder="ex: coolmathgames.com"
+          required
           className="mt-1 w-full rounded-xl border border-outline-variant bg-surface-container-low p-3 text-label-md text-on-surface placeholder:text-on-surface-variant focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30"
         />
       </label>
@@ -156,35 +291,61 @@ function SiteRequestForm({ onClose }: { onClose: () => void }) {
         <span className="text-label-sm text-on-surface-variant">Por que você quer acessar?</span>
         <textarea
           rows={3}
+          value={reason}
+          onChange={(e) => setReason(e.target.value)}
           placeholder="Tem jogos pra aprender matemática..."
           className="mt-1 w-full resize-none rounded-xl border border-outline-variant bg-surface-container-low p-3 text-label-md text-on-surface placeholder:text-on-surface-variant focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30"
         />
       </label>
+      <FormError error={error} />
       <button
-        type="button"
-        className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-primary py-3 text-label-md font-bold text-white shadow-sm hover:bg-primary/90"
+        type="submit"
+        disabled={submitting || !site.trim()}
+        className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-primary py-3 text-label-md font-bold text-white shadow-sm hover:bg-primary/90 disabled:opacity-60"
       >
-        <Icon name="send" className="text-sm" filled />
-        Enviar pedido
+        <Icon
+          name={submitting ? 'progress_activity' : 'send'}
+          className={`text-sm ${submitting ? 'animate-spin' : ''}`}
+          filled={!submitting}
+        />
+        {submitting ? 'Enviando…' : 'Enviar pedido'}
       </button>
-    </section>
+    </form>
+  );
+}
+
+function FormError({ error }: { error: unknown }) {
+  if (!error) return null;
+  const message =
+    error instanceof ApiError
+      ? `${error.message} (${error.status})`
+      : error instanceof Error
+        ? error.message
+        : 'Erro desconhecido.';
+  return (
+    <p role="alert" className="mt-3 rounded-lg bg-error/10 p-2 text-label-sm text-error">
+      {message}
+    </p>
   );
 }
 
 function RequestRow({ req }: { req: MyRequest }) {
   const style = statusStyle(req.status);
+  const title = `${req.description ?? req.kind}${req.highlight ? ` ${req.highlight}` : ''}`.trim();
   return (
     <li className="flex items-center gap-3 p-4">
       <div className={`flex h-10 w-10 items-center justify-center rounded-xl ${style.bg}`}>
         <Icon name={style.icon} className={style.text} filled />
       </div>
       <div className="flex-1">
-        <div className="text-label-md font-semibold text-on-surface">{req.title}</div>
-        <div className="text-label-sm text-on-surface-variant">{req.detail}</div>
+        <div className="text-label-md font-semibold text-on-surface">{title}</div>
+        {req.reason && (
+          <div className="text-label-sm text-on-surface-variant">{req.reason}</div>
+        )}
       </div>
       <div className="text-right">
         <div className={`text-label-sm font-bold ${style.text}`}>{style.label}</div>
-        <div className="text-label-sm text-on-surface-variant">{req.whenLabel}</div>
+        <div className="text-label-sm text-on-surface-variant">{formatRelative(req.createdAt)}</div>
       </div>
     </li>
   );
@@ -198,25 +359,10 @@ function statusStyle(status: MyRequestStatus): {
 } {
   switch (status) {
     case 'approved':
-      return {
-        icon: 'check_circle',
-        label: 'Aprovado',
-        text: 'text-secondary',
-        bg: 'bg-secondary-container/40',
-      };
+      return { icon: 'check_circle', label: 'Aprovado', text: 'text-secondary', bg: 'bg-secondary-container/40' };
     case 'denied':
-      return {
-        icon: 'cancel',
-        label: 'Negado',
-        text: 'text-error',
-        bg: 'bg-error-container/60',
-      };
+      return { icon: 'cancel', label: 'Negado', text: 'text-error', bg: 'bg-error-container/60' };
     case 'pending':
-      return {
-        icon: 'hourglass_empty',
-        label: 'Aguardando',
-        text: 'text-orange-warm',
-        bg: 'bg-orange-warm/15',
-      };
+      return { icon: 'hourglass_empty', label: 'Aguardando', text: 'text-orange-warm', bg: 'bg-orange-warm/15' };
   }
 }

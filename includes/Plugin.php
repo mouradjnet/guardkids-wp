@@ -8,6 +8,7 @@ use GuardKids\Api\RestApi;
 use GuardKids\Database\CategoryRepository;
 use GuardKids\Database\MigrationRunner;
 use GuardKids\Security\RestHeaders;
+use GuardKids\Ui\ChildApp;
 use GuardKids\Ui\ParentApp;
 
 /**
@@ -50,6 +51,7 @@ final class Plugin
         (new RestApi())->register();
         (new RestHeaders())->register();
         (new ParentApp())->register();
+        (new ChildApp())->register();
     }
 
     /**
@@ -86,6 +88,7 @@ final class Plugin
         (new MigrationRunner(GUARDKIDS_DIR . 'database/migrations'))->run();
         (new CategoryRepository())->seed($this->defaultCategories());
         (new ParentApp())->addRewriteRule();
+        (new ChildApp())->addRewriteRule();
         flush_rewrite_rules();
     }
 

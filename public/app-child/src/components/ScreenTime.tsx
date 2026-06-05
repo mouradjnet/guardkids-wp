@@ -1,11 +1,18 @@
-import { child } from '../data/mockData';
+import type { Child } from '../api/types';
 
-export function ScreenTime() {
-  const { remainingMinutes, totalMinutes } = child;
-  const remainingRatio = remainingMinutes / totalMinutes;
+export function ScreenTime({ child }: { child: Child }) {
+  const remaining = Math.max(0, child.limitMinutes - child.usedMinutes);
+  const total = child.limitMinutes;
+  const remainingRatio = total > 0 ? remaining / total : 0;
   const radius = 54;
   const circumference = 2 * Math.PI * radius;
   const dashOffset = circumference * (1 - remainingRatio);
+
+  const totalHours = Math.floor(total / 60);
+  const totalLabel =
+    totalHours >= 1
+      ? `${totalHours}${totalHours === 1 ? ' hora' : ' horas'}${total % 60 ? ` ${total % 60} min` : ''}`
+      : `${total} min`;
 
   return (
     <section className="glass-panel relative flex flex-col items-center justify-center overflow-hidden rounded-2xl p-6 shadow-ambient">
@@ -37,7 +44,7 @@ export function ScreenTime() {
         </svg>
         <div className="absolute flex flex-col items-center justify-center">
           <span className="font-display text-display-lg font-bold leading-none text-primary">
-            {remainingMinutes}
+            {remaining}
           </span>
           <span className="mt-1 text-label-md font-semibold text-on-surface-variant">
             min restantes
@@ -45,7 +52,7 @@ export function ScreenTime() {
         </div>
       </div>
       <p className="z-10 mt-4 text-center text-sm font-medium text-on-surface-variant">
-        De 1 hora de limite diário
+        De {totalLabel} de limite diário
       </p>
     </section>
   );
