@@ -7,6 +7,7 @@ namespace GuardKids;
 use GuardKids\Api\RestApi;
 use GuardKids\Database\CategoryRepository;
 use GuardKids\Database\MigrationRunner;
+use GuardKids\Security\RestHeaders;
 use GuardKids\Ui\ParentApp;
 
 /**
@@ -47,6 +48,7 @@ final class Plugin
         add_action('init', [$this, 'loadTextdomain']);
 
         (new RestApi())->register();
+        (new RestHeaders())->register();
         (new ParentApp())->register();
     }
 
