@@ -77,6 +77,56 @@ if (! function_exists('esc_url_raw')) {
     }
 }
 
+if (! function_exists('trailingslashit')) {
+    function trailingslashit(string $string): string
+    {
+        return rtrim($string, '/\\') . '/';
+    }
+}
+
+// Storage in-memory pra wp_options usado por testes do MigrationRunner.
+$GLOBALS['gk_options'] = [];
+
+if (! function_exists('get_option')) {
+    /**
+     * @param mixed $default
+     * @return mixed
+     */
+    function get_option(string $key, $default = false)
+    {
+        return $GLOBALS['gk_options'][$key] ?? $default;
+    }
+}
+
+if (! function_exists('update_option')) {
+    /**
+     * @param mixed $value
+     * @param bool|null $autoload
+     */
+    function update_option(string $key, $value, $autoload = null): bool
+    {
+        $GLOBALS['gk_options'][$key] = $value;
+        return true;
+    }
+}
+
+// Setup mínimo de ABSPATH + stub do wp-admin/includes/upgrade.php que o
+// MigrationRunner faz require_once. dbDelta vira no-op nos testes.
+if (! defined('ABSPATH')) {
+    $abspath = sys_get_temp_dir() . '/gk-wp-tests/';
+    if (! is_dir($abspath . 'wp-admin/includes')) {
+        mkdir($abspath . 'wp-admin/includes', 0777, true);
+    }
+    $upgradeStub = $abspath . 'wp-admin/includes/upgrade.php';
+    if (! file_exists($upgradeStub)) {
+        file_put_contents(
+            $upgradeStub,
+            "<?php if (!function_exists('dbDelta')) { function dbDelta(\$sql) { return []; } }\n"
+        );
+    }
+    define('ABSPATH', $abspath);
+}
+
 // Constantes do wpdb que aparecem em get_row/get_results
 if (! defined('OBJECT')) define('OBJECT', 'OBJECT');
 if (! defined('ARRAY_A')) define('ARRAY_A', 'ARRAY_A');
@@ -127,9 +177,8 @@ if (! class_exists('WP_REST_Request')) {
         /** @var array<string, string> */
         private array $headers = [];
 
-        public function __construct(string $method = '', string $route = '')
+        public function __construct(private string $method = '', private string $route = '')
         {
-            // ignora — só pra interface
         }
 
         public function set_header(string $key, string $value): void
@@ -142,5 +191,57 @@ if (! class_exists('WP_REST_Request')) {
             $normalized = strtolower(str_replace('-', '_', $key));
             return $this->headers[$normalized] ?? '';
         }
+
+        public function get_route(): string
+        {
+            return $this->route;
+        }
+
+        public function get_method(): string
+        {
+            return $this->method;
+        }
+    }
+}
+
+// Stub mínimo do WP_REST_Response e WP_REST_Server pra RestHeaders/Controllers
+if (! class_exists('WP_REST_Response')) {
+    class WP_REST_Response
+    {
+        public mixed $data;
+        public int $status;
+        /** @var array<string, string> */
+        public array $headers = [];
+
+        public function __construct(mixed $data = null, int $status = 200)
+        {
+            $this->data = $data;
+            $this->status = $status;
+        }
+
+        public function header(string $name, string $value): void
+        {
+            $this->headers[$name] = $value;
+        }
+
+        public function get_status(): int
+        {
+            return $this->status;
+        }
+
+        public function get_data(): mixed
+        {
+            return $this->data;
+        }
+    }
+}
+
+if (! class_exists('WP_REST_Server')) {
+    class WP_REST_Server
+    {
+        public const READABLE  = 'GET';
+        public const CREATABLE = 'POST';
+        public const EDITABLE  = 'POST, PUT, PATCH';
+        public const DELETABLE = 'DELETE';
     }
 }
