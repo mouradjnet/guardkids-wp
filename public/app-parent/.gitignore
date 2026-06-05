@@ -1,0 +1,9 @@
+node_modules
+dist
+*.log
+.DS_Store
+
+# Artefatos de tsc --build (vite.config.ts -> .js/.d.ts e cache incremental)
+vite.config.js
+vite.config.d.ts
+*.tsbuildinfo

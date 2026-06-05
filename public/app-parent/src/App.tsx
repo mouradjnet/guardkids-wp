@@ -1,0 +1,51 @@
+import { useState } from 'react';
+import { BottomNav } from './components/BottomNav';
+import { SideNav } from './components/SideNav';
+import { TopNav } from './components/TopNav';
+import { Approvals } from './pages/Approvals';
+import { Children } from './pages/Children';
+import { Dashboard } from './pages/Dashboard';
+import { License } from './pages/License';
+import { Reports } from './pages/Reports';
+import { Settings } from './pages/Settings';
+import { SitesRules } from './pages/SitesRules';
+import { TimeLimits } from './pages/TimeLimits';
+import { Upgrade } from './pages/Upgrade';
+import type { PageId } from './data/mockData';
+
+export default function App() {
+  const [activePage, setActivePage] = useState<PageId>('dashboard');
+
+  return (
+    <div className="flex min-h-screen flex-col bg-background text-on-background md:flex-row">
+      <TopNav />
+      <SideNav activePage={activePage} onNavigate={setActivePage} />
+      <PageRenderer page={activePage} />
+      <BottomNav activePage={activePage} onNavigate={setActivePage} />
+    </div>
+  );
+}
+
+function PageRenderer({ page }: { page: PageId }) {
+  switch (page) {
+    case 'children':
+      return <Children />;
+    case 'approvals':
+      return <Approvals />;
+    case 'sites-rules':
+      return <SitesRules />;
+    case 'time':
+      return <TimeLimits />;
+    case 'reports':
+      return <Reports />;
+    case 'settings':
+      return <Settings />;
+    case 'license':
+      return <License />;
+    case 'upgrade':
+      return <Upgrade />;
+    case 'dashboard':
+    default:
+      return <Dashboard />;
+  }
+}

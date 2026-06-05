@@ -1,0 +1,161 @@
+import { Icon } from './Icon';
+import type { Child } from '../data/mockData';
+
+function formatHM(min: number) {
+  const h = Math.floor(min / 60);
+  const m = min % 60;
+  return `${h}h ${String(m).padStart(2, '0')}m`;
+}
+
+type ChildCardProps = { child: Child };
+
+export function ChildCard({ child }: ChildCardProps) {
+  const pct = Math.round((child.usedMinutes / child.limitMinutes) * 100);
+  const offline = child.status === 'offline';
+  const isPaused = offline;
+
+  return (
+    <div className="glass-panel group relative overflow-hidden rounded-2xl p-6 transition-shadow hover:shadow-md">
+      <div className="mb-6 flex items-start justify-between">
+        <div className="flex items-center gap-4">
+          <div className="relative">
+            <img
+              src={child.avatar}
+              alt={`${child.name} avatar`}
+              className={`h-14 w-14 rounded-full border-2 border-surface-variant object-cover ${
+                offline ? 'grayscale-[30%]' : ''
+              }`}
+            />
+            <div
+              className={`absolute bottom-0 right-0 h-3.5 w-3.5 rounded-full border-2 border-white ${
+                child.status === 'online' ? 'bg-secondary pulse-green' : 'bg-outline-variant'
+              }`}
+            />
+          </div>
+          <div>
+            <h4 className="text-lg font-semibold text-on-surface">{child.name}</h4>
+            {child.status === 'online' ? (
+              <span className="mt-1 inline-flex items-center gap-1 rounded-full bg-secondary-container/30 px-2 py-0.5 text-label-sm text-secondary">
+                <span className="h-1.5 w-1.5 rounded-full bg-secondary" />
+                Online
+              </span>
+            ) : (
+              <span className="mt-1 inline-flex items-center gap-1 rounded-full bg-surface-variant/50 px-2 py-0.5 text-label-sm text-on-surface-variant">
+                <span className="h-1.5 w-1.5 rounded-full bg-outline-variant" />
+                Offline
+              </span>
+            )}
+          </div>
+        </div>
+        <button
+          type="button"
+          aria-label="Mais ações"
+          className="rounded-full p-1 text-on-surface-variant transition-colors hover:bg-surface-variant/50 hover:text-primary"
+        >
+          <Icon name="more_vert" />
+        </button>
+      </div>
+
+      <div
+        className={`mb-6 flex items-center gap-3 rounded-lg border p-3 ${
+          child.activity.current
+            ? 'border-outline-variant/30 bg-surface-container-low'
+            : 'border-dashed border-outline-variant bg-surface-container-lowest opacity-70'
+        }`}
+      >
+        <div
+          className={`rounded-md p-2 ${
+            child.activity.current
+              ? 'bg-primary/10 text-primary'
+              : 'bg-surface-variant text-on-surface-variant'
+          }`}
+        >
+          <Icon name={child.activity.icon} />
+        </div>
+        <div className="flex-1">
+          <div className="text-label-sm text-on-surface-variant">
+            {child.activity.current ? 'Atividade atual' : 'Última atividade'}
+          </div>
+          <div className="truncate text-body-md font-medium text-on-surface">
+            {child.activity.label}
+          </div>
+        </div>
+      </div>
+
+      <div className={`mb-6 flex items-center gap-6 ${offline ? 'opacity-70' : ''}`}>
+        <div className="relative h-20 w-20">
+          <svg className="h-full w-full" viewBox="0 0 36 36">
+            <path
+              fill="none"
+              stroke="#e5eeff"
+              strokeWidth="3.8"
+              d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+            />
+            <path
+              className="ring-progress stroke-primary"
+              fill="none"
+              strokeWidth="2.8"
+              strokeLinecap="round"
+              strokeDasharray={`${pct}, 100`}
+              d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+            />
+          </svg>
+          <div className="absolute inset-0 flex items-center justify-center">
+            <span className="text-label-md font-bold leading-none text-on-surface">{pct}%</span>
+          </div>
+        </div>
+        <div>
+          <div className="font-display text-headline-md font-semibold text-primary">
+            {formatHM(child.usedMinutes)}
+          </div>
+          <div className="text-label-sm text-on-surface-variant">
+            de {formatHM(child.limitMinutes)} de limite
+          </div>
+        </div>
+      </div>
+
+      <div className="flex gap-2">
+        <QuickAction
+          icon={isPaused ? 'wifi' : 'wifi_off'}
+          label={isPaused ? 'Retomar' : 'Pausar'}
+          tone={isPaused ? 'muted' : 'error'}
+          disabled={isPaused}
+        />
+        <QuickAction
+          icon={offline ? 'edit_calendar' : 'more_time'}
+          label={offline ? 'Agenda' : '+15m'}
+          tone="primary"
+        />
+        <QuickAction icon="history" label="Histórico" tone="neutral" />
+      </div>
+    </div>
+  );
+}
+
+type QuickActionProps = {
+  icon: string;
+  label: string;
+  tone: 'primary' | 'error' | 'muted' | 'neutral';
+  disabled?: boolean;
+};
+
+function QuickAction({ icon, label, tone, disabled }: QuickActionProps) {
+  const toneClass =
+    tone === 'primary'
+      ? 'text-primary'
+      : tone === 'error'
+        ? 'text-error'
+        : 'text-on-surface-variant';
+  return (
+    <button
+      type="button"
+      disabled={disabled}
+      className={`flex flex-1 flex-col items-center gap-1 rounded-lg border border-outline-variant bg-surface-container py-2 text-label-sm transition-colors hover:bg-surface-variant ${
+        disabled ? 'cursor-not-allowed opacity-50' : ''
+      }`}
+    >
+      <span className={`material-symbols-outlined text-lg ${toneClass}`}>{icon}</span>
+      {label}
+    </button>
+  );
+}
