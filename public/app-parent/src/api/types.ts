@@ -26,3 +26,23 @@ export type ApprovalRequest = {
   decidedBy: number | null;
   createdAt: string | null;
 };
+
+export type SiteListType = 'whitelist' | 'blacklist';
+
+export type Site = {
+  id: number;
+  domain: string;
+  category: string | null;
+  listType: SiteListType;
+  appliesTo: number[];
+  createdAt: string | null;
+};
+
+export type Category = {
+  id: number;
+  slug: string;
+  name: string;
+  description: string | null;
+  icon: string | null;
+  blocked: boolean;
+};
