@@ -1,339 +1,296 @@
-# GuardKids WP — Spec de Design: Fundação (M0 + M1)
+# GuardKids WP — Spec de Design
 
-- **Data:** 2026-05-21
-- **Projeto:** GuardKids WP — plugin WordPress premium de controle parental web + PWA
-- **Milestone:** M0 (Fundação do plugin) + M1 (Auth + esqueleto da API REST)
-- **Status:** Aprovado para virar plano de implementação
+- **Data original:** 2026-05-21 (auth foundation — descartado)
+- **Reescrita:** 2026-06-05 (alinhamento com o código entregue)
+- **Projeto:** GuardKids WP — plugin WordPress de controle parental + 2 PWAs
+- **Status:** entregue até a camada REST; frontend em mock data (sem integração ainda)
+
+> **Histórico:** este spec, na versão original (2026-05-21), descrevia uma
+> "Fundação M0+M1" centrada em JWT/pairing/sessions com 4 tabelas (`users`,
+> `children`, `sessions`, `settings`). O produto pivotou para controle parental
+> direto, com auth via nonce do WordPress + `manage_options` e 5 tabelas de
+> domínio. Esta reescrita reflete o código no commit `5a49542` (master).
 
 ---
 
 ## 1. Contexto
 
-GuardKids WP é um produto novo e independente: um plugin WordPress premium que
-funciona em conjunto com um PWA mobile-first de controle parental **web** (painel
-dos pais + painel infantil + navegador seguro). O produto inteiro foi decomposto
-em 9 milestones:
+GuardKids WP é um plugin WordPress de **controle parental** acompanhado de dois
+PWAs Vite/React/TS — um painel do responsável (`app-parent`) e um painel
+infantil (`app-child`) — servidos por `public/` do próprio plugin. Toda a
+configuração do controle parental (filhos, sites permitidos/bloqueados,
+categorias bloqueadas, solicitações da criança, preferências) é persistida no
+banco do WordPress e administrada via REST sob o namespace `guardkids/v1`.
 
-| # | Milestone | Resumo |
-|---|-----------|--------|
-| **M0** | Fundação | Bootstrap do plugin, migrations, tabelas |
-| **M1** | Auth + esqueleto REST | JWT, login pais/crianças, middleware |
-| M2 | PWA shell | Manifest, service worker, build Vite/React |
-| M3 | Painel dos Pais | Gestão de filhos, dashboard, wp-admin |
-| M4 | Regras & Sites | Whitelist/blacklist, categorias, horários |
-| M5 | Painel Infantil | Rotina, tempo restante, tela de bloqueio |
-| M6 | Navegador Infantil | Navegação curada/filtrada |
-| M7 | Uso + Relatórios + Aprovações + Push | Tracking e notificações |
-| M8 | Premium / Licença | Feature gates e licenciamento |
+## 2. Critérios de sucesso
 
-**Este spec cobre apenas M0 + M1.** Cada milestone seguinte terá seu próprio
-ciclo spec → plano → implementação.
+O plugin está pronto na sua versão atual quando:
 
----
-
-## 2. Objetivo e critérios de sucesso
-
-Entregar a base do plugin: um plugin que ativa no WordPress, cria seu schema de
-banco e expõe uma **API REST autenticada e segura** — verificável de ponta a
-ponta sem nenhum frontend (testes via cliente REST e PHPUnit).
-
-A Fundação está pronta quando **todos** os critérios abaixo passam:
-
-1. O plugin ativa e desativa em **WP 6.4+ / PHP 8.1+** sem nenhum notice/warning.
-2. O migration runner cria as 4 tabelas da Fundação; reativar o plugin é
-   idempotente (não recria nem duplica nada).
-3. `uninstall.php` remove todas as tabelas e opções do plugin.
-4. `POST /auth/login` com credenciais válidas de um pai retorna access token +
-   refresh token.
-5. `GET /auth/me` com access token válido retorna o perfil do sujeito logado.
-6. Um pai autenticado gera um código de pareamento para um filho via
-   `POST /children/{id}/pairing-code`.
-7. `POST /auth/pair` com código válido retorna access token + device token da
-   criança; o código é de uso único e expira.
-8. `POST /auth/refresh` rotaciona os tokens; `POST /auth/logout` e
-   `DELETE /sessions/{id}` revogam a sessão.
-9. Qualquer rota protegida rejeita token ausente, inválido ou expirado com **401**.
-10. Rate limiting responde **429** ao brute-force em `login` e `pair`.
-11. Testes PHPUnit cobrem `AuthService` e os repositories, rodando via `wp-env`.
-
----
+1. Ativa em **WP 6.4+ / PHP 8.1+** sem notice/warning.
+2. O migration runner cria as 5 tabelas idempotentemente; reativar não duplica.
+3. Seed inicial popula 6 categorias padrão (adult-content, gambling, etc.).
+4. `uninstall.php` remove as 5 tabelas e as opções (`guardkids_db_version`,
+   `guardkids_jwt_secret` — esta última herdada da fase auth descartada, ainda
+   limpa por segurança).
+5. As 9 rotas do namespace `guardkids/v1` respondem com `current_user_can('manage_options')`.
+6. Usuários sem `manage_options` recebem **401**.
+7. `app-parent` e `app-child` buildam (`pnpm build`) e a UI estática reproduz
+   os mockups Stitch (Guardian Harmony design system).
 
 ## 3. Escopo
 
-### 3.1. Dentro do escopo (M0 + M1)
+### 3.1 Dentro do escopo (estado atual)
 
-- Bootstrap do plugin (`guardkids.php`), constantes, autoload PSR-4 via Composer.
-- Hooks de ativação/desativação e `uninstall.php`.
-- Sistema de migrations versionado + 4 tabelas da Fundação.
-- Namespace REST `guardkids/v1` e esqueleto de roteamento.
-- Autenticação completa de pais e crianças (JWT + refresh/device tokens).
-- Middleware de segurança: autenticação, rate limiting, sanitização, headers.
-- Endpoints de auth e CRUD mínimo de filhos (necessário para o pareamento).
-- Testes PHPUnit da camada de auth e de persistência.
+- Plugin WP com autoloader PSR-4 **self-contained** (sem Composer em runtime).
+- 5 tabelas de domínio + migration runner versionado + uninstall completo.
+- REST `guardkids/v1`: CRUD de filhos, decisões de solicitações, gestão de
+  sites (whitelist/blacklist), bloqueio por categorias e settings chave/valor.
+- Frontend estático (mock data) dos dois PWAs com design system compartilhado.
 
-### 3.2. Fora do escopo (milestones futuros)
+### 3.2 Fora do escopo (até aqui)
 
-- **Sem React / Vite / PWA** — toda a M2. Esta entrega é backend puro.
-- As tabelas `rules`, `sites`, `usage`, `requests`, `notifications`, `licenses`
-  **não** são criadas agora — cada uma vem na migration do seu milestone. É esse
-  o propósito do migration runner versionado: não criar schema especulativo.
-- Páginas no wp-admin — M3.
-- Múltiplos responsáveis por família, planos premium e feature gates — M8.
-  As colunas `plan`/`role` **não** entram nas tabelas agora; serão adicionadas
-  por migration quando o milestone que as usa for implementado.
-- Multisite: **não suportado**. O alvo é instalação WordPress single-site.
+- **Auth nativa do plugin** — sem JWT, sem login de criança, sem pairing code.
+  Auth é 100% via cookie/nonce do WordPress + capability `manage_options` no
+  responsável. Crianças **não** são usuários WP, e o `app-child` ainda não tem
+  fluxo de autenticação (mock data por enquanto).
+- Integração REST do frontend (`mockData.ts` → fetch real).
+- Service worker / PWA offline real (manifest existe, SW não).
+- Testes automatizados (PHPUnit / Vitest) — ainda não implementados.
+- Páginas no `wp-admin` — `app-parent` é uma SPA externa em `public/`,
+  acessada via URL direta do plugin; não há tela no admin do WP ainda.
+- Multisite, multi-responsável, premium/licenciamento.
 
----
+## 4. Arquitetura
 
-## 4. Decisão de arquitetura — Autenticação
+### 4.1 Componentes
 
-Modelo **unificado de tokens** para pais e crianças, com a mesma mecânica de
-refresh, diferindo apenas no fluxo de obtenção do primeiro token e na duração.
+```
+┌─────────────────────┐        ┌─────────────────────┐
+│  app-parent (SPA)   │        │   app-child (PWA)   │
+│  Vite + React + TS  │        │  Vite + React + TS  │
+│  Tailwind + Stitch  │        │  Tailwind + Stitch  │
+└──────────┬──────────┘        └──────────┬──────────┘
+           │ (REST — não integrado ainda)              │
+           └───────────────┬───────────────────────────┘
+                           ▼
+           ┌──────────────────────────────────┐
+           │  REST guardkids/v1 (9 rotas)     │
+           │  auth: WP nonce + manage_options │
+           └──────────────┬───────────────────┘
+                          ▼
+           ┌──────────────────────────────────┐
+           │  Controllers (api/Controllers/)  │
+           │  Child · Request · Site · Category · Settings
+           └──────────────┬───────────────────┘
+                          ▼
+           ┌──────────────────────────────────┐
+           │  Repositories (database/)        │
+           │  Repository (base) + 5 concretos │
+           └──────────────┬───────────────────┘
+                          ▼
+                       $wpdb (MySQL)
+```
 
-### 4.1. Tokens
+### 4.2 Autenticação
 
-- **Access token** — JWT assinado (HS256) com a biblioteca `firebase/php-jwt`
-  (padrão de mercado, MIT), instalada via Composer. Validade **60 minutos**.
-  Claims: `iss` (URL do site), `sub` (id do sujeito), `typ` (`guardian`|`child`),
-  `sid` (id da sessão), `iat`, `exp`, `jti`.
-- **Refresh token** — string aleatória de 32 bytes (base64url). Devolvido em
-  texto claro ao cliente **uma única vez**; persistido apenas como hash
-  **SHA-256** na tabela `sessions`. Rotacionado a cada `/auth/refresh`.
-- **Segredo JWT** — usa a constante `GUARDKIDS_JWT_SECRET` definida em
-  `wp-config.php` se existir; caso contrário, gera um segredo de 256 bits na
-  ativação e o guarda na opção `guardkids_jwt_secret` (não-autoload).
+Todas as rotas exigem `current_user_can('manage_options')` via
+`permission_callback`. O nonce do WP é entregue ao cliente JS via
+`wp_localize_script` (a ser feito quando integrarmos o frontend). Não há
+sessão própria do plugin — a sessão é a do WordPress.
 
-### 4.2. Fluxo do pai (responsável)
+### 4.3 Autoloader
 
-1. `POST /auth/login` com `username`/`email` + `password`.
-2. O serviço valida via `wp_authenticate()`.
-3. Garante (cria se não existir) o perfil em `wp_guardkids_users` para aquele
-   `wp_users.ID`.
-4. Cria uma sessão (`subject_type = guardian`) e devolve access + refresh token.
-   Refresh token do pai: validade **30 dias**.
+PSR-4 com 3 roots, sem Composer em runtime (`includes/Autoloader.php`):
 
-### 4.3. Fluxo da criança (pareamento único)
+| Prefixo | Diretório |
+|---|---|
+| `GuardKids\Api\` | `api/` |
+| `GuardKids\Database\` | `database/` |
+| `GuardKids\` | `includes/` |
 
-1. O pai autenticado chama `POST /children/{id}/pairing-code`.
-2. O serviço gera um **código numérico de 6 dígitos**, cria uma sessão
-   `pending` (`subject_type = child`), guarda o **hash** do código e uma
-   expiração de **15 minutos**. Devolve o código em texto claro ao pai.
-3. No dispositivo da criança, `POST /auth/pair` envia o código.
-4. O serviço valida o hash, confere expiração e uso único, promove a sessão
-   para `active` e devolve access token + **device token** (o refresh token da
-   criança), com validade **180 dias**.
-5. A criança não digita mais nada nesse dispositivo. O pai pode revogar via
-   `DELETE /sessions/{id}`.
-
-### 4.4. Revogação
-
-Toda sessão é uma linha em `wp_guardkids_sessions` com `status`. Revogar =
-marcar `status = revoked`. O middleware de autenticação rejeita qualquer access
-token cujo `sid` aponte para sessão não-`active` ou expirada — assim o JWT curto
-deixa de ser aceito em no máximo 60 minutos mesmo antes de expirar.
-
----
+Composer fica apenas em `require-dev` (PHPUnit, polyfills) — não é exigido em
+runtime nem no servidor.
 
 ## 5. Banco de dados
 
-### 5.1. Migration runner
+Prefixo real = `$wpdb->prefix . 'guardkids_'`. Tabelas criadas em
+`database/migrations/001_initial_schema.php`.
 
-- Arquivos em `database/migrations/`, nomeados `NNN_descricao.php` (ex.:
-  `001_initial_schema.php`). Cada migration expõe `up()` idempotente.
-- A opção `guardkids_db_version` guarda o número da última migration aplicada.
-- O runner roda na **ativação** e em `plugins_loaded` (para cobrir atualizações
-  do plugin sem reativação). Aplica em ordem todas as migrations pendentes.
-- A criação de tabelas usa `dbDelta()` com o `charset_collate` do WordPress.
-
-### 5.2. Tabelas da Fundação (`001_initial_schema`)
-
-Prefixo real = `$wpdb->prefix . 'guardkids_'`. Abaixo com prefixo padrão `wp_`.
-
-**`wp_guardkids_users`** — perfil do responsável (liga a `wp_users`):
-
+### `wp_guardkids_children`
 | Coluna | Tipo | Notas |
 |--------|------|-------|
 | `id` | BIGINT UNSIGNED PK AI | |
-| `wp_user_id` | BIGINT UNSIGNED, UNIQUE | referencia `wp_users.ID` |
-| `created_at` | DATETIME | |
+| `slug` | VARCHAR(64) UNIQUE | identificador estável |
+| `name` | VARCHAR(120) | |
+| `age` | TINYINT UNSIGNED NULL | 0–21 |
+| `avatar_url` | TEXT NULL | |
+| `device` | VARCHAR(120) NULL | nome do dispositivo |
+| `status` | VARCHAR(16) DEFAULT 'offline' | `online` \| `offline` |
+| `used_minutes` | SMALLINT UNSIGNED DEFAULT 0 | uso de hoje |
+| `limit_minutes` | SMALLINT UNSIGNED DEFAULT 60 | limite diário |
+| `created_at`, `updated_at` | DATETIME | |
+
+### `wp_guardkids_requests`
+Solicitações da criança (mais tempo, liberar site).
+| Coluna | Tipo | Notas |
+|--------|------|-------|
+| `id` | BIGINT UNSIGNED PK AI | |
+| `child_id` | BIGINT UNSIGNED KEY | |
+| `kind` | VARCHAR(32) | `extra_time` \| `unblock_site` \| etc. |
+| `description`, `highlight` | VARCHAR(255) NULL | |
+| `reason` | TEXT NULL | justificativa da criança |
+| `status` | VARCHAR(16) DEFAULT 'pending' | `pending` \| `approved` \| `denied` |
+| `decided_at`, `decided_by` | DATETIME / BIGINT NULL | |
+| `created_at`, `updated_at` | DATETIME | |
+
+### `wp_guardkids_sites`
+Listas de sites permitidos/bloqueados.
+| Coluna | Tipo | Notas |
+|--------|------|-------|
+| `id` | BIGINT UNSIGNED PK AI | |
+| `domain` | VARCHAR(255) | |
+| `category` | VARCHAR(64) NULL | slug de `categories` |
+| `list_type` | VARCHAR(16) DEFAULT 'whitelist' | `whitelist` \| `blacklist` |
+| `applies_to` | TEXT NULL | JSON: ids de filhos afetados |
+| `created_at`, `updated_at` | DATETIME | |
+
+### `wp_guardkids_categories`
+Categorias de conteúdo bloqueáveis (com seed inicial).
+| Coluna | Tipo | Notas |
+|--------|------|-------|
+| `id` | BIGINT UNSIGNED PK AI | |
+| `slug` | VARCHAR(64) UNIQUE | |
+| `name` | VARCHAR(120) | |
+| `description` | TEXT NULL | |
+| `icon` | VARCHAR(64) NULL | Material Symbol |
+| `blocked` | TINYINT(1) DEFAULT 0 | flag global |
+| `created_at`, `updated_at` | DATETIME | |
+
+Seed na ativação: `adult-content`, `gambling`, `extreme-violence`,
+`social-networks` (blocked=1) + `videos`, `online-games` (blocked=0).
+
+### `wp_guardkids_settings`
+Key-value store com payload JSON.
+| Coluna | Tipo | Notas |
+|--------|------|-------|
+| `id` | BIGINT UNSIGNED PK AI | |
+| `setting_key` | VARCHAR(120) UNIQUE | |
+| `value` | LONGTEXT NULL | JSON encoded |
 | `updated_at` | DATETIME | |
-
-**`wp_guardkids_children`** — filhos de um responsável:
-
-| Coluna | Tipo | Notas |
-|--------|------|-------|
-| `id` | BIGINT UNSIGNED PK AI | |
-| `guardian_id` | BIGINT UNSIGNED, KEY | → `guardkids_users.id` |
-| `name` | VARCHAR(100) | |
-| `avatar` | VARCHAR(50) NULL | chave de avatar pré-definido (sem upload nesta fase) |
-| `birth_year` | SMALLINT UNSIGNED NULL | |
-| `status` | VARCHAR(20) DEFAULT 'active' | `active` \| `suspended` |
-| `created_at` | DATETIME | |
-| `updated_at` | DATETIME | |
-
-**`wp_guardkids_sessions`** — sessões de pais e dispositivos de crianças
-(*tabela nova, não listada no briefing original; necessária para refresh tokens
-revogáveis e para o pareamento*):
-
-| Coluna | Tipo | Notas |
-|--------|------|-------|
-| `id` | BIGINT UNSIGNED PK AI | |
-| `subject_type` | VARCHAR(10) | `guardian` \| `child` |
-| `subject_id` | BIGINT UNSIGNED, KEY (com subject_type) | id em users ou children |
-| `refresh_token_hash` | CHAR(64) NULL, KEY | SHA-256; NULL enquanto pareamento pendente |
-| `pairing_code_hash` | CHAR(64) NULL | SHA-256; só para pareamento de criança pendente |
-| `pairing_expires_at` | DATETIME NULL | |
-| `label` | VARCHAR(100) NULL | ex.: "Celular da Ana" |
-| `status` | VARCHAR(20) DEFAULT 'pending' | `pending` \| `active` \| `revoked` |
-| `expires_at` | DATETIME | |
-| `last_seen_at` | DATETIME NULL | |
-| `created_at` | DATETIME | |
-
-**`wp_guardkids_settings`** — configurações chave/valor:
-
-| Coluna | Tipo | Notas |
-|--------|------|-------|
-| `id` | BIGINT UNSIGNED PK AI | |
-| `scope` | VARCHAR(10) | `global` \| `guardian` \| `child` |
-| `scope_id` | BIGINT UNSIGNED DEFAULT 0 | 0 para `global` |
-| `setting_key` | VARCHAR(100) | |
-| `setting_value` | LONGTEXT NULL | JSON |
-| `updated_at` | DATETIME | |
-| | UNIQUE (`scope`,`scope_id`,`setting_key`) | |
-
-> As foreign keys são lógicas (aplicadas no código), não constraints SQL —
-> padrão do WordPress, que usa MyISAM/InnoDB sem garantir FKs entre tabelas.
-
-### 5.3. WP Cron
-
-Um evento agendado `guardkids_cleanup` (diário) apaga sessões expiradas ou
-`revoked` antigas e códigos de pareamento vencidos.
-
----
 
 ## 6. API REST
 
-Namespace: `wp-json/guardkids/v1/`.
+Namespace `wp-json/guardkids/v1/`. Toda rota exige
+`current_user_can('manage_options')`.
 
-| Método | Rota | Auth | Função |
-|--------|------|------|--------|
-| POST | `/auth/login` | pública (rate-limited) | Login do pai |
-| POST | `/auth/pair` | pública (rate-limited) | Pareamento da criança |
-| POST | `/auth/refresh` | refresh token | Rotaciona os tokens |
-| POST | `/auth/logout` | access token | Revoga a sessão atual |
-| GET | `/auth/me` | access token | Perfil do sujeito logado |
-| GET | `/children` | access token (pai) | Lista os filhos do responsável |
-| POST | `/children` | access token (pai) | Cria um filho |
-| POST | `/children/{id}/pairing-code` | access token (pai) | Gera código de pareamento |
-| DELETE | `/sessions/{id}` | access token (pai) | Revoga uma sessão/dispositivo |
+| Método | Rota | Função |
+|--------|------|--------|
+| GET    | `/children` | Lista todos os filhos |
+| POST   | `/children` | Cria um filho |
+| GET    | `/children/{id}` | Detalhe |
+| PATCH  | `/children/{id}` | Atualiza campos parciais |
+| DELETE | `/children/{id}` | Remove |
+| GET    | `/requests?status={pending|approved|denied|all}` | Lista solicitações |
+| POST   | `/requests/{id}/approve` | Aprova (gravando `decided_by`) |
+| POST   | `/requests/{id}/deny` | Nega |
+| GET    | `/sites?list={whitelist|blacklist|all}` | Lista sites |
+| POST   | `/sites` | Adiciona à lista |
+| DELETE | `/sites/{id}` | Remove |
+| GET    | `/categories` | Lista categorias com flag `blocked` |
+| PATCH  | `/categories/{id}` | Atualiza `blocked` |
+| GET    | `/settings` | Retorna todos os pares chave/valor decodificados |
+| PATCH  | `/settings` | Faz merge dos pares enviados no JSON body |
 
-Respostas de erro padronizadas: `{ "code", "message", "data": { "status" } }`,
-seguindo o formato `WP_Error` do core. Códigos HTTP: 200/201, 400, 401, 403,
-404, 409 (código já usado), 422 (validação), 429 (rate limit).
-
-### 6.1. Camadas (Clean Architecture / SOLID)
-
-```
-Controller (api/controllers/)   → fino; traduz HTTP ↔ Service
-        │
-Service (includes/auth/)        → regra de negócio (AuthService, ChildService)
-        │
-Repository                      → encapsula $wpdb (User/Child/SessionRepository)
-        │
-WordPress ($wpdb, wp_users)
-```
-
-- **Validators** (`api/validators/`) — validam e sanitizam o payload antes do
-  controller chamar o service.
-- **Middleware** (`api/middleware/`) — `permission_callback` reais:
-  `AuthMiddleware` (valida JWT e carrega o sujeito), `RateLimitMiddleware`.
-- Autoload **PSR-4**, namespace raiz `GuardKids\`, via `composer.json`.
-- O `vendor/` é versionado/empacotado no plugin distribuído (sem passo de
-  Composer no servidor do cliente).
-
----
+Respostas em JSON **camelCase** (transformação no `toJson()` dos controllers).
+Erros em formato `WP_Error` (`code`, `message`, `data.status`). Códigos HTTP
+usados: 200, 201, 401, 404, 409 (request já decidido), 422 (validação), 500.
 
 ## 7. Segurança
 
-- **JWT Bearer** em todas as rotas protegidas (header `Authorization: Bearer`).
-- **Nonce WP** previsto para chamadas cookie-autenticadas do wp-admin — entra
-  em uso na M3; o middleware já é desenhado para suportá-lo.
-- **Rate limiting** por IP via transients: máx. **5 tentativas / 15 min** em
-  `/auth/login` e `/auth/pair`; excedido → **429**. A chave do transient usa
-  hash do IP (não guarda IP em claro).
-- **Sanitização** de todo input via funções `sanitize_*` do WP nos validators;
-  todas as queries usam `$wpdb->prepare()`.
-- **`permission_callback`** real e específico em cada rota (nunca
-  `__return_true` em rota protegida).
-- **Headers seguros** nas respostas REST do plugin (`X-Content-Type-Options:
-  nosniff`, `Referrer-Policy`, `X-Frame-Options` onde aplicável) via filtro
-  `rest_post_dispatch`.
-- Senhas nunca logadas; tokens só trafegam em HTTPS (documentado como
-  pré-requisito de instalação).
-- **Não implementar** spyware, keylogger ou captura oculta — explicitamente
-  fora do produto.
+- **Auth REST:** capability `manage_options` (admin do WP) em cada
+  `permission_callback`. Não há `__return_true`.
+- **Queries:** todas via `$wpdb->prepare()` (base `Repository`).
+- **Sanitização:** `sanitize_text_field`, `sanitize_title`, `esc_url_raw`
+  declarados nos `args` de cada rota.
+- **Validação de enums:** `list_type`, `status` etc. validados via `enum` no
+  schema do `register_rest_route`.
+- **Uninstall:** drop das 5 tabelas + delete das opções persistentes.
+- **Pendente:** headers seguros no `rest_post_dispatch`
+  (`X-Content-Type-Options: nosniff` etc.) — ainda não implementados.
 
----
-
-## 8. Estrutura de pastas (criada na Fundação)
+## 8. Estrutura de pastas (estado atual)
 
 ```
 guardkids-wp/
-├── guardkids.php              # bootstrap, constantes, autoload, hooks
-├── uninstall.php              # remove tabelas + opções
-├── composer.json              # firebase/php-jwt + autoload PSR-4
+├── guardkids.php                # bootstrap, constantes, registra autoloader
+├── uninstall.php                # drop tabelas + delete opções
+├── composer.json                # require-dev only (phpunit)
+├── .gitignore
 ├── api/
-│   ├── routes/                # registro das rotas REST
-│   ├── controllers/           # AuthController, ChildController, SessionController
-│   ├── middleware/            # AuthMiddleware, RateLimitMiddleware
-│   └── validators/            # validação/sanitização de payload
+│   ├── RestApi.php              # registra as 9 rotas
+│   └── Controllers/
+│       ├── ChildController.php
+│       ├── RequestController.php
+│       ├── SiteController.php
+│       ├── CategoryController.php
+│       └── SettingsController.php
 ├── includes/
-│   ├── auth/                  # AuthService, JwtService, tokens
-│   └── security/              # rate limiting, headers
+│   ├── Autoloader.php           # PSR-4 self-contained
+│   └── Plugin.php               # singleton: hooks, migrations, seed, REST
 ├── database/
-│   ├── migrations/            # 001_initial_schema.php + runner
-│   └── schema/                # documentação do schema
-├── languages/                 # .pot (text domain "guardkids")
-└── docs/
-    └── superpowers/specs/     # este documento
+│   ├── MigrationRunner.php
+│   ├── Repository.php           # base CRUD com $wpdb->prepare
+│   ├── {Child,Request,Site,Category,Settings}Repository.php
+│   └── migrations/
+│       └── 001_initial_schema.php
+├── public/
+│   ├── README.md
+│   ├── app-parent/              # SPA Vite/React/TS (10 páginas)
+│   └── app-child/               # PWA Vite/React/TS (5 páginas)
+└── docs/superpowers/{specs,plans}/
 ```
 
-As pastas `admin/`, `public/`, `premium/` e os repositories de domínios futuros
-não são criadas agora — entram nos seus respectivos milestones.
+## 9. Frontend
 
----
+Dois apps Vite + React 18 + TypeScript + Tailwind, design system **Guardian
+Harmony** (Deep Blue + Soft Mint Green + Warm Orange, fontes Montserrat/Inter,
+glassmorphic). Mock data em `src/data/mockData.ts` — sem integração REST
+ainda.
 
-## 9. Testes
+**`app-parent`** (SPA responsiva, sidebar desktop + bottom nav mobile):
+páginas Dashboard, Children, Approvals, SitesRules, TimeLimits, Reports,
+Settings, License, Upgrade (10 no total). 11 componentes compartilhados
+(ChildCard, PendingRequests, RecentBlocks, SideNav, etc.).
 
-- Ambiente: **`wp-env`** (Docker) com a suíte de testes oficial do WordPress.
-- **PHPUnit** com testes de integração cobrindo:
-  - Migration runner: cria as tabelas; é idempotente; `uninstall` limpa tudo.
-  - `AuthService`: login do pai, pareamento da criança, refresh, logout,
-    revogação, rejeição de token expirado/inválido.
-  - Repositories: CRUD básico de users, children e sessions.
-  - Rate limiting: bloqueio após N tentativas.
-- Cada critério de sucesso da Seção 2 tem ao menos um teste correspondente.
+**`app-child`** (PWA mobile-first instalável): páginas Home, Browser,
+Requests, Blocked, Alerts (5 no total). 8 componentes (Header, BottomNav,
+ScreenTime, QuickActions, etc.) + `manifest.webmanifest`. Ícones PWA
+(192/512) ainda não adicionados; service worker não instalado.
 
----
+## 10. Premissas e decisões
 
-## 10. Premissas e decisões tomadas
+1. **Auth via WP nonce + capability** — descartado o JWT/pairing do design
+   original. Crianças **não** são usuários WP; o `app-child` será
+   autenticado quando integrarmos o frontend (provavelmente via token
+   de dispositivo emitido pelo `app-parent`).
+2. **Plugin sem dependências de runtime** — autoloader self-contained,
+   `composer.json` apenas em `require-dev`.
+3. **Frontend em `public/`** servido pelo plugin (não pelo wp-admin) —
+   decisão de UX para experiência app-like; rotas WP servirão os builds.
+4. **Single-site, single-language (pt-BR)** — multisite e i18n completo
+   ficam para depois.
 
-1. Pais são usuários WordPress reais; crianças **não** são usuários WP.
-2. Adicionada a 10ª tabela `wp_guardkids_sessions` (fora do briefing original),
-   por ser indispensável para tokens revogáveis e pareamento.
-3. As 5 tabelas de domínios futuros não entram nesta migration.
-4. Colunas de plano/papel (premium, multi-responsável) ficam para a M8.
-5. Sem frontend nesta entrega — verificação por cliente REST e PHPUnit.
-6. Alvo single-site; multisite fora de escopo.
-7. HTTPS é pré-requisito de produção (documentado, não forçado em código).
+## 11. Próximos passos sugeridos
 
-## 11. Riscos
-
-- **`wp-env` exige Docker** na máquina de desenvolvimento (Windows). Mitigação:
-  documentar o setup; testes unitários puros de `AuthService` podem rodar com
-  mocks caso o Docker não esteja disponível.
-- **Empacotar `vendor/`** aumenta o tamanho do plugin. Aceitável — `php-jwt` é
-  uma dependência pequena e é o padrão para plugins distribuídos.
-- **Segredo JWT em `wp_options`** é menos seguro que em `wp-config.php`. Por
-  isso a constante `GUARDKIDS_JWT_SECRET` tem precedência e é a forma
-  recomendada na documentação.
+1. **Integração REST do frontend** — substituir `mockData.ts` por
+   `fetch('/wp-json/guardkids/v1/*')` com nonce do WP.
+2. **Ícones PWA + service worker** no `app-child` (`vite-plugin-pwa`).
+3. **Testes** — PHPUnit nos Repositories + smoke tests dos endpoints REST;
+   Vitest nos PWAs.
+4. **Headers seguros** no `rest_post_dispatch` (Seção 7).
+5. **Roteamento React** — quando o frontend crescer além de 1 tela ativa,
+   adicionar `react-router-dom` e estado global (`zustand` é a aposta no
+   briefing original).
+6. **Auth do `app-child`** — fluxo de pareamento dispositivo↔filho (a
+   antiga ideia de pairing code pode ser retomada aqui, agora com escopo
+   muito mais focado).
