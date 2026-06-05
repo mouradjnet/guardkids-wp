@@ -10,6 +10,11 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+# Codecov OIDC tokenless precisa de id-token: write
+permissions:
+  contents: read
+  id-token: write
+
 jobs:
   phpunit:
     name: PHPUnit
@@ -44,6 +49,7 @@ jobs:
           files: ./coverage.xml
           flags: phpunit
           fail_ci_if_error: false
+          use_oidc: true
 
   app-parent:
     name: app-parent (vitest + build)
@@ -76,6 +82,7 @@ jobs:
           files: public/app-parent/coverage/lcov.info
           flags: vitest
           fail_ci_if_error: false
+          use_oidc: true
 
       - name: Type check + build
         run: pnpm build
