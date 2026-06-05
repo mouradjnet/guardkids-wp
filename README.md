@@ -3,6 +3,7 @@
 > Controle parental web premium para WordPress — painel dos pais (SPA) + painel infantil (PWA instalável) + REST autenticada, tudo num plugin único.
 
 [![CI](https://github.com/mouradjnet/guardkids-wp/actions/workflows/ci.yml/badge.svg?branch=master)](https://github.com/mouradjnet/guardkids-wp/actions/workflows/ci.yml)
+[![codecov](https://codecov.io/gh/mouradjnet/guardkids-wp/branch/master/graph/badge.svg)](https://codecov.io/gh/mouradjnet/guardkids-wp)
 [![PHP 8.1+](https://img.shields.io/badge/PHP-8.1%2B-777BB4?logo=php&logoColor=white)](composer.json)
 [![WordPress 6.4+](https://img.shields.io/badge/WordPress-6.4%2B-21759B?logo=wordpress&logoColor=white)](guardkids.php)
 [![Tests](https://img.shields.io/badge/tests-72%20passing-brightgreen)](#testes)

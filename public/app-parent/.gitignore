@@ -12,3 +12,6 @@ vite.config.d.ts
 .env
 .env.local
 .env.*.local
+
+# Coverage reports
+/coverage/

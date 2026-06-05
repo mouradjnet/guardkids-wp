@@ -22,7 +22,7 @@ jobs:
         with:
           php-version: '8.2'
           extensions: mbstring, fileinfo
-          coverage: none
+          coverage: pcov
           tools: composer:v2
 
       - name: Cache Composer
@@ -35,8 +35,15 @@ jobs:
       - name: Install Composer deps
         run: composer install --no-progress --no-interaction --prefer-dist
 
-      - name: Run PHPUnit
-        run: vendor/bin/phpunit
+      - name: Run PHPUnit + Clover coverage
+        run: vendor/bin/phpunit --coverage-clover=coverage.xml
+
+      - name: Upload PHP coverage to Codecov
+        uses: codecov/codecov-action@v5
+        with:
+          files: ./coverage.xml
+          flags: phpunit
+          fail_ci_if_error: false
 
   app-parent:
     name: app-parent (vitest + build)
@@ -60,8 +67,15 @@ jobs:
       - name: Install deps
         run: pnpm install --frozen-lockfile
 
-      - name: Vitest
-        run: pnpm test
+      - name: Vitest + lcov coverage
+        run: pnpm test:coverage
+
+      - name: Upload TS coverage to Codecov
+        uses: codecov/codecov-action@v5
+        with:
+          files: public/app-parent/coverage/lcov.info
+          flags: vitest
+          fail_ci_if_error: false
 
       - name: Type check + build
         run: pnpm build
