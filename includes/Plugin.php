@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace GuardKids;
 
+use GuardKids\Api\RestApi;
 use GuardKids\Database\CategoryRepository;
 use GuardKids\Database\MigrationRunner;
 
@@ -43,6 +44,8 @@ final class Plugin
 
         add_action('plugins_loaded', [$this, 'maybeRunMigrations']);
         add_action('init', [$this, 'loadTextdomain']);
+
+        (new RestApi())->register();
     }
 
     /**
