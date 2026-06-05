@@ -1,102 +1,194 @@
-import { useState } from 'react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useEffect, useState } from 'react';
+import { listChildren, updateChild } from '../api/children';
+import { ApiError } from '../api/client';
+import type { Child } from '../api/types';
 import { Icon } from '../components/Icon';
 import { PageHeader } from '../components/PageHeader';
-import {
-  childLimits,
-  children,
-  sampleDayBlocks,
-  weekDays,
-  type ChildLimits,
-  type DayBlock,
-  type WeekDay,
-} from '../data/mockData';
 
-const blockColors: Record<DayBlock['kind'], { bg: string; text: string }> = {
+const PRESET_MINUTES = [60, 90, 120, 180, 240];
+
+const WEEK_DAYS = [
+  { id: 'mon', label: 'Seg' },
+  { id: 'tue', label: 'Ter' },
+  { id: 'wed', label: 'Qua' },
+  { id: 'thu', label: 'Qui' },
+  { id: 'fri', label: 'Sex' },
+  { id: 'sat', label: 'Sáb' },
+  { id: 'sun', label: 'Dom' },
+] as const;
+type WeekDay = (typeof WEEK_DAYS)[number]['id'];
+
+type DayBlock = { start: number; end: number; kind: 'sleep' | 'school' | 'free' | 'play'; label: string };
+
+const SAMPLE_DAY_BLOCKS: DayBlock[] = [
+  { start: 0, end: 7, kind: 'sleep', label: 'Bedtime' },
+  { start: 7, end: 12, kind: 'school', label: 'School' },
+  { start: 12, end: 14, kind: 'free', label: 'Almoço' },
+  { start: 14, end: 18, kind: 'school', label: 'School' },
+  { start: 18, end: 21, kind: 'play', label: 'Play' },
+  { start: 21, end: 24, kind: 'sleep', label: 'Bedtime' },
+];
+
+const BLOCK_COLORS: Record<DayBlock['kind'], { bg: string; text: string }> = {
   sleep: { bg: 'bg-primary', text: 'text-white' },
   school: { bg: 'bg-primary-container', text: 'text-on-primary-container' },
   free: { bg: 'bg-surface-container-high', text: 'text-on-surface' },
   play: { bg: 'bg-orange-warm', text: 'text-white' },
 };
 
-const PRESET_MINUTES = [60, 90, 120, 180, 240];
-
 export function TimeLimits() {
-  const [selectedChildId, setSelectedChildId] = useState<string>('lucas');
-  const currentLimits = childLimits.find((l) => l.childId === selectedChildId)!;
-  const currentChild = children.find((c) => c.id === selectedChildId)!;
+  const childrenQuery = useQuery({ queryKey: ['children'], queryFn: listChildren });
+  const [selectedId, setSelectedId] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (selectedId === null && childrenQuery.data && childrenQuery.data.length > 0) {
+      setSelectedId(childrenQuery.data[0].id);
+    }
+  }, [selectedId, childrenQuery.data]);
+
+  const selected =
+    childrenQuery.data?.find((c) => c.id === selectedId) ?? null;
 
   return (
     <main className="mx-auto flex w-full max-w-[1440px] flex-1 flex-col gap-stack-lg p-container-padding-mobile pb-24 md:ml-64 md:p-container-padding-desktop md:pb-container-padding-desktop">
       <PageHeader
         title="Limites de Tempo"
         subtitle="Defina rotina, tempo diário e horário de dormir pra cada filho."
-        action={
-          <button
-            type="button"
-            className="inline-flex items-center gap-2 rounded-full bg-primary px-5 py-3 text-label-md font-semibold text-white shadow-ambient transition-colors hover:bg-primary-container"
-          >
-            <Icon name="save" className="text-lg" filled />
-            Salvar tudo
-          </button>
-        }
       />
 
-      <section className="glass-panel flex flex-wrap gap-2 rounded-2xl p-3 shadow-ambient">
-        {children.map((c) => {
-          const active = c.id === selectedChildId;
-          return (
-            <button
-              key={c.id}
-              type="button"
-              onClick={() => setSelectedChildId(c.id)}
-              className={
-                active
-                  ? 'flex items-center gap-2 rounded-full bg-primary px-4 py-2 text-label-md font-semibold text-white shadow-sm'
-                  : 'flex items-center gap-2 rounded-full px-4 py-2 text-label-md font-semibold text-on-surface-variant hover:bg-surface-container'
-              }
-            >
-              <img
-                src={c.avatar}
-                alt=""
-                className={`h-7 w-7 rounded-full object-cover ${active ? 'ring-2 ring-white' : ''}`}
+      {childrenQuery.isLoading && (
+        <div className="glass-panel h-20 animate-pulse rounded-2xl bg-surface-container-low" />
+      )}
+
+      {childrenQuery.error ? (
+        <ListError error={childrenQuery.error} />
+      ) : null}
+
+      {childrenQuery.data && childrenQuery.data.length === 0 && (
+        <Empty
+          icon="child_care"
+          title="Sem filhos cadastrados"
+          subtitle="Vá em Filhos e adicione pelo menos uma criança pra configurar limites."
+        />
+      )}
+
+      {childrenQuery.data && childrenQuery.data.length > 0 && (
+        <>
+          <section className="glass-panel flex flex-wrap gap-2 rounded-2xl p-3 shadow-ambient">
+            {childrenQuery.data.map((c) => (
+              <ChildChip
+                key={c.id}
+                child={c}
+                active={c.id === selectedId}
+                onClick={() => setSelectedId(c.id)}
               />
-              {c.name}
-            </button>
-          );
-        })}
-      </section>
+            ))}
+          </section>
 
-      <div className="grid grid-cols-1 gap-gutter lg:grid-cols-2">
-        <DailyTimeCard limits={currentLimits} />
-        <BedtimeCard limits={currentLimits} />
-      </div>
-
-      <WeeklyCard limits={currentLimits} />
-
-      <TimelineCard childName={currentChild.name} />
+          {selected && (
+            <>
+              <div className="grid grid-cols-1 gap-gutter lg:grid-cols-2">
+                <DailyTimeCard child={selected} />
+                <BedtimeCard />
+              </div>
+              <WeeklyCard />
+              <TimelineCard childName={selected.name} />
+            </>
+          )}
+        </>
+      )}
     </main>
   );
 }
 
-function DailyTimeCard({ limits }: { limits: ChildLimits }) {
-  const [selected, setSelected] = useState(limits.dailyMinutes);
+function ChildChip({
+  child,
+  active,
+  onClick,
+}: {
+  child: Child;
+  active: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={
+        active
+          ? 'flex items-center gap-2 rounded-full bg-primary px-4 py-2 text-label-md font-semibold text-white shadow-sm'
+          : 'flex items-center gap-2 rounded-full px-4 py-2 text-label-md font-semibold text-on-surface-variant hover:bg-surface-container'
+      }
+    >
+      {child.avatarUrl ? (
+        <img
+          src={child.avatarUrl}
+          alt=""
+          className={`h-7 w-7 rounded-full object-cover ${active ? 'ring-2 ring-white' : ''}`}
+        />
+      ) : (
+        <span
+          className={`flex h-7 w-7 items-center justify-center rounded-full bg-surface-container font-display text-label-sm font-semibold ${
+            active ? 'text-primary ring-2 ring-white' : 'text-on-surface-variant'
+          }`}
+        >
+          {child.name.charAt(0).toUpperCase()}
+        </span>
+      )}
+      {child.name}
+    </button>
+  );
+}
+
+function DailyTimeCard({ child }: { child: Child }) {
+  const queryClient = useQueryClient();
+  const [optimistic, setOptimistic] = useState<number | null>(null);
+  const value = optimistic ?? child.limitMinutes;
+
+  const mutation = useMutation({
+    mutationFn: (limit_minutes: number) =>
+      updateChild(child.id, { limit_minutes }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['children'] });
+      setOptimistic(null);
+    },
+    onError: () => {
+      setOptimistic(null);
+    },
+  });
+
+  function pick(m: number) {
+    setOptimistic(m);
+    mutation.mutate(m);
+  }
+
   return (
     <article className="glass-panel rounded-2xl p-6 shadow-ambient">
-      <header className="mb-4 flex items-center gap-3">
-        <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary-container text-on-primary-container">
-          <Icon name="schedule" className="text-2xl" filled />
+      <header className="mb-4 flex items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary-container text-on-primary-container">
+            <Icon name="schedule" className="text-2xl" filled />
+          </div>
+          <div>
+            <h3 className="font-display text-headline-md text-on-surface">Tempo diário</h3>
+            <p className="text-label-sm text-on-surface-variant">
+              Limite máximo de tela por dia
+            </p>
+          </div>
         </div>
-        <div>
-          <h3 className="font-display text-headline-md text-on-surface">Tempo diário</h3>
-          <p className="text-label-sm text-on-surface-variant">
-            Limite máximo de tela por dia
-          </p>
-        </div>
+        {mutation.isPending && (
+          <Icon
+            name="progress_activity"
+            className="animate-spin text-lg text-primary"
+            aria-label="Salvando"
+          />
+        )}
       </header>
 
       <div className="text-center">
         <span className="font-display text-display-lg leading-none text-primary">
-          {Math.floor(selected / 60)}h{selected % 60 ? ` ${selected % 60}min` : ''}
+          {Math.floor(value / 60)}h{value % 60 ? ` ${value % 60}min` : ''}
         </span>
       </div>
 
@@ -105,11 +197,12 @@ function DailyTimeCard({ limits }: { limits: ChildLimits }) {
           <button
             key={m}
             type="button"
-            onClick={() => setSelected(m)}
+            disabled={mutation.isPending}
+            onClick={() => pick(m)}
             className={
-              selected === m
-                ? 'rounded-xl bg-primary py-2 text-label-md font-bold text-white shadow-sm'
-                : 'rounded-xl border border-outline-variant bg-surface-container-low py-2 text-label-md font-semibold text-on-surface hover:bg-surface-variant'
+              value === m
+                ? 'rounded-xl bg-primary py-2 text-label-md font-bold text-white shadow-sm disabled:opacity-80'
+                : 'rounded-xl border border-outline-variant bg-surface-container-low py-2 text-label-md font-semibold text-on-surface hover:bg-surface-variant disabled:opacity-60'
             }
           >
             {Math.floor(m / 60)}h{m % 60 ? `${m % 60}` : ''}
@@ -117,29 +210,32 @@ function DailyTimeCard({ limits }: { limits: ChildLimits }) {
         ))}
       </div>
 
-      <div className="mt-5 grid grid-cols-2 gap-3">
-        <SubLimit label="Dias úteis" value={`${Math.floor(limits.weekdayMinutes / 60)}h ${limits.weekdayMinutes % 60}min`} icon="work" />
-        <SubLimit label="Fim de semana" value={`${Math.floor(limits.weekendMinutes / 60)}h ${limits.weekendMinutes % 60}min`} icon="weekend" />
-      </div>
+      {mutation.error ? (
+        <p role="alert" className="mt-3 rounded-lg bg-error/10 p-2 text-label-sm text-error">
+          Falha ao salvar:{' '}
+          {mutation.error instanceof ApiError
+            ? `${mutation.error.message} (${mutation.error.status})`
+            : mutation.error instanceof Error
+              ? mutation.error.message
+              : 'erro desconhecido'}
+        </p>
+      ) : null}
     </article>
   );
 }
 
-function SubLimit({ label, value, icon }: { label: string; value: string; icon: string }) {
+function ComingSoonBadge() {
   return (
-    <div className="rounded-xl border border-outline-variant bg-surface-container-low px-4 py-3">
-      <div className="flex items-center gap-2 text-on-surface-variant">
-        <Icon name={icon} className="text-sm" />
-        <span className="text-label-sm">{label}</span>
-      </div>
-      <div className="mt-1 font-display text-headline-md text-primary">{value}</div>
-    </div>
+    <span className="inline-flex items-center gap-1 rounded-full bg-tertiary-container/40 px-2 py-0.5 text-xs font-semibold text-tertiary-container">
+      <Icon name="hourglass_empty" className="text-xs" />
+      Em breve
+    </span>
   );
 }
 
-function BedtimeCard({ limits }: { limits: ChildLimits }) {
-  const [start, setStart] = useState(limits.bedtimeStart);
-  const [end, setEnd] = useState(limits.bedtimeEnd);
+function BedtimeCard() {
+  const [start, setStart] = useState('21:30');
+  const [end, setEnd] = useState('07:00');
   const [enabled, setEnabled] = useState(true);
   return (
     <article className="glass-panel rounded-2xl p-6 shadow-ambient">
@@ -149,9 +245,12 @@ function BedtimeCard({ limits }: { limits: ChildLimits }) {
             <Icon name="bedtime" className="text-2xl" filled />
           </div>
           <div>
-            <h3 className="font-display text-headline-md text-on-surface">Modo dormir</h3>
+            <h3 className="flex items-center gap-2 font-display text-headline-md text-on-surface">
+              Modo dormir
+              <ComingSoonBadge />
+            </h3>
             <p className="text-label-sm text-on-surface-variant">
-              Bloqueia tudo durante a noite
+              Bloqueia tudo durante a noite (mudanças não persistem ainda)
             </p>
           </div>
         </div>
@@ -165,7 +264,7 @@ function BedtimeCard({ limits }: { limits: ChildLimits }) {
 
       <div className="mt-4 flex items-center gap-2 rounded-xl border border-primary/20 bg-primary/5 p-3 text-label-sm text-on-surface-variant">
         <Icon name="info" className="text-base text-primary" />
-        Durante esse período a tela infantil mostra o Modo Bloqueado.
+        Storage dedicado pra bedtime entra numa migration futura.
       </div>
     </article>
   );
@@ -218,8 +317,10 @@ function Toggle({ on, onToggle }: { on: boolean; onToggle: () => void }) {
   );
 }
 
-function WeeklyCard({ limits }: { limits: ChildLimits }) {
-  const [enabled, setEnabled] = useState<Set<WeekDay>>(new Set(limits.enabledDays));
+function WeeklyCard() {
+  const [enabled, setEnabled] = useState<Set<WeekDay>>(
+    new Set(['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun']),
+  );
 
   const toggle = (d: WeekDay) => {
     const next = new Set(enabled);
@@ -235,15 +336,18 @@ function WeeklyCard({ limits }: { limits: ChildLimits }) {
           <Icon name="event_repeat" className="text-2xl" filled />
         </div>
         <div>
-          <h3 className="font-display text-headline-md text-on-surface">Dias permitidos</h3>
+          <h3 className="flex items-center gap-2 font-display text-headline-md text-on-surface">
+            Dias permitidos
+            <ComingSoonBadge />
+          </h3>
           <p className="text-label-sm text-on-surface-variant">
-            Toque pra ligar/desligar cada dia da semana
+            Toggles locais — schedule por dia entra junto com a migration de bedtime.
           </p>
         </div>
       </header>
 
       <div className="grid grid-cols-7 gap-2">
-        {weekDays.map((d) => {
+        {WEEK_DAYS.map((d) => {
           const active = enabled.has(d.id);
           return (
             <button
@@ -278,18 +382,19 @@ function TimelineCard({ childName }: { childName: string }) {
           <Icon name="timeline" className="text-2xl" filled />
         </div>
         <div>
-          <h3 className="font-display text-headline-md text-on-surface">
+          <h3 className="flex items-center gap-2 font-display text-headline-md text-on-surface">
             Linha do dia — {childName}
+            <ComingSoonBadge />
           </h3>
           <p className="text-label-sm text-on-surface-variant">
-            Visualização de 24h com os blocos atuais
+            Mockup visual de 24h — vai vir do tracking real quando houver tabela de uso.
           </p>
         </div>
       </header>
 
       <div className="flex h-12 w-full overflow-hidden rounded-xl border border-outline-variant">
-        {sampleDayBlocks.map((b, idx) => {
-          const c = blockColors[b.kind];
+        {SAMPLE_DAY_BLOCKS.map((b, idx) => {
+          const c = BLOCK_COLORS[b.kind];
           const width = ((b.end - b.start) / 24) * 100;
           return (
             <div
@@ -325,6 +430,42 @@ function LegendItem({ color, label }: { color: string; label: string }) {
     <div className="flex items-center gap-2">
       <span className={`inline-block h-3 w-3 rounded-sm ${color}`} />
       {label}
+    </div>
+  );
+}
+
+function Empty({
+  icon,
+  title,
+  subtitle,
+}: {
+  icon: string;
+  title: string;
+  subtitle: string;
+}) {
+  return (
+    <div className="glass-panel flex flex-col items-center justify-center gap-3 rounded-2xl p-12 text-center shadow-ambient">
+      <div className="flex h-16 w-16 items-center justify-center rounded-full bg-surface-container-high text-primary">
+        <Icon name={icon} className="text-3xl" />
+      </div>
+      <h3 className="font-display text-headline-md text-on-surface">{title}</h3>
+      <p className="text-body-md text-on-surface-variant">{subtitle}</p>
+    </div>
+  );
+}
+
+function ListError({ error }: { error: unknown }) {
+  const message =
+    error instanceof ApiError
+      ? `${error.message} (${error.status})`
+      : error instanceof Error
+        ? error.message
+        : 'Erro desconhecido.';
+  return (
+    <div className="glass-panel flex flex-col items-center justify-center gap-2 rounded-2xl bg-error/5 p-6 text-error">
+      <Icon name="error" className="text-3xl" />
+      <p className="text-label-md font-semibold">Falha ao carregar filhos</p>
+      <p className="text-label-sm text-error/80">{message}</p>
     </div>
   );
 }
