@@ -82,7 +82,7 @@ final class ChildController
         }
 
         $created = $this->repo->findById($id);
-        return rest_ensure_response($this->toJson($created ?? []))->set_status(201);
+        return new WP_REST_Response($this->toJson($created ?? []), 201);
     }
 
     public function update(WP_REST_Request $req): WP_REST_Response|WP_Error

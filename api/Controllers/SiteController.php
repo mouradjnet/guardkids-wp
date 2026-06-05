@@ -58,7 +58,7 @@ final class SiteController
         if ($id === 0) {
             return new WP_Error('db_error', 'Não foi possível salvar.', ['status' => 500]);
         }
-        return rest_ensure_response($this->toJson($this->repo->findById($id) ?? []))->set_status(201);
+        return new WP_REST_Response($this->toJson($this->repo->findById($id) ?? []), 201);
     }
 
     public function destroy(WP_REST_Request $req): WP_REST_Response|WP_Error
