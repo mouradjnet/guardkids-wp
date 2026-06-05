@@ -1,0 +1,92 @@
+version: 2
+updates:
+  # PHP — composer.json (só require-dev: phpunit, polyfills)
+  - package-ecosystem: composer
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: America/Sao_Paulo
+    open-pull-requests-limit: 5
+    labels:
+      - dependencies
+      - php
+    commit-message:
+      prefix: "chore(deps)"
+      include: scope
+    groups:
+      composer-minor-patch:
+        update-types:
+          - minor
+          - patch
+
+  # Frontend pai — Vite/React/TanStack Query/Vitest/RTL
+  - package-ecosystem: npm
+    directory: /public/app-parent
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: America/Sao_Paulo
+    open-pull-requests-limit: 5
+    labels:
+      - dependencies
+      - frontend
+      - app-parent
+    commit-message:
+      prefix: "chore(deps)"
+      include: scope
+    groups:
+      app-parent-minor-patch:
+        update-types:
+          - minor
+          - patch
+    ignore:
+      # Vitest 4 quer Vite 6 — segurar enquanto Vite 5 for o build.
+      - dependency-name: vitest
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "@vitest/ui"
+        update-types: ["version-update:semver-major"]
+
+  # Frontend filho — Vite/React/vite-plugin-pwa/Workbox
+  - package-ecosystem: npm
+    directory: /public/app-child
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: America/Sao_Paulo
+    open-pull-requests-limit: 5
+    labels:
+      - dependencies
+      - frontend
+      - app-child
+    commit-message:
+      prefix: "chore(deps)"
+      include: scope
+    groups:
+      app-child-minor-patch:
+        update-types:
+          - minor
+          - patch
+
+  # GitHub Actions — bump das versões dos actions usados no ci.yml
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: America/Sao_Paulo
+    open-pull-requests-limit: 3
+    labels:
+      - dependencies
+      - ci
+    commit-message:
+      prefix: "chore(deps)"
+      include: scope
+    groups:
+      actions-all:
+        patterns:
+          - "*"
