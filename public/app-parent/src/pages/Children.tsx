@@ -1,6 +1,9 @@
+import { useQuery } from '@tanstack/react-query';
+import { listChildren } from '../api/children';
+import type { Child } from '../api/types';
+import { ApiError } from '../api/client';
 import { Icon } from '../components/Icon';
 import { PageHeader } from '../components/PageHeader';
-import { children, type Child } from '../data/mockData';
 
 function formatHM(min: number) {
   const h = Math.floor(min / 60);
@@ -9,6 +12,11 @@ function formatHM(min: number) {
 }
 
 export function Children() {
+  const { data, isLoading, error } = useQuery({
+    queryKey: ['children'],
+    queryFn: listChildren,
+  });
+
   return (
     <main className="mx-auto flex w-full max-w-[1440px] flex-1 flex-col gap-stack-lg p-container-padding-mobile pb-24 md:ml-64 md:p-container-padding-desktop md:pb-container-padding-desktop">
       <PageHeader
@@ -25,31 +33,70 @@ export function Children() {
         }
       />
 
-      <div className="grid grid-cols-1 gap-gutter md:grid-cols-2 xl:grid-cols-3">
-        {children.map((child) => (
-          <ChildProfileCard key={child.id} child={child} />
-        ))}
-        <AddChildCard />
-      </div>
+      {isLoading && <LoadingState />}
+      {error && <ErrorState error={error} />}
+      {data && (
+        <div className="grid grid-cols-1 gap-gutter md:grid-cols-2 xl:grid-cols-3">
+          {data.map((child) => (
+            <ChildProfileCard key={child.id} child={child} />
+          ))}
+          <AddChildCard />
+        </div>
+      )}
     </main>
   );
 }
 
+function LoadingState() {
+  return (
+    <div className="glass-panel flex h-40 items-center justify-center rounded-2xl text-on-surface-variant">
+      <Icon name="progress_activity" className="animate-spin text-2xl" />
+      <span className="ml-2 text-label-md">Carregando filhos…</span>
+    </div>
+  );
+}
+
+function ErrorState({ error }: { error: unknown }) {
+  const message =
+    error instanceof ApiError
+      ? `${error.message} (${error.status})`
+      : error instanceof Error
+        ? error.message
+        : 'Erro desconhecido ao carregar filhos.';
+  return (
+    <div className="glass-panel flex flex-col items-center justify-center gap-2 rounded-2xl bg-error/5 p-6 text-error">
+      <Icon name="error" className="text-3xl" />
+      <p className="text-label-md font-semibold">Falha ao carregar</p>
+      <p className="text-label-sm text-error/80">{message}</p>
+    </div>
+  );
+}
+
 function ChildProfileCard({ child }: { child: Child }) {
-  const pct = Math.round((child.usedMinutes / child.limitMinutes) * 100);
+  const pct = child.limitMinutes > 0 ? Math.round((child.usedMinutes / child.limitMinutes) * 100) : 0;
   const online = child.status === 'online';
 
   return (
     <article className="glass-panel relative overflow-hidden rounded-2xl p-6 shadow-ambient transition-shadow hover:shadow-md">
       <div className="flex items-start gap-4">
         <div className="relative">
-          <img
-            src={child.avatar}
-            alt={`${child.name} avatar`}
-            className={`h-20 w-20 rounded-2xl border-2 border-surface-variant object-cover ${
-              online ? '' : 'grayscale-[20%]'
-            }`}
-          />
+          {child.avatarUrl ? (
+            <img
+              src={child.avatarUrl}
+              alt={`${child.name} avatar`}
+              className={`h-20 w-20 rounded-2xl border-2 border-surface-variant object-cover ${
+                online ? '' : 'grayscale-[20%]'
+              }`}
+            />
+          ) : (
+            <div
+              className={`flex h-20 w-20 items-center justify-center rounded-2xl border-2 border-surface-variant bg-surface-container font-display text-2xl text-on-surface-variant ${
+                online ? '' : 'grayscale-[20%]'
+              }`}
+            >
+              {child.name.charAt(0).toUpperCase()}
+            </div>
+          )}
           <div
             className={`absolute -bottom-1 -right-1 h-4 w-4 rounded-full border-2 border-white ${
               online ? 'bg-secondary pulse-green' : 'bg-outline-variant'
@@ -68,7 +115,8 @@ function ChildProfileCard({ child }: { child: Child }) {
             </button>
           </div>
           <p className="mt-1 text-label-sm text-on-surface-variant">
-            {child.age} anos • {child.device}
+            {child.age !== null ? `${child.age} anos` : 'Idade não informada'}
+            {child.device ? ` • ${child.device}` : ''}
           </p>
           <span
             className={`mt-2 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-label-sm ${
@@ -87,14 +135,9 @@ function ChildProfileCard({ child }: { child: Child }) {
         </div>
       </div>
 
-      <div className="mt-5 grid grid-cols-3 gap-2 text-center">
+      <div className="mt-5 grid grid-cols-2 gap-2 text-center">
         <MetricChip label="Hoje" value={formatHM(child.usedMinutes)} icon="schedule" />
         <MetricChip label="Limite" value={formatHM(child.limitMinutes)} icon="timer" />
-        <MetricChip
-          label="Sites"
-          value={String(child.sitesVisitedToday)}
-          icon="public"
-        />
       </div>
 
       <div className="mt-5">
@@ -105,7 +148,7 @@ function ChildProfileCard({ child }: { child: Child }) {
         <div className="h-2 w-full overflow-hidden rounded-full bg-surface-container">
           <div
             className="h-full rounded-full bg-primary transition-all"
-            style={{ width: `${pct}%` }}
+            style={{ width: `${Math.min(pct, 100)}%` }}
           />
         </div>
       </div>
