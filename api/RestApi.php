@@ -6,9 +6,11 @@ namespace GuardKids\Api;
 
 use GuardKids\Api\Controllers\CategoryController;
 use GuardKids\Api\Controllers\ChildController;
+use GuardKids\Api\Controllers\ChildSelfController;
 use GuardKids\Api\Controllers\RequestController;
 use GuardKids\Api\Controllers\SettingsController;
 use GuardKids\Api\Controllers\SiteController;
+use GuardKids\Auth\ChildAuth;
 
 /**
  * Registra rotas do namespace `guardkids/v1`.
@@ -32,6 +34,7 @@ final class RestApi
         $this->registerSitesRoutes();
         $this->registerCategoriesRoutes();
         $this->registerSettingsRoutes();
+        $this->registerChildSelfRoutes();
     }
 
     /**
@@ -76,6 +79,41 @@ final class RestApi
                 'methods'             => \WP_REST_Server::DELETABLE,
                 'callback'            => [$controller, 'destroy'],
                 'permission_callback' => [self::class, 'requireManage'],
+            ],
+        ]);
+
+        register_rest_route(self::NAMESPACE, '/children/(?P<id>\d+)/pair', [
+            'methods'             => \WP_REST_Server::CREATABLE,
+            'callback'            => [$controller, 'issueDeviceToken'],
+            'permission_callback' => [self::class, 'requireManage'],
+            'args'                => [
+                'label' => ['type' => 'string', 'sanitize_callback' => 'sanitize_text_field'],
+            ],
+        ]);
+    }
+
+    private function registerChildSelfRoutes(): void
+    {
+        $controller = new ChildSelfController();
+        $requireToken = (new ChildAuth())->requireToken();
+
+        register_rest_route(self::NAMESPACE, '/child/me', [
+            'methods'             => \WP_REST_Server::READABLE,
+            'callback'            => [$controller, 'me'],
+            'permission_callback' => $requireToken,
+        ]);
+
+        register_rest_route(self::NAMESPACE, '/child/requests', [
+            [
+                'methods'             => \WP_REST_Server::READABLE,
+                'callback'            => [$controller, 'requestsIndex'],
+                'permission_callback' => $requireToken,
+            ],
+            [
+                'methods'             => \WP_REST_Server::CREATABLE,
+                'callback'            => [$controller, 'requestsCreate'],
+                'permission_callback' => $requireToken,
+                'args'                => $controller->createArgs(),
             ],
         ]);
     }

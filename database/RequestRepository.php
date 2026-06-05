@@ -19,6 +19,14 @@ final class RequestRepository extends Repository
         return $this->findWhere(['status' => $status], 'created_at', 'DESC');
     }
 
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    public function findByChild(int $childId): array
+    {
+        return $this->findWhere(['child_id' => $childId], 'created_at', 'DESC');
+    }
+
     public function decide(int $id, string $decision, int $userId): bool
     {
         return $this->update($id, [

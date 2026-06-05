@@ -116,6 +116,28 @@ final class ChildController
         return rest_ensure_response(['deleted' => true, 'id' => $id]);
     }
 
+    public function issueDeviceToken(WP_REST_Request $req): WP_REST_Response|WP_Error
+    {
+        $id   = (int) $req['id'];
+        $row  = $this->repo->findById($id);
+        if ($row === null) {
+            return new WP_Error('not_found', 'Filho não encontrado.', ['status' => 404]);
+        }
+
+        $label = $req->get_param('label');
+        $label = is_string($label) ? sanitize_text_field($label) : null;
+
+        $issued = (new \GuardKids\Auth\ChildAuth())->issueToken($id, $label);
+
+        return new WP_REST_Response([
+            'token'     => $issued['token'],
+            'childId'   => $id,
+            'label'     => $label,
+            'createdAt' => gmdate('c'),
+            'notice'    => 'Anote o token agora — ele não é exibido de novo.',
+        ], 201);
+    }
+
     /**
      * @param array<string, mixed> $row
      * @return array<string, mixed>
