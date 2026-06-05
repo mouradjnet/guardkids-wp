@@ -33,3 +33,18 @@ export function updateChild(id: number, input: UpdateChildInput): Promise<Child>
     body: JSON.stringify(input),
   });
 }
+
+export type DeviceTokenResponse = {
+  token: string;
+  childId: number;
+  label: string | null;
+  createdAt: string;
+  notice: string;
+};
+
+export function pairChildDevice(id: number, label?: string): Promise<DeviceTokenResponse> {
+  return apiFetch<DeviceTokenResponse>(`/children/${id}/pair`, {
+    method: 'POST',
+    body: JSON.stringify({ label: label ?? null }),
+  });
+}

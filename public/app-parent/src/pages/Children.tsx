@@ -6,6 +6,7 @@ import { ApiError } from '../api/client';
 import { AddChildDialog } from '../components/AddChildDialog';
 import { Icon } from '../components/Icon';
 import { PageHeader } from '../components/PageHeader';
+import { PairDeviceDialog } from '../components/PairDeviceDialog';
 
 function formatHM(min: number) {
   const h = Math.floor(min / 60);
@@ -19,6 +20,7 @@ export function Children() {
     queryFn: listChildren,
   });
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [pairing, setPairing] = useState<Child | null>(null);
   const openDialog = () => setDialogOpen(true);
   const closeDialog = () => setDialogOpen(false);
 
@@ -44,13 +46,25 @@ export function Children() {
       {data && (
         <div className="grid grid-cols-1 gap-gutter md:grid-cols-2 xl:grid-cols-3">
           {data.map((child) => (
-            <ChildProfileCard key={child.id} child={child} />
+            <ChildProfileCard
+              key={child.id}
+              child={child}
+              onPair={() => setPairing(child)}
+            />
           ))}
           <AddChildCard onClick={openDialog} />
         </div>
       )}
 
       <AddChildDialog open={dialogOpen} onClose={closeDialog} />
+      {pairing && (
+        <PairDeviceDialog
+          childId={pairing.id}
+          childName={pairing.name}
+          open
+          onClose={() => setPairing(null)}
+        />
+      )}
     </main>
   );
 }
@@ -80,7 +94,7 @@ function ErrorState({ error }: { error: unknown }) {
   );
 }
 
-function ChildProfileCard({ child }: { child: Child }) {
+function ChildProfileCard({ child, onPair }: { child: Child; onPair: () => void }) {
   const pct = child.limitMinutes > 0 ? Math.round((child.usedMinutes / child.limitMinutes) * 100) : 0;
   const online = child.status === 'online';
 
@@ -112,15 +126,26 @@ function ChildProfileCard({ child }: { child: Child }) {
           />
         </div>
         <div className="flex-1">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between gap-1">
             <h3 className="font-display text-headline-md text-on-surface">{child.name}</h3>
-            <button
-              type="button"
-              aria-label="Mais ações"
-              className="rounded-full p-1 text-on-surface-variant hover:bg-surface-variant/50 hover:text-primary"
-            >
-              <Icon name="more_vert" />
-            </button>
+            <div className="flex items-center gap-1">
+              <button
+                type="button"
+                onClick={onPair}
+                aria-label="Parear dispositivo"
+                title="Parear dispositivo"
+                className="rounded-full p-1 text-on-surface-variant hover:bg-surface-variant/50 hover:text-primary"
+              >
+                <Icon name="tablet_mac" />
+              </button>
+              <button
+                type="button"
+                aria-label="Mais ações"
+                className="rounded-full p-1 text-on-surface-variant hover:bg-surface-variant/50 hover:text-primary"
+              >
+                <Icon name="more_vert" />
+              </button>
+            </div>
           </div>
           <p className="mt-1 text-label-sm text-on-surface-variant">
             {child.age !== null ? `${child.age} anos` : 'Idade não informada'}
