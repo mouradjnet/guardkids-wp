@@ -1,7 +1,9 @@
 import { useQuery } from '@tanstack/react-query';
+import { useState } from 'react';
 import { listChildren } from '../api/children';
 import type { Child } from '../api/types';
 import { ApiError } from '../api/client';
+import { AddChildDialog } from '../components/AddChildDialog';
 import { Icon } from '../components/Icon';
 import { PageHeader } from '../components/PageHeader';
 
@@ -16,6 +18,9 @@ export function Children() {
     queryKey: ['children'],
     queryFn: listChildren,
   });
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const openDialog = () => setDialogOpen(true);
+  const closeDialog = () => setDialogOpen(false);
 
   return (
     <main className="mx-auto flex w-full max-w-[1440px] flex-1 flex-col gap-stack-lg p-container-padding-mobile pb-24 md:ml-64 md:p-container-padding-desktop md:pb-container-padding-desktop">
@@ -25,6 +30,7 @@ export function Children() {
         action={
           <button
             type="button"
+            onClick={openDialog}
             className="inline-flex items-center gap-2 rounded-full bg-primary px-5 py-3 text-label-md font-semibold text-white shadow-ambient transition-colors hover:bg-primary-container"
           >
             <Icon name="add" className="text-lg" />
@@ -40,9 +46,11 @@ export function Children() {
           {data.map((child) => (
             <ChildProfileCard key={child.id} child={child} />
           ))}
-          <AddChildCard />
+          <AddChildCard onClick={openDialog} />
         </div>
       )}
+
+      <AddChildDialog open={dialogOpen} onClose={closeDialog} />
     </main>
   );
 }
@@ -205,10 +213,11 @@ function MetricChip({
   );
 }
 
-function AddChildCard() {
+function AddChildCard({ onClick }: { onClick: () => void }) {
   return (
     <button
       type="button"
+      onClick={onClick}
       className="group flex min-h-[280px] flex-col items-center justify-center gap-3 rounded-2xl border-2 border-dashed border-outline-variant bg-surface-container-low p-6 text-on-surface-variant transition-colors hover:border-primary hover:bg-surface-container hover:text-primary"
     >
       <div className="flex h-14 w-14 items-center justify-center rounded-full bg-surface-container-high text-primary transition-colors group-hover:bg-primary group-hover:text-white">
