@@ -20,6 +20,11 @@ Thumbs.db
 # Dependências PHP de desenvolvimento — o Composer só é usado em dev
 # (PHPUnit); o plugin não tem dependências de runtime.
 /vendor/
+/composer.lock
+
+# PHPUnit
+/.phpunit.cache/
+/.phpunit.result.cache
 
 # Variáveis de ambiente locais (NUNCA commitar — contêm Application Passwords).
 # .env.example fica versionado como template.
