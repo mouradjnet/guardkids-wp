@@ -76,4 +76,29 @@ final class UsageEventRepositoryTest extends TestCase
         self::assertNotEmpty($data['created_at']);
         self::assertArrayNotHasKey('updated_at', $data);
     }
+
+    public function testAggregateDailyMinutesGroupsByDayFiltersRange(): void
+    {
+        $repo = new UsageEventRepository();
+        $repo->aggregateDailyMinutes(1, '2026-06-01 00:00:00', '2026-06-08 00:00:00');
+
+        $sql = (string) $this->wpdb->log[0]['sql'];
+        self::assertStringContainsString('wp_guardkids_usage_events', $sql);
+        self::assertStringContainsString('child_id = 1', $sql);
+        self::assertStringContainsString("'2026-06-01 00:00:00'", $sql);
+        self::assertStringContainsString("'2026-06-08 00:00:00'", $sql);
+        self::assertStringContainsString('GROUP BY', $sql);
+        self::assertStringContainsString('DATE(created_at)', $sql);
+        self::assertStringContainsString('SUM(duration_seconds)', $sql);
+    }
+
+    public function testAggregateDailyMinutesWithChildIdZeroAggregatesAll(): void
+    {
+        $repo = new UsageEventRepository();
+        $repo->aggregateDailyMinutes(0, '2026-06-01 00:00:00', '2026-06-08 00:00:00');
+
+        $sql = (string) $this->wpdb->log[0]['sql'];
+        self::assertStringNotContainsString('child_id = ', $sql);
+        self::assertStringContainsString('GROUP BY', $sql);
+    }
 }
