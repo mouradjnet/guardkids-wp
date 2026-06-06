@@ -6,6 +6,9 @@ namespace GuardKids\Database;
 
 final class UsageEventRepository extends Repository
 {
+    private const DEFAULT_TOP_DOMAINS_LIMIT = 10;
+    private const MAX_TOP_DOMAINS_LIMIT = 100;
+
     protected function tableSuffix(): string
     {
         return 'usage_events';
@@ -69,9 +72,9 @@ final class UsageEventRepository extends Repository
      *
      * @return array<int, array{domain: string, opens: int, top_child_id: int|null}>
      */
-    public function topDomains(int $childId, string $fromIso, string $toIso, int $limit = 10): array
+    public function topDomains(int $childId, string $fromIso, string $toIso, int $limit = self::DEFAULT_TOP_DOMAINS_LIMIT): array
     {
-        $limit = max(1, min(100, $limit));
+        $limit = max(1, min(self::MAX_TOP_DOMAINS_LIMIT, $limit));
 
         $base = "SELECT domain, COUNT(*) AS opens,"
             . " (SELECT child_id FROM " . $this->table() . " e2"
