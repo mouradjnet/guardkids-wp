@@ -129,7 +129,7 @@ Auth: `X-GuardKids-Token` header (mesmo pattern do `ChildSelfController` existen
 Auth: `manage_options` (helper `RestApi::requireManage`).
 
 **Query params:**
-- `range` enum `week|month`, default `week`. Janela rolling (últimos 7 ou 30 dias terminando agora).
+- `range` enum `week|month`, default `week`. Janela rolling: `to = now()`, `from = now() - range_days` (7 ou 30). Inclusivo em `from`, exclusivo em `to`.
 - `child_id` opcional. Sem param = agrega todos. Com param = filtra single child.
 
 **Resposta `200`:**
@@ -159,7 +159,7 @@ Auth: `manage_options` (helper `RestApi::requireManage`).
 **Decisões de modelagem:**
 - `dailyByChild` é flat array com bucket `byChild: { childId → minutes }` — UI faz pivot/stack visual.
 - `topSites.topChildId` mostra qual filho mais clicou; `null` se empate.
-- `kpis.deltaPctVsPrevious` compara com janela imediatamente anterior; `null` quando não há histórico.
+- `kpis.deltaPctVsPrevious` compara `totalMinutes` da janela atual com a janela imediatamente anterior (semana: 14d–7d atrás; mês: 60d–30d atrás). Fórmula: `(atual - anterior) / anterior`. `null` se `anterior == 0` (evita divisão por zero).
 - `percentOfLimit` usa `SUM(children.limit_minutes) * range_days` como denominador; `null` se algum filho não tem limite.
 - **Sem endpoints separados** — um único payload alimenta Reports inteira.
 
@@ -346,7 +346,10 @@ Remover de `public/app-parent/src/data/mockData.ts`: `dailyMinutesByDay`, `repor
 - `api/reports.ts` 100%
 - `pages/Reports.tsx` >90%
 
-**Suite final esperada:** ~30 testes novos (16 PHP + 14 TS). Totais: ~93 PHP / ~165 TS / ~75% coverage app-parent (Reports passa de 0% pra >90%).
+**Suite final esperada:** ~40 testes novos (21 PHP + 19 TS).
+- PHP: 77 → ~98 (UsageEventRepository ~10, ChildSelfController extends +~5, ReportsController ~6).
+- TS: 131 → ~150 (api/reports ~2, lib/usageTracker ~8, pages/Reports ~9).
+- Coverage app-parent: 75.74% → projeção ~83% (Reports.tsx sai de 0% pra >90%; é o maior gap atual).
 
 ---
 
