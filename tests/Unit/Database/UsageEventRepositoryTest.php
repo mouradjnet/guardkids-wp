@@ -101,4 +101,28 @@ final class UsageEventRepositoryTest extends TestCase
         self::assertStringNotContainsString('child_id = ', $sql);
         self::assertStringContainsString('GROUP BY', $sql);
     }
+
+    public function testTopDomainsCountsOpensIgnoresHeartbeats(): void
+    {
+        $repo = new UsageEventRepository();
+        $repo->topDomains(0, '2026-06-01 00:00:00', '2026-06-08 00:00:00', 10);
+
+        $sql = (string) $this->wpdb->log[0]['sql'];
+        self::assertStringContainsString('wp_guardkids_usage_events', $sql);
+        self::assertStringContainsString("type = 'site_open'", $sql);
+        self::assertStringContainsString('GROUP BY domain', $sql);
+        self::assertStringContainsString('COUNT(*)', $sql);
+        self::assertStringContainsString('ORDER BY opens DESC', $sql);
+        self::assertStringContainsString('LIMIT 10', $sql);
+    }
+
+    public function testTopDomainsRespectsLimitAndChildFilter(): void
+    {
+        $repo = new UsageEventRepository();
+        $repo->topDomains(7, '2026-06-01 00:00:00', '2026-06-08 00:00:00', 3);
+
+        $sql = (string) $this->wpdb->log[0]['sql'];
+        self::assertStringContainsString('child_id = 7', $sql);
+        self::assertStringContainsString('LIMIT 3', $sql);
+    }
 }
