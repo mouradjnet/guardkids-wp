@@ -1,0 +1,128 @@
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import type { ReactNode } from 'react';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+
+const { listSettingsMock, updateSettingsMock } = vi.hoisted(() => ({
+  listSettingsMock: vi.fn(),
+  updateSettingsMock: vi.fn(),
+}));
+vi.mock('../api/settings', () => ({
+  listSettings: listSettingsMock,
+  updateSettings: updateSettingsMock,
+}));
+
+import { Settings } from './Settings';
+
+function renderPage() {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  const wrapper = ({ children }: { children: ReactNode }) => (
+    <QueryClientProvider client={client}>{children}</QueryClientProvider>
+  );
+  return render(<Settings />, { wrapper });
+}
+
+function toggleFor(label: string): HTMLElement {
+  const heading = screen.getByText(label);
+  let node: HTMLElement | null = heading.parentElement;
+  while (node) {
+    const sw = node.querySelector<HTMLElement>('[role="switch"]');
+    if (sw) return sw;
+    node = node.parentElement;
+  }
+  throw new Error(`Switch for "${label}" not found`);
+}
+
+describe('Settings page', () => {
+  beforeEach(() => {
+    listSettingsMock.mockReset();
+    updateSettingsMock.mockReset();
+  });
+
+  it('renders all 4 sections', async () => {
+    listSettingsMock.mockResolvedValue({});
+    renderPage();
+    expect(
+      await screen.findByRole('heading', { name: /^notificações$/i, level: 3 }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /^segurança$/i, level: 3 })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /família/i, level: 3 })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /privacidade/i, level: 3 })).toBeInTheDocument();
+  });
+
+  it('uses fallback values when settings bag is empty', async () => {
+    listSettingsMock.mockResolvedValue({});
+    renderPage();
+    await screen.findByText('Notificações push');
+
+    // fallbacks: push=true, email=true, realtime=false, weekly_report=true, two_fa=false, pin_child=true, auto_logout=false
+    expect(toggleFor('Notificações push')).toHaveAttribute('aria-checked', 'true');
+    expect(toggleFor('Alertas em tempo real')).toHaveAttribute('aria-checked', 'false');
+    expect(toggleFor('Autenticação em 2 fatores (2FA)')).toHaveAttribute('aria-checked', 'false');
+    expect(toggleFor('PIN no painel infantil')).toHaveAttribute('aria-checked', 'true');
+  });
+
+  it('overrides fallback with server value', async () => {
+    listSettingsMock.mockResolvedValue({
+      'notifications.push': false,
+      'security.two_fa': true,
+    });
+    renderPage();
+    await screen.findByText('Notificações push');
+
+    await waitFor(() => {
+      expect(toggleFor('Notificações push')).toHaveAttribute('aria-checked', 'false');
+    });
+    expect(toggleFor('Autenticação em 2 fatores (2FA)')).toHaveAttribute('aria-checked', 'true');
+  });
+
+  it('shows activeBadge when 2FA is on', async () => {
+    listSettingsMock.mockResolvedValue({ 'security.two_fa': true });
+    renderPage();
+    expect(await screen.findByText('Ativo')).toBeInTheDocument();
+  });
+
+  it('calls updateSettings with toggled value when switch clicked', async () => {
+    listSettingsMock.mockResolvedValue({});
+    updateSettingsMock.mockResolvedValue({ 'notifications.push': false });
+    const user = userEvent.setup();
+    renderPage();
+    await waitFor(() => expect(listSettingsMock).toHaveBeenCalled());
+
+    await user.click(toggleFor('Notificações push'));
+
+    await waitFor(() => {
+      expect(updateSettingsMock).toHaveBeenCalled();
+      expect(updateSettingsMock.mock.calls[0]?.[0]).toEqual({ 'notifications.push': false });
+    });
+  });
+
+  it('shows error state when listSettings fails', async () => {
+    listSettingsMock.mockRejectedValue(new Error('boom'));
+    renderPage();
+    expect(await screen.findByText(/falha ao carregar configurações/i)).toBeInTheDocument();
+  });
+
+  it('shows mutation error alert when updateSettings fails', async () => {
+    listSettingsMock.mockResolvedValue({});
+    updateSettingsMock.mockRejectedValue(new Error('save failed'));
+    const user = userEvent.setup();
+    renderPage();
+    await waitFor(() => expect(listSettingsMock).toHaveBeenCalled());
+
+    await user.click(toggleFor('Notificações push'));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(/falha ao salvar/i);
+  });
+
+  it('renders ComingSoonBadge on Família and Privacidade headings', async () => {
+    listSettingsMock.mockResolvedValue({});
+    renderPage();
+
+    const familia = await screen.findByRole('heading', { name: /família/i });
+    expect(familia).toHaveTextContent(/em breve/i);
+    const privacidade = screen.getByRole('heading', { name: /privacidade/i });
+    expect(privacidade).toHaveTextContent(/em breve/i);
+  });
+});
