@@ -107,4 +107,40 @@ final class UsageEventRepository extends Repository
             'top_child_id' => isset($r['top_child_id']) ? (int) $r['top_child_id'] : null,
         ], $rows);
     }
+
+    /**
+     * @return array{total_minutes: int, total_minutes_prev: int, range_days: int}
+     */
+    public function kpisForRange(int $childId, string $fromIso, string $toIso): array
+    {
+        $fromTs = strtotime($fromIso);
+        $toTs   = strtotime($toIso);
+        $rangeDays = (int) round(($toTs - $fromTs) / 86400);
+
+        $prevToIso   = $fromIso;
+        $prevFromIso = gmdate('Y-m-d H:i:s', $fromTs - ($toTs - $fromTs));
+
+        $current  = $this->sumDurationSeconds($childId, $fromIso, $toIso);
+        $previous = $this->sumDurationSeconds($childId, $prevFromIso, $prevToIso);
+
+        return [
+            'total_minutes'      => (int) floor($current / 60),
+            'total_minutes_prev' => (int) floor($previous / 60),
+            'range_days'         => $rangeDays,
+        ];
+    }
+
+    private function sumDurationSeconds(int $childId, string $fromIso, string $toIso): int
+    {
+        $base = 'SELECT COALESCE(SUM(duration_seconds), 0) FROM ' . $this->table()
+            . ' WHERE created_at >= %s AND created_at < %s';
+
+        if ($childId > 0) {
+            $sql = $this->db->prepare($base . ' AND child_id = %d', $fromIso, $toIso, $childId);
+        } else {
+            $sql = $this->db->prepare($base, $fromIso, $toIso);
+        }
+
+        return (int) $this->db->get_var($sql);
+    }
 }

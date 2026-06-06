@@ -125,4 +125,31 @@ final class UsageEventRepositoryTest extends TestCase
         self::assertStringContainsString('child_id = 7', $sql);
         self::assertStringContainsString('LIMIT 3', $sql);
     }
+
+    public function testKpisForRangeReturnsTotalAndDeltaShape(): void
+    {
+        $repo = new UsageEventRepository();
+        $out = $repo->kpisForRange(0, '2026-06-01 00:00:00', '2026-06-08 00:00:00');
+
+        self::assertArrayHasKey('total_minutes', $out);
+        self::assertArrayHasKey('total_minutes_prev', $out);
+        self::assertArrayHasKey('range_days', $out);
+        self::assertSame(7, $out['range_days']);
+    }
+
+    public function testKpisForRangeComputesPreviousWindow(): void
+    {
+        $repo = new UsageEventRepository();
+        $repo->kpisForRange(1, '2026-06-08 00:00:00', '2026-06-15 00:00:00');
+
+        // Espera 2 queries: atual + anterior
+        self::assertCount(2, $this->wpdb->log);
+        $sql1 = (string) $this->wpdb->log[0]['sql'];
+        $sql2 = (string) $this->wpdb->log[1]['sql'];
+        // Janela anterior: 7d antes
+        self::assertStringContainsString("'2026-06-01 00:00:00'", $sql2);
+        self::assertStringContainsString("'2026-06-08 00:00:00'", $sql2);
+        self::assertStringContainsString('child_id = 1', $sql1);
+        self::assertStringContainsString('child_id = 1', $sql2);
+    }
 }
