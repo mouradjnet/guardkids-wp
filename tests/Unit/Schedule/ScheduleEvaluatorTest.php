@@ -195,4 +195,31 @@ final class ScheduleEvaluatorTest extends TestCase
 
         self::assertFalse($res['isBlocked']);
     }
+
+    public function testBedtimeNormalReturnsBlockedAtExactStart(): void
+    {
+        // Boundary half-open: now == start → blocked (inclusive)
+        $now = new DateTimeImmutable('2026-06-08 13:00:00', $this->tz);
+        $res = $this->svc->evaluate($this->config([
+            'bedtime_enabled' => 1,
+            'bedtime_start'   => '13:00:00',
+            'bedtime_end'     => '15:00:00',
+        ]), $now);
+
+        self::assertTrue($res['isBlocked']);
+        self::assertSame('bedtime', $res['reason']);
+    }
+
+    public function testBedtimeCrossMidnightReturnsUnblockedAtExactMorningEnd(): void
+    {
+        // Cross-midnight: now == end (morning) → unblocked (half-open)
+        $now = new DateTimeImmutable('2026-06-13 07:00:00', $this->tz);
+        $res = $this->svc->evaluate($this->config([
+            'bedtime_enabled' => 1,
+            'bedtime_start'   => '22:00:00',
+            'bedtime_end'     => '07:00:00',
+        ]), $now);
+
+        self::assertFalse($res['isBlocked']);
+    }
 }

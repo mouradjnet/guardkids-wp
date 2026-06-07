@@ -53,7 +53,13 @@ final class ScheduleEvaluator
         $start   = $config['bedtime_start']   ?? null;
         $end     = $config['bedtime_end']     ?? null;
 
-        if ($enabled && is_string($start) && is_string($end) && $start !== $end) {
+        if (
+            $enabled
+            && is_string($start) && is_string($end)
+            && preg_match('/^\d{2}:\d{2}:\d{2}$/', $start) === 1
+            && preg_match('/^\d{2}:\d{2}:\d{2}$/', $end) === 1
+            && $start !== $end
+        ) {
             $startDt = $now->setTime(
                 (int) substr($start, 0, 2),
                 (int) substr($start, 3, 2),
@@ -71,8 +77,7 @@ final class ScheduleEvaluator
                     return [
                         'isBlocked' => true,
                         'reason'    => 'bedtime',
-                        'unlockAt'  => $endDt->setTimezone(new DateTimeZone('UTC'))
-                                             ->format('Y-m-d\TH:i:s\Z'),
+                        'unlockAt'  => $this->toUtcIso($endDt),
                     ];
                 }
             } else {
@@ -82,16 +87,14 @@ final class ScheduleEvaluator
                     return [
                         'isBlocked' => true,
                         'reason'    => 'bedtime',
-                        'unlockAt'  => $unlock->setTimezone(new DateTimeZone('UTC'))
-                                              ->format('Y-m-d\TH:i:s\Z'),
+                        'unlockAt'  => $this->toUtcIso($unlock),
                     ];
                 }
                 if ($now < $endDt) {
                     return [
                         'isBlocked' => true,
                         'reason'    => 'bedtime',
-                        'unlockAt'  => $endDt->setTimezone(new DateTimeZone('UTC'))
-                                              ->format('Y-m-d\TH:i:s\Z'),
+                        'unlockAt'  => $this->toUtcIso($endDt),
                     ];
                 }
             }
@@ -110,10 +113,14 @@ final class ScheduleEvaluator
             $candidate = $now->modify("+{$offset} day")->setTime(0, 0, 0);
             $candIdx   = (int) $candidate->format('N') - 1;
             if ($weekdays[$candIdx] === 'Y') {
-                return $candidate->setTimezone(new DateTimeZone('UTC'))
-                                 ->format('Y-m-d\TH:i:s\Z');
+                return $this->toUtcIso($candidate);
             }
         }
         return null; // 'NNNNNNN' — sem horizonte de liberação
+    }
+
+    private function toUtcIso(DateTimeImmutable $dt): string
+    {
+        return $dt->setTimezone(new DateTimeZone('UTC'))->format('Y-m-d\TH:i:s\Z');
     }
 }
