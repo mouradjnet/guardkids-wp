@@ -160,4 +160,55 @@ final class ChildControllerScheduleTest extends TestCase
         self::assertSame('07:00', $data['bedtimeEnd']);
         self::assertSame('YYYYYNN', $data['allowedWeekdays']);
     }
+
+    public function testUpdateBedtimeEnabledFalsePersistsZeroAndDoesNotRequireTimes(): void
+    {
+        // Flow primário de UI: desligar bedtime. Não exige start/end.
+        $this->wpdb->rows[1]['bedtime_enabled'] = 1;
+        $this->wpdb->rows[1]['bedtime_start']   = '21:00:00';
+        $this->wpdb->rows[1]['bedtime_end']     = '07:00:00';
+
+        $req = $this->makeRequest(['bedtime_enabled' => false]);
+        $res = (new ChildController())->update($req);
+
+        self::assertInstanceOf(WP_REST_Response::class, $res);
+        $patch = end($this->wpdb->log)['args'][1];
+        self::assertSame(0, $patch['bedtime_enabled']);
+        self::assertArrayNotHasKey('bedtime_start', $patch);
+        self::assertArrayNotHasKey('bedtime_end', $patch);
+    }
+
+    public function testUpdateBedtimeEnabledTrueWithStartButNoEndReturns422(): void
+    {
+        // Spec: enabled=true exige AMBOS start e end (request OU row).
+        // Row vazio + só start no request → 422.
+        $req = $this->makeRequest([
+            'bedtime_enabled' => true,
+            'bedtime_start'   => '21:30',
+        ]);
+        $res = (new ChildController())->update($req);
+
+        self::assertInstanceOf(WP_Error::class, $res);
+        self::assertSame(422, $res->get_error_data()['status']);
+    }
+
+    public function testToJsonReturnsDefaultsWhenScheduleFieldsAreEmpty(): void
+    {
+        // Row sem bedtime configurado nem allowed_weekdays setado.
+        // Verifica que toJson devolve defaults sensatos.
+        $this->wpdb->rows[1]['bedtime_enabled']  = 0;
+        $this->wpdb->rows[1]['bedtime_start']    = null;
+        $this->wpdb->rows[1]['bedtime_end']      = null;
+        // Mantém allowed_weekdays padrão de setUp() = 'YYYYYYY'
+
+        $req = new WP_REST_Request('GET', '/children/1');
+        $req['id'] = 1;
+        $res = (new ChildController())->show($req);
+
+        $data = $res->get_data();
+        self::assertFalse($data['bedtimeEnabled']);
+        self::assertNull($data['bedtimeStart']);
+        self::assertNull($data['bedtimeEnd']);
+        self::assertSame('YYYYYYY', $data['allowedWeekdays']);
+    }
 }

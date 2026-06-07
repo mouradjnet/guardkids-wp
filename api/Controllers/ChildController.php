@@ -31,8 +31,7 @@ final class ChildController
             'device'        => ['type' => 'string', 'sanitize_callback' => 'sanitize_text_field'],
             'limit_minutes' => ['type' => 'integer', 'minimum' => 0, 'maximum' => 1440],
             'bedtime_enabled' => [
-                'type'    => 'boolean',
-                'default' => null,
+                'type' => 'boolean',
             ],
             'bedtime_start' => [
                 'type'              => 'string',
@@ -155,7 +154,7 @@ final class ChildController
         if (! is_string($value) || $value === '') {
             return null;
         }
-        return preg_match('/^\d{2}:\d{2}$/', $value) === 1 ? $value . ':00' : $value;
+        return preg_match('/^\d{2}:\d{2}$/', $value) === 1 ? $value . ':00' : null;
     }
 
     public function destroy(WP_REST_Request $req): WP_REST_Response|WP_Error
