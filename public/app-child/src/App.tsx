@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { getStoredToken, setStoredToken } from './api/token';
 import { BottomNav } from './components/BottomNav';
 import { Header } from './components/Header';
+import { createUsageTracker, type UsageTracker } from './lib/usageTracker';
 import { Alerts } from './pages/Alerts';
 import { Blocked } from './pages/Blocked';
 import { Browser } from './pages/Browser';
@@ -10,9 +11,18 @@ import { PairScreen } from './pages/PairScreen';
 import { Requests } from './pages/Requests';
 import type { PageId } from './data/mockData';
 
+let trackerSingleton: UsageTracker | null = null;
+
 export default function App() {
   const [token, setToken] = useState<string | null>(() => getStoredToken());
   const [activePage, setActivePage] = useState<PageId>('home');
+
+  useEffect(() => {
+    if (!token) return;
+    if (!trackerSingleton) trackerSingleton = createUsageTracker();
+    trackerSingleton.start();
+    return () => trackerSingleton?.stop();
+  }, [token]);
 
   if (!token) {
     return (
