@@ -8,6 +8,7 @@ use GuardKids\Auth\ChildAuth;
 use GuardKids\Database\ChildRepository;
 use GuardKids\Database\RequestRepository;
 use GuardKids\Database\UsageEventRepository;
+use GuardKids\Schedule\ScheduleEvaluator;
 use WP_Error;
 use WP_REST_Request;
 use WP_REST_Response;
@@ -22,13 +23,15 @@ final class ChildSelfController
     private readonly ChildRepository $children;
     private readonly RequestRepository $requests;
     private readonly UsageEventRepository $events;
+    private readonly ScheduleEvaluator $evaluator;
 
     public function __construct()
     {
-        $this->auth     = new ChildAuth();
-        $this->children = new ChildRepository();
-        $this->requests = new RequestRepository();
-        $this->events   = new UsageEventRepository();
+        $this->auth      = new ChildAuth();
+        $this->children  = new ChildRepository();
+        $this->requests  = new RequestRepository();
+        $this->events    = new UsageEventRepository();
+        $this->evaluator = new ScheduleEvaluator();
     }
 
     public function me(WP_REST_Request $req): WP_REST_Response|WP_Error
@@ -41,7 +44,14 @@ final class ChildSelfController
         if ($row === null) {
             return new WP_Error('not_found', 'Filho não encontrado.', ['status' => 404]);
         }
-        return rest_ensure_response($this->childToJson($row));
+
+        $tz       = function_exists('wp_timezone') ? wp_timezone() : new \DateTimeZone('UTC');
+        $now      = new \DateTimeImmutable('now', $tz);
+        $schedule = $this->evaluator->evaluate($row, $now);
+
+        return rest_ensure_response(
+            $this->childToJson($row) + ['schedule' => $schedule]
+        );
     }
 
     public function requestsIndex(WP_REST_Request $req): WP_REST_Response|WP_Error
@@ -178,15 +188,21 @@ final class ChildSelfController
     private function childToJson(array $row): array
     {
         return [
-            'id'           => (int) ($row['id'] ?? 0),
-            'slug'         => (string) ($row['slug'] ?? ''),
-            'name'         => (string) ($row['name'] ?? ''),
-            'age'          => isset($row['age']) ? (int) $row['age'] : null,
-            'avatarUrl'    => $row['avatar_url'] ?? null,
-            'device'       => $row['device'] ?? null,
-            'status'       => (string) ($row['status'] ?? 'offline'),
-            'usedMinutes'  => (int) ($row['used_minutes'] ?? 0),
-            'limitMinutes' => (int) ($row['limit_minutes'] ?? 60),
+            'id'              => (int) ($row['id'] ?? 0),
+            'slug'            => (string) ($row['slug'] ?? ''),
+            'name'            => (string) ($row['name'] ?? ''),
+            'age'             => isset($row['age']) ? (int) $row['age'] : null,
+            'avatarUrl'       => $row['avatar_url'] ?? null,
+            'device'          => $row['device'] ?? null,
+            'status'          => (string) ($row['status'] ?? 'offline'),
+            'usedMinutes'     => (int) ($row['used_minutes'] ?? 0),
+            'limitMinutes'    => (int) ($row['limit_minutes'] ?? 60),
+            'bedtimeEnabled'  => (int) ($row['bedtime_enabled'] ?? 0) === 1,
+            'bedtimeStart'    => isset($row['bedtime_start']) && is_string($row['bedtime_start'])
+                                 ? substr($row['bedtime_start'], 0, 5) : null,
+            'bedtimeEnd'      => isset($row['bedtime_end']) && is_string($row['bedtime_end'])
+                                 ? substr($row['bedtime_end'], 0, 5) : null,
+            'allowedWeekdays' => (string) ($row['allowed_weekdays'] ?? 'YYYYYYY'),
         ];
     }
 
