@@ -145,6 +145,24 @@ export function Settings() {
       </Section>
 
       <Section
+        icon="location_on"
+        iconTone="primary"
+        title="Localização"
+        subtitle="Compartilhamento de localização pelos filhos"
+      >
+        <SettingToggleRow
+          settingsKey="location_enabled"
+          title="Permitir compartilhamento de localização"
+          description="Quando desligado, o app-child para de enviar localização imediatamente. Padrão: desligado."
+          fallback={false}
+          loading={settingsQuery.isLoading}
+          saving={mutation.isPending}
+          get={get}
+          set={set}
+        />
+      </Section>
+
+      <Section
         icon="policy"
         iconTone="primary"
         title="Privacidade"

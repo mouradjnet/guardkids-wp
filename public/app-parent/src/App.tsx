@@ -6,11 +6,13 @@ import { Approvals } from './pages/Approvals';
 import { Children } from './pages/Children';
 import { Dashboard } from './pages/Dashboard';
 import { License } from './pages/License';
+import { Localizacao } from './pages/Localizacao';
 import { Reports } from './pages/Reports';
 import { Settings } from './pages/Settings';
 import { SitesRules } from './pages/SitesRules';
 import { TimeLimits } from './pages/TimeLimits';
 import { Upgrade } from './pages/Upgrade';
+import { ZonasSeguras } from './pages/ZonasSeguras';
 import type { PageId } from './data/mockData';
 
 export default function App() {
@@ -30,6 +32,10 @@ function PageRenderer({ page }: { page: PageId }) {
   switch (page) {
     case 'children':
       return <Children />;
+    case 'location':
+      return <Localizacao />;
+    case 'safe-zones':
+      return <ZonasSeguras />;
     case 'approvals':
       return <Approvals />;
     case 'sites-rules':

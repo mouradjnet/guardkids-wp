@@ -59,6 +59,8 @@ export type Category = {
 export type PageId =
   | 'dashboard'
   | 'children'
+  | 'location'
+  | 'safe-zones'
   | 'approvals'
   | 'sites-rules'
   | 'time'
@@ -279,6 +281,8 @@ export const categories: Category[] = [
 export const navItems = [
   { id: 'dashboard' as PageId, label: 'Painel', icon: 'dashboard' },
   { id: 'children' as PageId, label: 'Filhos', icon: 'family_restroom' },
+  { id: 'location' as PageId, label: 'Localização', icon: 'location_on' },
+  { id: 'safe-zones' as PageId, label: 'Zonas Seguras', icon: 'shield' },
   { id: 'approvals' as PageId, label: 'Aprovações', icon: 'task_alt', badge: 2 },
   { id: 'sites-rules' as PageId, label: 'Sites & Regras', icon: 'app_blocking' },
   { id: 'time' as PageId, label: 'Limites de Tempo', icon: 'timer' },
