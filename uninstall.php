@@ -19,6 +19,8 @@ $tables = [
     $wpdb->prefix . 'guardkids_sites',
     $wpdb->prefix . 'guardkids_categories',
     $wpdb->prefix . 'guardkids_settings',
+    $wpdb->prefix . 'guardkids_locations',
+    $wpdb->prefix . 'guardkids_safe_zones',
 ];
 
 foreach ($tables as $table) {
