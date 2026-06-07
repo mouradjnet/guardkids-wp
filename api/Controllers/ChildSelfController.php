@@ -6,7 +6,9 @@ namespace GuardKids\Api\Controllers;
 
 use GuardKids\Auth\ChildAuth;
 use GuardKids\Database\ChildRepository;
+use GuardKids\Database\LocationRepository;
 use GuardKids\Database\RequestRepository;
+use GuardKids\Database\SettingsRepository;
 use GuardKids\Database\UsageEventRepository;
 use GuardKids\Schedule\ScheduleEvaluator;
 use WP_Error;
@@ -23,6 +25,8 @@ final class ChildSelfController
     private readonly ChildRepository $children;
     private readonly RequestRepository $requests;
     private readonly UsageEventRepository $events;
+    private readonly LocationRepository $locations;
+    private readonly SettingsRepository $settings;
     private readonly ScheduleEvaluator $evaluator;
 
     public function __construct()
@@ -31,6 +35,8 @@ final class ChildSelfController
         $this->children  = new ChildRepository();
         $this->requests  = new RequestRepository();
         $this->events    = new UsageEventRepository();
+        $this->locations = new LocationRepository();
+        $this->settings  = new SettingsRepository();
         $this->evaluator = new ScheduleEvaluator();
     }
 
@@ -136,6 +142,75 @@ final class ChildSelfController
             'id'        => $id,
             'createdAt' => current_time('mysql', true),
         ], 201);
+    }
+
+    public function reportLocation(WP_REST_Request $req): WP_REST_Response|WP_Error
+    {
+        if (! $this->settings->isLocationEnabled()) {
+            return new WP_Error(
+                'location_disabled',
+                'Localização desativada pelos pais.',
+                ['status' => 403]
+            );
+        }
+
+        $childId = $this->auth->resolveChildId($req);
+        if ($childId === null) {
+            return new WP_Error('child_auth_required', 'Token inválido.', ['status' => 401]);
+        }
+
+        $now = current_time('mysql', true);
+        $accuracy = $req->get_param('accuracy');
+        $battery  = $req->get_param('battery');
+
+        $id = $this->locations->insert([
+            'child_id'    => $childId,
+            'latitude'    => (float) $req->get_param('latitude'),
+            'longitude'   => (float) $req->get_param('longitude'),
+            'accuracy'    => is_numeric($accuracy) ? (int) $accuracy : null,
+            'battery'     => is_numeric($battery)  ? (int) $battery  : null,
+            'recorded_at' => $now,
+        ]);
+
+        if ($id === 0) {
+            return new WP_Error('db_error', 'Não foi possível salvar.', ['status' => 500]);
+        }
+
+        return new WP_REST_Response([
+            'id'         => $id,
+            'recordedAt' => gmdate('Y-m-d\TH:i:s\Z', strtotime($now)),
+        ], 201);
+    }
+
+    /**
+     * @return array<string, array<string, mixed>>
+     */
+    public function createLocationArgs(): array
+    {
+        return [
+            'latitude'  => [
+                'type'     => 'number',
+                'required' => true,
+                'minimum'  => -90,
+                'maximum'  => 90,
+            ],
+            'longitude' => [
+                'type'     => 'number',
+                'required' => true,
+                'minimum'  => -180,
+                'maximum'  => 180,
+            ],
+            'accuracy'  => [
+                'type'    => 'integer',
+                'minimum' => 0,
+                'maximum' => 65535,
+            ],
+            'battery'   => [
+                'type'    => 'integer',
+                'minimum' => 0,
+                'maximum' => 100,
+            ],
+        ];
     }
 
     /**

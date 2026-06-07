@@ -59,6 +59,15 @@ final class SettingsRepository extends Repository
     }
 
     /**
+     * Liga/desliga compartilhamento de localização pelos filhos.
+     * Fail-closed: ausente ou inválido devolve false.
+     */
+    public function isLocationEnabled(): bool
+    {
+        return (bool) $this->get('location_enabled', false);
+    }
+
+    /**
      * @return array<string, mixed>
      */
     public function all(): array

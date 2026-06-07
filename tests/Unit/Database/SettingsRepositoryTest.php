@@ -133,6 +133,26 @@ final class SettingsRepositoryTest extends TestCase
         self::assertCount(1, $updates);
     }
 
+    public function testIsLocationEnabledReturnsFalseByDefault(): void
+    {
+        $repo = new SettingsRepository();
+        self::assertFalse($repo->isLocationEnabled());
+    }
+
+    public function testIsLocationEnabledReturnsTrueWhenSet(): void
+    {
+        $repo = new SettingsRepository();
+        $repo->set('location_enabled', true);
+        self::assertTrue($repo->isLocationEnabled());
+    }
+
+    public function testIsLocationEnabledReturnsFalseWhenSetToFalse(): void
+    {
+        $repo = new SettingsRepository();
+        $repo->set('location_enabled', false);
+        self::assertFalse($repo->isLocationEnabled());
+    }
+
     public function testAllReturnsAllKeysDecoded(): void
     {
         $repo = new SettingsRepository();

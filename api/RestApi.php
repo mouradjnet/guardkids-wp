@@ -7,8 +7,10 @@ namespace GuardKids\Api;
 use GuardKids\Api\Controllers\CategoryController;
 use GuardKids\Api\Controllers\ChildController;
 use GuardKids\Api\Controllers\ChildSelfController;
+use GuardKids\Api\Controllers\LocationController;
 use GuardKids\Api\Controllers\ReportsController;
 use GuardKids\Api\Controllers\RequestController;
+use GuardKids\Api\Controllers\SafeZoneController;
 use GuardKids\Api\Controllers\SettingsController;
 use GuardKids\Api\Controllers\SiteController;
 use GuardKids\Auth\ChildAuth;
@@ -37,6 +39,8 @@ final class RestApi
         $this->registerSettingsRoutes();
         $this->registerChildSelfRoutes();
         $this->registerReportsRoutes();
+        $this->registerLocationsRoutes();
+        $this->registerSafeZonesRoutes();
     }
 
     /**
@@ -124,6 +128,61 @@ final class RestApi
             'callback'            => [$controller, 'eventsCreate'],
             'permission_callback' => $requireToken,
             'args'                => $controller->createEventsArgs(),
+        ]);
+
+        register_rest_route(self::NAMESPACE, '/child/location', [
+            'methods'             => \WP_REST_Server::CREATABLE,
+            'callback'            => [$controller, 'reportLocation'],
+            'permission_callback' => $requireToken,
+            'args'                => $controller->createLocationArgs(),
+        ]);
+    }
+
+    private function registerLocationsRoutes(): void
+    {
+        $controller = new LocationController();
+
+        register_rest_route(self::NAMESPACE, '/locations', [
+            'methods'             => \WP_REST_Server::READABLE,
+            'callback'            => [$controller, 'index'],
+            'permission_callback' => [self::class, 'requireManage'],
+            'args'                => [
+                'child_id' => ['type' => 'integer', 'required' => true],
+                'limit'    => ['type' => 'integer', 'minimum' => 1, 'maximum' => 100, 'default' => 1],
+            ],
+        ]);
+    }
+
+    private function registerSafeZonesRoutes(): void
+    {
+        $controller = new SafeZoneController();
+
+        register_rest_route(self::NAMESPACE, '/safe-zones', [
+            [
+                'methods'             => \WP_REST_Server::READABLE,
+                'callback'            => [$controller, 'index'],
+                'permission_callback' => [self::class, 'requireManage'],
+            ],
+            [
+                'methods'             => \WP_REST_Server::CREATABLE,
+                'callback'            => [$controller, 'create'],
+                'permission_callback' => [self::class, 'requireManage'],
+                'args'                => $controller->createArgs(),
+            ],
+        ]);
+
+        register_rest_route(self::NAMESPACE, '/safe-zones/(?P<id>\d+)', [
+            [
+                'methods'             => \WP_REST_Server::EDITABLE,
+                'callback'            => [$controller, 'update'],
+                'permission_callback' => [self::class, 'requireManage'],
+                'args'                => $controller->updateArgs(),
+            ],
+            [
+                'methods'             => \WP_REST_Server::DELETABLE,
+                'callback'            => [$controller, 'destroy'],
+                'permission_callback' => [self::class, 'requireManage'],
+            ],
         ]);
     }
 
