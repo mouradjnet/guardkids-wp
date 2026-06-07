@@ -1,38 +1,48 @@
+import { useQueries } from '@tanstack/react-query';
 import { useState } from 'react';
+import { listChildren } from '../api/children';
+import { ApiError } from '../api/client';
+import { getReport, type Report, type ReportPerChild, type ReportRange, type ReportTopSite } from '../api/reports';
+import type { Child } from '../api/types';
 import { Icon } from '../components/Icon';
 import { PageHeader } from '../components/PageHeader';
-import {
-  children,
-  dailyMinutesByDay,
-  reportKpis,
-  topSites,
-  type KpiCard as KpiCardType,
-  type TopSite,
-} from '../data/mockData';
 
-type Range = 'week' | 'month';
+const CHILD_COLORS = ['#00236f', '#F59E0B', '#006c49', '#6B46C1'] as const;
 
-const childColors: Record<string, string> = {
-  lucas: '#00236f',
-  sofia: '#F59E0B',
-  theo: '#006c49',
-};
+function colorAt(index: number): string {
+  return CHILD_COLORS[index % CHILD_COLORS.length];
+}
 
 export function Reports() {
-  const [range, setRange] = useState<Range>('week');
+  const [range, setRange] = useState<ReportRange>('week');
+
+  const queries = useQueries({
+    queries: [
+      { queryKey: ['reports', range], queryFn: () => getReport(range) },
+      { queryKey: ['children'], queryFn: listChildren },
+    ],
+  });
+  const reportQuery = queries[0];
+  const childrenQuery = queries[1];
+
+  const report = reportQuery.data;
+  const children = childrenQuery.data ?? [];
+  const childIndex = new Map(report?.perChild.map((c, i) => [c.childId, i]));
 
   return (
     <main className="mx-auto flex w-full max-w-[1440px] flex-1 flex-col gap-stack-lg p-container-padding-mobile pb-24 md:ml-64 md:p-container-padding-desktop md:pb-container-padding-desktop">
       <PageHeader
         title="Relatórios"
-        subtitle="Veja onde a família passa tempo, em quais sites e quando."
+        subtitle="Veja onde a família passa tempo e quando."
         action={
           <div className="flex items-center gap-2">
             <RangeButton active={range === 'week'} onClick={() => setRange('week')} label="Semana" />
             <RangeButton active={range === 'month'} onClick={() => setRange('month')} label="Mês" />
             <button
               type="button"
-              className="inline-flex items-center gap-2 rounded-full border border-outline-variant bg-white px-4 py-2 text-label-md font-semibold text-on-surface shadow-sm hover:bg-surface-variant"
+              disabled
+              title="Em breve"
+              className="inline-flex items-center gap-2 rounded-full border border-outline-variant bg-white px-4 py-2 text-label-md font-semibold text-on-surface-variant opacity-60"
             >
               <Icon name="download" className="text-sm" />
               Exportar
@@ -41,75 +51,26 @@ export function Reports() {
         }
       />
 
-      <section className="grid grid-cols-2 gap-gutter md:grid-cols-4">
-        {reportKpis.map((kpi) => (
-          <KpiCard key={kpi.id} kpi={kpi} />
-        ))}
-      </section>
+      {reportQuery.isLoading && <LoadingSkeleton />}
+      {reportQuery.error ? <LoadError error={reportQuery.error} /> : null}
 
-      <section className="glass-panel rounded-2xl p-6 shadow-ambient">
-        <header className="mb-6 flex items-start justify-between gap-3">
-          <div>
-            <h3 className="font-display text-headline-md text-on-surface">
-              Minutos por dia da semana
-            </h3>
-            <p className="text-label-sm text-on-surface-variant">
-              Empilhado por filho — passe o mouse pra ver detalhes
-            </p>
-          </div>
-          <div className="flex flex-wrap gap-3 text-label-sm">
-            {children.map((c) => (
-              <div key={c.id} className="flex items-center gap-2 text-on-surface">
-                <span
-                  className="inline-block h-3 w-3 rounded-sm"
-                  style={{ background: childColors[c.id] }}
-                />
-                {c.name}
-              </div>
-            ))}
-          </div>
-        </header>
-        <Chart />
-      </section>
+      {report && report.dailyByChild.length === 0 && (
+        <EmptyState />
+      )}
 
-      <section className="glass-panel rounded-2xl p-6 shadow-ambient">
-        <header className="mb-4 flex items-center justify-between">
-          <div>
-            <h3 className="font-display text-headline-md text-on-surface">Top sites visitados</h3>
-            <p className="text-label-sm text-on-surface-variant">Últimos 7 dias</p>
-          </div>
-          <button
-            type="button"
-            className="flex items-center gap-1 text-label-md font-semibold text-primary hover:underline"
-          >
-            Ver tudo <Icon name="chevron_right" className="text-sm" />
-          </button>
-        </header>
-        <ul className="divide-y divide-outline-variant/50">
-          {topSites.map((s, idx) => (
-            <TopSiteRow key={s.id} rank={idx + 1} site={s} max={topSites[0].totalMinutes} />
-          ))}
-        </ul>
-      </section>
-
-      <section className="grid grid-cols-1 gap-gutter md:grid-cols-3">
-        {children.map((c) => (
-          <ChildSummary key={c.id} childId={c.id} name={c.name} avatar={c.avatar} />
-        ))}
-      </section>
+      {report && report.dailyByChild.length > 0 && (
+        <>
+          <Kpis kpis={report.kpis} />
+          <ChartSection report={report} colorFor={(id) => colorAt(childIndex.get(id) ?? 0)} />
+          <TopSitesSection sites={report.topSites} perChild={report.perChild} />
+          <PerChildSection perChild={report.perChild} children={children} />
+        </>
+      )}
     </main>
   );
 }
 
-function RangeButton({
-  active,
-  onClick,
-  label,
-}: {
-  active: boolean;
-  onClick: () => void;
-  label: string;
-}) {
+function RangeButton({ active, onClick, label }: { active: boolean; onClick: () => void; label: string }) {
   return (
     <button
       type="button"
@@ -125,152 +86,203 @@ function RangeButton({
   );
 }
 
-function KpiCard({ kpi }: { kpi: KpiCardType }) {
+function Kpis({ kpis }: { kpis: Report['kpis'] }) {
+  const pctLimit = kpis.percentOfLimit === null ? '—' : `${Math.round(kpis.percentOfLimit * 100)}%`;
+  const delta = kpis.deltaPctVsPrevious === null ? '—' : `${kpis.deltaPctVsPrevious > 0 ? '+' : ''}${Math.round(kpis.deltaPctVsPrevious * 100)}%`;
+  const deltaPositive = kpis.deltaPctVsPrevious !== null && kpis.deltaPctVsPrevious < 0;
+
+  return (
+    <section className="grid grid-cols-2 gap-gutter md:grid-cols-4">
+      <KpiCard icon="schedule" label="Tempo total" value={String(kpis.totalMinutes)} delta={delta} positive={deltaPositive} />
+      <KpiCard icon="trending_flat" label="Média / dia" value={String(kpis.avgMinutesPerDay)} delta="min" positive={true} />
+      <KpiCard icon="speed" label="% do limite" value={pctLimit} delta="" positive={kpis.percentOfLimit !== null && kpis.percentOfLimit < 1} />
+      <KpiCard icon="trending_down" label="Delta vs anterior" value={delta} delta="" positive={deltaPositive} />
+    </section>
+  );
+}
+
+function KpiCard({ icon, label, value, delta, positive }: { icon: string; label: string; value: string; delta: string; positive: boolean }) {
   return (
     <article className="glass-panel rounded-2xl p-5 shadow-ambient">
       <div className="flex items-start justify-between">
         <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-surface-container-high text-primary">
-          <Icon name={kpi.icon} className="text-2xl" filled />
+          <Icon name={icon} className="text-2xl" filled />
         </div>
-        <span
-          className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-label-sm font-semibold ${
-            kpi.positive
-              ? 'bg-secondary-container/40 text-secondary'
-              : 'bg-error-container/60 text-on-error-container'
-          }`}
-        >
-          <Icon name={kpi.positive ? 'trending_down' : 'trending_up'} className="text-sm" />
-        </span>
       </div>
-      <div className="mt-3 text-label-sm text-on-surface-variant">{kpi.label}</div>
-      <div className="font-display text-headline-lg leading-none text-primary">{kpi.value}</div>
-      <div
-        className={`mt-1 text-label-sm font-semibold ${
-          kpi.positive ? 'text-secondary' : 'text-on-error-container'
-        }`}
-      >
-        {kpi.delta}
-      </div>
+      <div className="mt-3 text-label-sm text-on-surface-variant">{label}</div>
+      <div className="font-display text-headline-lg leading-none text-primary">{value}</div>
+      {delta ? (
+        <div className={`mt-1 text-label-sm font-semibold ${positive ? 'text-secondary' : 'text-on-error-container'}`}>
+          {delta}
+        </div>
+      ) : null}
     </article>
   );
 }
 
-function Chart() {
+function ChartSection({ report, colorFor }: { report: Report; colorFor: (childId: number) => string }) {
   const max = Math.max(
-    ...dailyMinutesByDay.map((d) => d.lucas + d.sofia + d.theo),
+    ...report.dailyByChild.map(d => Object.values(d.byChild).reduce((a, b) => a + b, 0)),
+    1,
   );
   const chartHeight = 220;
 
   return (
-    <div className="flex h-[260px] gap-3">
-      <div className="flex h-full flex-col justify-between pb-6 text-right text-[11px] text-on-surface-variant">
-        <span>{Math.ceil(max / 60)}h</span>
-        <span>{Math.ceil(max / 120)}h</span>
-        <span>0</span>
-      </div>
-      <div className="flex flex-1 items-end gap-3 border-l border-b border-outline-variant pb-6">
-        {dailyMinutesByDay.map((d) => {
-          const lucasH = (d.lucas / max) * chartHeight;
-          const sofiaH = (d.sofia / max) * chartHeight;
-          const theoH = (d.theo / max) * chartHeight;
-          const total = d.lucas + d.sofia + d.theo;
-          return (
-            <div key={d.day} className="group flex h-full flex-1 flex-col items-center justify-end gap-1">
-              <div className="opacity-0 transition-opacity group-hover:opacity-100">
-                <span className="rounded-md bg-on-surface px-2 py-0.5 text-[10px] font-bold text-white">
-                  {Math.floor(total / 60)}h{total % 60 ? ` ${total % 60}m` : ''}
-                </span>
-              </div>
-              <div className="flex w-full max-w-[36px] flex-col overflow-hidden rounded-t-lg shadow-sm">
-                <div
-                  style={{ height: `${theoH}px`, background: childColors.theo }}
-                  className="w-full"
-                />
-                <div
-                  style={{ height: `${sofiaH}px`, background: childColors.sofia }}
-                  className="w-full"
-                />
-                <div
-                  style={{ height: `${lucasH}px`, background: childColors.lucas }}
-                  className="w-full"
-                />
-              </div>
-              <span className="mt-1 text-label-sm font-semibold text-on-surface-variant">
-                {d.day}
-              </span>
+    <section className="glass-panel rounded-2xl p-6 shadow-ambient">
+      <header className="mb-6 flex items-start justify-between gap-3">
+        <div>
+          <h3 className="font-display text-headline-md text-on-surface">Minutos por dia</h3>
+          <p className="text-label-sm text-on-surface-variant">Empilhado por filho</p>
+        </div>
+        <div className="flex flex-wrap gap-3 text-label-sm">
+          {report.perChild.map(c => (
+            <div key={c.childId} className="flex items-center gap-2 text-on-surface">
+              <span className="inline-block h-3 w-3 rounded-sm" style={{ background: colorFor(c.childId) }} />
+              {c.name}
             </div>
+          ))}
+        </div>
+      </header>
+      <div className="flex h-[260px] gap-3">
+        <div className="flex flex-1 items-end gap-3 border-l border-b border-outline-variant pb-6">
+          {report.dailyByChild.map(d => {
+            const stacks = Object.entries(d.byChild).map(([cid, mins]) => ({
+              childId: Number(cid),
+              minutes: mins,
+              height: (mins / max) * chartHeight,
+            }));
+            return (
+              <div key={d.day} data-testid="chart-day" className="flex h-full flex-1 flex-col items-center justify-end gap-1">
+                <div className="flex w-full max-w-[36px] flex-col overflow-hidden rounded-t-lg shadow-sm">
+                  {stacks.map(s => (
+                    <div key={s.childId} style={{ height: `${s.height}px`, background: colorFor(s.childId) }} className="w-full" />
+                  ))}
+                </div>
+                <span className="mt-1 text-label-sm font-semibold text-on-surface-variant">{d.day.slice(-2)}</span>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function TopSitesSection({ sites, perChild }: { sites: ReportTopSite[]; perChild: ReportPerChild[] }) {
+  const max = Math.max(...sites.map(s => s.opens), 1);
+  return (
+    <section className="glass-panel rounded-2xl p-6 shadow-ambient">
+      <header className="mb-4">
+        <h3 className="font-display text-headline-md text-on-surface">Top sites visitados</h3>
+        <p className="text-label-sm text-on-surface-variant">Ranqueado por nº de aberturas</p>
+      </header>
+      <ul className="divide-y divide-outline-variant/50">
+        {sites.map((s, idx) => {
+          const topChild = perChild.find(c => c.childId === s.topChildId)?.name ?? 'Família';
+          const pct = (s.opens / max) * 100;
+          return (
+            <li key={s.domain} className="flex items-center gap-4 py-3">
+              <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-surface-container-high font-display text-label-md font-bold text-primary">
+                #{idx + 1}
+              </span>
+              <div className="flex-1">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-label-md font-semibold text-on-surface">{s.domain}</span>
+                  <span className="text-label-sm text-on-surface-variant">{s.opens} aberturas</span>
+                </div>
+                <div className="mt-1 text-label-sm text-on-surface-variant">mais usado por {topChild}</div>
+                <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-surface-container">
+                  <div className="h-full rounded-full bg-primary" style={{ width: `${pct}%` }} />
+                </div>
+              </div>
+            </li>
           );
         })}
+      </ul>
+    </section>
+  );
+}
+
+function PerChildSection({ perChild, children }: { perChild: ReportPerChild[]; children: Child[] }) {
+  return (
+    <section className="grid grid-cols-1 gap-gutter md:grid-cols-3">
+      {perChild.map(c => {
+        const avatar = children.find(x => x.id === c.childId)?.avatarUrl ?? null;
+        return (
+          <article key={c.childId} className="glass-panel rounded-2xl p-5 shadow-ambient">
+            <header className="flex items-center gap-3">
+              {avatar ? (
+                <img src={avatar} alt={c.name} className="h-11 w-11 rounded-full object-cover" />
+              ) : (
+                <div className="flex h-11 w-11 items-center justify-center rounded-full bg-primary-container text-on-primary-container font-display text-headline-md font-bold">
+                  {c.name.charAt(0)}
+                </div>
+              )}
+              <div>
+                <h3 className="font-display text-headline-md text-on-surface">{c.name}</h3>
+                <p className="text-label-sm text-on-surface-variant">Resumo do período</p>
+              </div>
+            </header>
+            <div className="mt-4 grid grid-cols-2 gap-3 text-center">
+              <div className="rounded-xl border border-outline-variant bg-surface-container-low px-3 py-3">
+                <div className="text-label-sm text-on-surface-variant">Total</div>
+                <div className="font-display text-headline-md text-primary">
+                  {Math.floor(c.totalMinutes / 60)}h {c.totalMinutes % 60}m
+                </div>
+              </div>
+              <div className="rounded-xl border border-outline-variant bg-surface-container-low px-3 py-3">
+                <div className="text-label-sm text-on-surface-variant">Média/dia</div>
+                <div className="font-display text-headline-md text-primary">
+                  {Math.floor(c.avgMinutesPerDay / 60)}h {c.avgMinutesPerDay % 60}m
+                </div>
+              </div>
+            </div>
+          </article>
+        );
+      })}
+    </section>
+  );
+}
+
+function LoadingSkeleton() {
+  return (
+    <div className="space-y-4">
+      <div className="grid grid-cols-4 gap-gutter">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <div key={i} className="glass-panel h-32 animate-pulse rounded-2xl bg-surface-container-low" />
+        ))}
       </div>
+      <div className="glass-panel h-64 animate-pulse rounded-2xl bg-surface-container-low" />
     </div>
   );
 }
 
-function TopSiteRow({ rank, site, max }: { rank: number; site: TopSite; max: number }) {
-  const pct = (site.totalMinutes / max) * 100;
+function EmptyState() {
   return (
-    <li className="flex items-center gap-4 py-3">
-      <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-surface-container-high font-display text-label-md font-bold text-primary">
-        #{rank}
-      </span>
-      <div className="flex-1">
-        <div className="flex items-center justify-between gap-2">
-          <span className="text-label-md font-semibold text-on-surface">{site.domain}</span>
-          <span className="text-label-sm text-on-surface-variant">
-            {Math.floor(site.totalMinutes / 60)}h {site.totalMinutes % 60}min
-          </span>
-        </div>
-        <div className="mt-1 text-label-sm text-on-surface-variant">
-          {site.category} • mais usado por {site.topChild}
-        </div>
-        <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-surface-container">
-          <div
-            className="h-full rounded-full bg-primary"
-            style={{ width: `${pct}%` }}
-          />
-        </div>
+    <div className="glass-panel flex flex-col items-center justify-center gap-3 rounded-2xl p-12 text-center shadow-ambient">
+      <div className="flex h-16 w-16 items-center justify-center rounded-full bg-surface-container-high text-primary">
+        <Icon name="bar_chart" className="text-3xl" />
       </div>
-    </li>
+      <h3 className="font-display text-headline-md text-on-surface">Ainda não há dados de uso</h3>
+      <p className="text-body-md text-on-surface-variant">
+        Os dados aparecem quando seus filhos abrirem o app.
+      </p>
+    </div>
   );
 }
 
-function ChildSummary({
-  childId,
-  name,
-  avatar,
-}: {
-  childId: string;
-  name: string;
-  avatar: string;
-}) {
-  const totals = dailyMinutesByDay.reduce(
-    (acc, d) => acc + (d[childId as 'lucas' | 'sofia' | 'theo'] ?? 0),
-    0,
-  );
-  const avgPerDay = Math.round(totals / 7);
+function LoadError({ error }: { error: unknown }) {
+  const message =
+    error instanceof ApiError
+      ? `${error.message} (${error.status})`
+      : error instanceof Error
+        ? error.message
+        : 'Erro desconhecido.';
   return (
-    <article className="glass-panel rounded-2xl p-5 shadow-ambient">
-      <header className="flex items-center gap-3">
-        <img src={avatar} alt={name} className="h-11 w-11 rounded-full object-cover" />
-        <div>
-          <h3 className="font-display text-headline-md text-on-surface">{name}</h3>
-          <p className="text-label-sm text-on-surface-variant">Resumo semanal</p>
-        </div>
-      </header>
-      <div className="mt-4 grid grid-cols-2 gap-3 text-center">
-        <div className="rounded-xl border border-outline-variant bg-surface-container-low px-3 py-3">
-          <div className="text-label-sm text-on-surface-variant">Total semana</div>
-          <div className="font-display text-headline-md text-primary">
-            {Math.floor(totals / 60)}h {totals % 60}m
-          </div>
-        </div>
-        <div className="rounded-xl border border-outline-variant bg-surface-container-low px-3 py-3">
-          <div className="text-label-sm text-on-surface-variant">Média/dia</div>
-          <div className="font-display text-headline-md text-primary">
-            {Math.floor(avgPerDay / 60)}h {avgPerDay % 60}m
-          </div>
-        </div>
-      </div>
-    </article>
+    <div className="glass-panel flex flex-col items-center justify-center gap-2 rounded-2xl bg-error/5 p-6 text-error">
+      <Icon name="error" className="text-3xl" />
+      <p className="text-label-md font-semibold">Falha ao carregar relatórios</p>
+      <p className="text-label-sm text-error/80">{message}</p>
+    </div>
   );
 }
