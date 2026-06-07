@@ -133,7 +133,7 @@ final class MigrationRunnerTest extends TestCase
         self::assertSame(2, $GLOBALS['gk_options']['guardkids_db_version']);
     }
 
-    public function testRealMigrationsDirectoryIncludesUpTo003(): void
+    public function testRealMigrationFilesExistOnDisk(): void
     {
         // Aponta pro diretório real do plugin pra garantir que as 3 migrations
         // físicas (001, 002, 003) são descobertas em ordem.
@@ -141,7 +141,6 @@ final class MigrationRunnerTest extends TestCase
 
         $files = glob($dir . '*.php') ?: [];
         $names = array_map(static fn (string $f): string => basename($f), $files);
-        sort($names);
 
         self::assertContains('001_initial_schema.php', $names);
         self::assertContains('002_usage_events.php', $names);
