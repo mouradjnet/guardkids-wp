@@ -7,6 +7,7 @@ const titles: Record<PageId, string> = {
   requests: 'Minhas Solicitações',
   alerts: 'Avisos',
   blocked: '',
+  location: 'Minha Localização',
 };
 
 type HeaderProps = {
