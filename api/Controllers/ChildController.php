@@ -30,6 +30,25 @@ final class ChildController
             'avatar_url'    => ['type' => 'string', 'sanitize_callback' => 'esc_url_raw'],
             'device'        => ['type' => 'string', 'sanitize_callback' => 'sanitize_text_field'],
             'limit_minutes' => ['type' => 'integer', 'minimum' => 0, 'maximum' => 1440],
+            'bedtime_enabled' => [
+                'type'    => 'boolean',
+                'default' => null,
+            ],
+            'bedtime_start' => [
+                'type'              => 'string',
+                'pattern'           => '^([01]\\d|2[0-3]):[0-5]\\d$',
+                'sanitize_callback' => 'sanitize_text_field',
+            ],
+            'bedtime_end' => [
+                'type'              => 'string',
+                'pattern'           => '^([01]\\d|2[0-3]):[0-5]\\d$',
+                'sanitize_callback' => 'sanitize_text_field',
+            ],
+            'allowed_weekdays' => [
+                'type'              => 'string',
+                'pattern'           => '^[YN]{7}$',
+                'sanitize_callback' => 'sanitize_text_field',
+            ],
         ];
     }
 
@@ -93,18 +112,50 @@ final class ChildController
             return new WP_Error('not_found', 'Filho não encontrado.', ['status' => 404]);
         }
 
+        $bedtimeEnabledParam = $req->get_param('bedtime_enabled');
+        $bedtimeStartParam   = $req->get_param('bedtime_start');
+        $bedtimeEndParam     = $req->get_param('bedtime_end');
+
+        // Validação: enabled=true exige start e end (na request ou no row atual)
+        $futureEnabled = $bedtimeEnabledParam === null
+            ? ((int) ($row['bedtime_enabled'] ?? 0) === 1)
+            : (bool) $bedtimeEnabledParam;
+
+        if ($futureEnabled) {
+            $futureStart = $bedtimeStartParam ?? ($row['bedtime_start'] ?? null);
+            $futureEnd   = $bedtimeEndParam   ?? ($row['bedtime_end']   ?? null);
+            if (! is_string($futureStart) || ! is_string($futureEnd) || $futureStart === '' || $futureEnd === '') {
+                return new WP_Error('invalid_payload', 'bedtime_enabled exige start e end definidos.', ['status' => 422]);
+            }
+        }
+
         $patch = array_filter([
-            'name'          => $req->get_param('name'),
-            'age'           => $req->get_param('age'),
-            'avatar_url'    => $req->get_param('avatar_url'),
-            'device'        => $req->get_param('device'),
-            'limit_minutes' => $req->get_param('limit_minutes'),
+            'name'             => $req->get_param('name'),
+            'age'              => $req->get_param('age'),
+            'avatar_url'       => $req->get_param('avatar_url'),
+            'device'           => $req->get_param('device'),
+            'limit_minutes'    => $req->get_param('limit_minutes'),
+            'bedtime_enabled'  => $bedtimeEnabledParam === null ? null : ((int) ((bool) $bedtimeEnabledParam)),
+            'bedtime_start'    => $this->coerceTime($bedtimeStartParam),
+            'bedtime_end'      => $this->coerceTime($bedtimeEndParam),
+            'allowed_weekdays' => $req->get_param('allowed_weekdays'),
         ], static fn ($v): bool => $v !== null);
 
         if ($patch !== [] && ! $this->repo->update($id, $patch)) {
             return new WP_Error('db_error', 'Falha ao atualizar.', ['status' => 500]);
         }
         return rest_ensure_response($this->toJson($this->repo->findById($id) ?? []));
+    }
+
+    /**
+     * Converte 'HH:MM' (validado por pattern) em 'HH:MM:00' pra coluna TIME.
+     */
+    private function coerceTime(mixed $value): ?string
+    {
+        if (! is_string($value) || $value === '') {
+            return null;
+        }
+        return preg_match('/^\d{2}:\d{2}$/', $value) === 1 ? $value . ':00' : $value;
     }
 
     public function destroy(WP_REST_Request $req): WP_REST_Response|WP_Error
@@ -154,6 +205,12 @@ final class ChildController
             'status'       => (string) ($row['status'] ?? 'offline'),
             'usedMinutes'  => (int) ($row['used_minutes'] ?? 0),
             'limitMinutes' => (int) ($row['limit_minutes'] ?? 60),
+            'bedtimeEnabled'  => (int) ($row['bedtime_enabled'] ?? 0) === 1,
+            'bedtimeStart'    => isset($row['bedtime_start']) && is_string($row['bedtime_start'])
+                                 ? substr($row['bedtime_start'], 0, 5) : null,
+            'bedtimeEnd'      => isset($row['bedtime_end']) && is_string($row['bedtime_end'])
+                                 ? substr($row['bedtime_end'], 0, 5) : null,
+            'allowedWeekdays' => (string) ($row['allowed_weekdays'] ?? 'YYYYYYY'),
             'createdAt'    => $row['created_at'] ?? null,
             'updatedAt'    => $row['updated_at'] ?? null,
         ];
