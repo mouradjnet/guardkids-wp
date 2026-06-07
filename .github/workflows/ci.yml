@@ -88,7 +88,7 @@ jobs:
         run: pnpm build
 
   app-child:
-    name: app-child (build + PWA)
+    name: app-child (vitest + build + PWA)
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -108,6 +108,9 @@ jobs:
 
       - name: Install deps
         run: pnpm install --frozen-lockfile
+
+      - name: Vitest
+        run: pnpm test
 
       - name: Type check + build (gera SW Workbox + manifest)
         run: pnpm build
