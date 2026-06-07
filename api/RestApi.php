@@ -116,6 +116,13 @@ final class RestApi
                 'args'                => $controller->createArgs(),
             ],
         ]);
+
+        register_rest_route(self::NAMESPACE, '/child/events', [
+            'methods'             => \WP_REST_Server::CREATABLE,
+            'callback'            => [$controller, 'eventsCreate'],
+            'permission_callback' => $requireToken,
+            'args'                => $controller->createEventsArgs(),
+        ]);
     }
 
     private function registerRequestsRoutes(): void
