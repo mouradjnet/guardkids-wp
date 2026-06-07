@@ -46,3 +46,24 @@ export type Category = {
   icon: string | null;
   blocked: boolean;
 };
+
+export type LocationFix = {
+  id: number;
+  childId: number;
+  latitude: number;
+  longitude: number;
+  accuracy: number | null;
+  battery: number | null;
+  recordedAt: string;
+};
+
+export type SafeZone = {
+  id: number;
+  name: string;
+  address: string | null;
+  latitude: number;
+  longitude: number;
+  radiusMeters: number;
+  createdAt: string | null;
+  updatedAt: string | null;
+};
