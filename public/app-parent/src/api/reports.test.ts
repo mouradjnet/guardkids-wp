@@ -22,4 +22,14 @@ describe('api/reports', () => {
     await getReport('month');
     expect(apiFetchMock).toHaveBeenCalledWith('/reports?range=month');
   });
+
+  it('getReport ignora child_id=0 (todos os filhos)', async () => {
+    await getReport('week', 0);
+    expect(apiFetchMock).toHaveBeenCalledWith('/reports?range=week');
+  });
+
+  it('getReport inclui child_id quando > 0', async () => {
+    await getReport('month', 7);
+    expect(apiFetchMock).toHaveBeenCalledWith('/reports?range=month&child_id=7');
+  });
 });

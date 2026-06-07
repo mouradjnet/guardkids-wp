@@ -16,10 +16,11 @@ function colorAt(index: number): string {
 
 export function Reports() {
   const [range, setRange] = useState<ReportRange>('week');
+  const [childId, setChildId] = useState<number>(0);
 
   const queries = useQueries({
     queries: [
-      { queryKey: ['reports', range], queryFn: () => getReport(range) },
+      { queryKey: ['reports', range, childId], queryFn: () => getReport(range, childId) },
       { queryKey: ['children'], queryFn: listChildren },
     ],
   });
@@ -36,9 +37,20 @@ export function Reports() {
         title="Relatórios"
         subtitle="Veja onde a família passa tempo e quando."
         action={
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <RangeButton active={range === 'week'} onClick={() => setRange('week')} label="Semana" />
             <RangeButton active={range === 'month'} onClick={() => setRange('month')} label="Mês" />
+            <select
+              value={childId}
+              onChange={(e) => setChildId(Number(e.target.value))}
+              aria-label="Filtrar por filho"
+              className="rounded-full border border-outline-variant bg-white px-4 py-2 text-label-md font-semibold text-on-surface-variant shadow-sm hover:bg-surface-container"
+            >
+              <option value={0}>Todos os filhos</option>
+              {children.map((c) => (
+                <option key={c.id} value={c.id}>{c.name}</option>
+              ))}
+            </select>
             <button
               type="button"
               disabled={!report || report.dailyByChild.length === 0}

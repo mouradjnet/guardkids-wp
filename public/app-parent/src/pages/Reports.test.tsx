@@ -116,7 +116,7 @@ describe('Reports page', () => {
 
     await user.click(screen.getByRole('button', { name: /^mês$/i }));
     await waitFor(() => {
-      expect(getReportMock).toHaveBeenCalledWith('month');
+      expect(getReportMock).toHaveBeenCalledWith('month', 0);
     });
   });
 
@@ -147,6 +147,25 @@ describe('Reports page', () => {
     renderPage();
     const button = await screen.findByRole('button', { name: /exportar/i });
     expect(button).toBeDisabled();
+  });
+
+  it('selector de filho refetcha report com child_id', async () => {
+    getReportMock.mockResolvedValue(sampleReport);
+    listChildrenMock.mockResolvedValue([
+      lucas,
+      { ...lucas, id: 2, slug: 'sofia', name: 'Sofia' },
+    ]);
+    const user = userEvent.setup();
+    renderPage();
+    await screen.findByRole('heading', { name: 'Lucas' });
+
+    await user.selectOptions(
+      screen.getByRole('combobox', { name: /filtrar por filho/i }),
+      '2',
+    );
+    await waitFor(() => {
+      expect(getReportMock).toHaveBeenCalledWith('week', 2);
+    });
   });
 
   it('click em Exportar dispara download CSV', async () => {

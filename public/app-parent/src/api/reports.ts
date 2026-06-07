@@ -37,6 +37,7 @@ export type Report = {
   perChild: ReportPerChild[];
 };
 
-export function getReport(range: ReportRange = 'week'): Promise<Report> {
-  return apiFetch<Report>(`/reports?range=${range}`);
+export function getReport(range: ReportRange = 'week', childId = 0): Promise<Report> {
+  const childFilter = childId > 0 ? `&child_id=${childId}` : '';
+  return apiFetch<Report>(`/reports?range=${range}${childFilter}`);
 }
