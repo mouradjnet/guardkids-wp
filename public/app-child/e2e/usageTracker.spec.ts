@@ -65,6 +65,44 @@ test.describe('Phase 5 wire-up — usageTracker no PWA real', () => {
     expect(hits[0].duration_seconds).toBeLessThanOrEqual(61);
   });
 
+  test('heartbeat pausa em hidden e retoma em visible', async ({ page }) => {
+    const hits: EventBody[] = [];
+    await page.route('**/wp-json/guardkids/v1/child/events', async (route) => {
+      hits.push(JSON.parse(route.request().postData() ?? '{}') as EventBody);
+      await route.fulfill({
+        status: 201,
+        contentType: 'application/json',
+        body: JSON.stringify({ id: hits.length, createdAt: 'now' }),
+      });
+    });
+
+    await page.clock.install();
+    await page.goto('/');
+    await expect(page.getByText('Lucas').first()).toBeVisible({ timeout: 10_000 });
+
+    // Simula aba escondendo (tracker pausa)
+    await page.evaluate((state) => {
+      Object.defineProperty(document, 'visibilityState', { configurable: true, get: () => state });
+      document.dispatchEvent(new Event('visibilitychange'));
+    }, 'hidden');
+
+    // Avanca 120s (2 intervalos de 60s) com aba hidden — nenhum POST deve sair
+    await page.clock.runFor(120_000);
+    expect(hits).toHaveLength(0);
+
+    // Aba volta visivel — visibleSince reinicia
+    await page.evaluate((state) => {
+      Object.defineProperty(document, 'visibilityState', { configurable: true, get: () => state });
+      document.dispatchEvent(new Event('visibilitychange'));
+    }, 'visible');
+
+    // Avanca ate o proximo tick do interval (>=60s desde reset) — agora deve sair 1 POST
+    await page.clock.runFor(65_000);
+
+    await expect.poll(() => hits.length, { timeout: 3_000 }).toBe(1);
+    expect(hits[0].type).toBe('heartbeat');
+  });
+
   test('click em SiteShortcut emite site_open POST com domain certo', async ({ page }) => {
     const hits: EventBody[] = [];
     await page.route('**/wp-json/guardkids/v1/child/events', async (route) => {
