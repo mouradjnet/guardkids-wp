@@ -145,6 +145,7 @@ final class MigrationRunnerTest extends TestCase
         self::assertContains('001_initial_schema.php', $names);
         self::assertContains('002_usage_events.php', $names);
         self::assertContains('003_schedule_columns.php', $names);
+        self::assertContains('004_locations_and_safe_zones.php', $names);
     }
 
     private function makeMigration(int $version, string $name): void
