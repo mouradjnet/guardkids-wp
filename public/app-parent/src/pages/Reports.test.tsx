@@ -66,6 +66,8 @@ describe('Reports page', () => {
   beforeEach(() => {
     getReportMock.mockReset();
     listChildrenMock.mockReset().mockResolvedValue([lucas]);
+    // Reset URL pra evitar leak entre tests do estado de querystring
+    window.history.replaceState(null, '', '/');
   });
 
   it('renders loading skeleton initially', () => {
@@ -130,6 +132,56 @@ describe('Reports page', () => {
     getReportMock.mockRejectedValue(new Error('boom'));
     renderPage();
     expect(await screen.findByText(/falha ao carregar relatórios/i)).toBeInTheDocument();
+  });
+
+  it('inicializa range e child_id a partir do querystring', async () => {
+    window.history.replaceState(null, '', '/?range=month&child_id=2');
+    listChildrenMock.mockResolvedValue([
+      lucas,
+      { ...lucas, id: 2, slug: 'sofia', name: 'Sofia' },
+    ]);
+    getReportMock.mockResolvedValue(sampleReport);
+    renderPage();
+
+    await screen.findByRole('heading', { name: 'Lucas' });
+    expect(getReportMock).toHaveBeenCalledWith('month', 2);
+    expect(
+      (screen.getByRole('combobox', { name: /filtrar por filho/i }) as HTMLSelectElement).value,
+    ).toBe('2');
+  });
+
+  it('trocar range atualiza querystring via replaceState', async () => {
+    getReportMock.mockResolvedValue(sampleReport);
+    const user = userEvent.setup();
+    renderPage();
+    await screen.findByRole('heading', { name: 'Lucas' });
+
+    await user.click(screen.getByRole('button', { name: /^mês$/i }));
+
+    await waitFor(() => {
+      expect(window.location.search).toContain('range=month');
+    });
+  });
+
+  it('child_id=0 nao aparece no querystring', async () => {
+    window.history.replaceState(null, '', '/?range=week&child_id=5');
+    listChildrenMock.mockResolvedValue([
+      lucas,
+      { ...lucas, id: 5, slug: 'x', name: 'X' },
+    ]);
+    getReportMock.mockResolvedValue(sampleReport);
+    const user = userEvent.setup();
+    renderPage();
+    await screen.findByRole('heading', { name: 'Lucas' });
+
+    await user.selectOptions(
+      screen.getByRole('combobox', { name: /filtrar por filho/i }),
+      '0',
+    );
+
+    await waitFor(() => {
+      expect(window.location.search).not.toContain('child_id');
+    });
   });
 
   it('renders "—" when percentOfLimit is null', async () => {

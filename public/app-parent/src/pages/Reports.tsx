@@ -1,5 +1,5 @@
 import { useQueries } from '@tanstack/react-query';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { listChildren } from '../api/children';
 import { ApiError } from '../api/client';
 import { getReport, type Report, type ReportPerChild, type ReportRange, type ReportTopSite } from '../api/reports';
@@ -14,9 +14,34 @@ function colorAt(index: number): string {
   return CHILD_COLORS[index % CHILD_COLORS.length];
 }
 
+function readRangeFromUrl(): ReportRange {
+  const params = new URLSearchParams(window.location.search);
+  const r = params.get('range');
+  return r === 'month' ? 'month' : 'week';
+}
+
+function readChildIdFromUrl(): number {
+  const params = new URLSearchParams(window.location.search);
+  const c = Number(params.get('child_id') ?? '0');
+  return Number.isFinite(c) && c > 0 ? c : 0;
+}
+
+function syncUrl(range: ReportRange, childId: number): void {
+  const params = new URLSearchParams(window.location.search);
+  params.set('range', range);
+  if (childId > 0) params.set('child_id', String(childId));
+  else params.delete('child_id');
+  const next = `${window.location.pathname}?${params.toString()}${window.location.hash}`;
+  window.history.replaceState(null, '', next);
+}
+
 export function Reports() {
-  const [range, setRange] = useState<ReportRange>('week');
-  const [childId, setChildId] = useState<number>(0);
+  const [range, setRange] = useState<ReportRange>(readRangeFromUrl);
+  const [childId, setChildId] = useState<number>(readChildIdFromUrl);
+
+  useEffect(() => {
+    syncUrl(range, childId);
+  }, [range, childId]);
 
   const queries = useQueries({
     queries: [
