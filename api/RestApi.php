@@ -7,6 +7,7 @@ namespace GuardKids\Api;
 use GuardKids\Api\Controllers\CategoryController;
 use GuardKids\Api\Controllers\ChildController;
 use GuardKids\Api\Controllers\ChildSelfController;
+use GuardKids\Api\Controllers\ReportsController;
 use GuardKids\Api\Controllers\RequestController;
 use GuardKids\Api\Controllers\SettingsController;
 use GuardKids\Api\Controllers\SiteController;
@@ -35,6 +36,7 @@ final class RestApi
         $this->registerCategoriesRoutes();
         $this->registerSettingsRoutes();
         $this->registerChildSelfRoutes();
+        $this->registerReportsRoutes();
     }
 
     /**
@@ -194,6 +196,27 @@ final class RestApi
             'callback'            => [$controller, 'update'],
             'permission_callback' => [self::class, 'requireManage'],
             'args'                => $controller->updateArgs(),
+        ]);
+    }
+
+    private function registerReportsRoutes(): void
+    {
+        $controller = new ReportsController();
+
+        register_rest_route(self::NAMESPACE, '/reports', [
+            'methods'             => \WP_REST_Server::READABLE,
+            'callback'            => [$controller, 'index'],
+            'permission_callback' => [self::class, 'requireManage'],
+            'args'                => [
+                'range' => [
+                    'type'    => 'string',
+                    'enum'    => ['week', 'month'],
+                    'default' => 'week',
+                ],
+                'child_id' => [
+                    'type' => 'integer',
+                ],
+            ],
         ]);
     }
 
