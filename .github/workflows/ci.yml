@@ -88,7 +88,7 @@ jobs:
         run: pnpm build
 
   app-child:
-    name: app-child (vitest + build + PWA)
+    name: app-child (vitest + build + e2e + PWA)
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -114,3 +114,9 @@ jobs:
 
       - name: Type check + build (gera SW Workbox + manifest)
         run: pnpm build
+
+      - name: Install Playwright Chromium + system deps
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: Playwright e2e (Phase 5 wire-up)
+        run: pnpm test:e2e

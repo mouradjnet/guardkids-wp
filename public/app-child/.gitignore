@@ -12,3 +12,8 @@ vite.config.d.ts
 .env
 .env.local
 .env.*.local
+
+# Playwright
+playwright-report/
+test-results/
+.playwright/
