@@ -6,7 +6,7 @@
 [![codecov](https://codecov.io/gh/mouradjnet/guardkids-wp/branch/master/graph/badge.svg)](https://codecov.io/gh/mouradjnet/guardkids-wp)
 [![PHP 8.1+](https://img.shields.io/badge/PHP-8.1%2B-777BB4?logo=php&logoColor=white)](composer.json)
 [![WordPress 6.4+](https://img.shields.io/badge/WordPress-6.4%2B-21759B?logo=wordpress&logoColor=white)](guardkids.php)
-[![Tests](https://img.shields.io/badge/tests-72%20passing-brightgreen)](#testes)
+[![Tests](https://img.shields.io/badge/tests-264%20passing-brightgreen)](#testes)
 [![License: GPL-2.0+](https://img.shields.io/badge/license-GPL--2.0%2B-blue)](#licença)
 
 ## Visão geral
@@ -123,7 +123,7 @@ Para integração REST funcionar fora de produção, copie `public/app-parent/.e
 
 ## Testes
 
-**PHPUnit (42 tests, 85 assertions):**
+**PHPUnit (97 tests, 243 assertions):**
 
 ```powershell
 & $php -d extension_dir="$(Split-Path $php)\ext" `
@@ -131,9 +131,9 @@ Para integração REST funcionar fora de produção, copie `public/app-parent/.e
        vendor/bin/phpunit
 ```
 
-Cobre Repository base + subclasses, ChildAuth (token + lookup), MigrationRunner (idempotência + ordem), RestHeaders (escopo de namespace).
+Cobre Repository base + subclasses (incluindo `UsageEventRepository`), ChildAuth (token + lookup), MigrationRunner (idempotência + ordem), RestHeaders (escopo de namespace) e os controllers de ingest/reports.
 
-**Vitest (30 tests):**
+**Vitest app-parent (158 tests) + app-child (9 tests):**
 
 ```powershell
 cd public/app-parent
@@ -141,7 +141,7 @@ pnpm test        # corrida única
 pnpm test:watch  # modo watch
 ```
 
-Cobre `api/client.ts` (auth dupla, parse de WP_Error), `lib/requestDisplay.ts` (helpers), `AddChildDialog` e `PairDeviceDialog` (form + clipboard fallback).
+Cobre `api/client.ts` (auth dupla, parse de WP_Error), helpers (`requestDisplay`, `children`), diálogos (`AddChildDialog`, `PairDeviceDialog`), navegação (`TopNav`/`SideNav`/`BottomNav`) e todas as 7 páginas (Dashboard, Children, SitesRules, TimeLimits, Approvals, Reports, Settings). No `app-child`, cobre `usageTracker` (heartbeat visibility-aware) — e2e Playwright opcional via `pnpm test:e2e` (depois de `pnpm test:e2e:install`).
 
 **CI** roda os dois automaticamente em cada push/PR. Status: badge no topo.
 
