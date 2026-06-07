@@ -89,6 +89,10 @@ final class ChildSelfControllerTest extends TestCase
                     $this->requests[$this->insert_id] = array_merge(['id' => $this->insert_id], $data);
                     return 1;
                 }
+                if (str_contains((string) $table, 'guardkids_usage_events')) {
+                    $this->insert_id = 12345;
+                    return 1;
+                }
                 return 0;
             }
 
@@ -173,6 +177,61 @@ final class ChildSelfControllerTest extends TestCase
         $req = $this->authedRequest('POST', '/child/requests');
         // sem kind
         $res = (new ChildSelfController())->requestsCreate($req);
+        self::assertInstanceOf(WP_Error::class, $res);
+        self::assertSame(422, $res->get_error_data()['status']);
+    }
+
+    public function testEventsCreateInsertsHeartbeatWithChildIdFromToken(): void
+    {
+        $req = $this->authedRequest('POST', '/child/events');
+        $req->set_param('type', 'heartbeat');
+        $req->set_param('duration_seconds', 60);
+
+        $res = (new ChildSelfController())->eventsCreate($req);
+
+        self::assertInstanceOf(WP_REST_Response::class, $res);
+        self::assertSame(201, $res->get_status());
+        self::assertSame(12345, $res->get_data()['id']);
+        self::assertNotEmpty($res->get_data()['createdAt']);
+    }
+
+    public function testEventsCreateInsertsSiteOpenWithDomain(): void
+    {
+        $req = $this->authedRequest('POST', '/child/events');
+        $req->set_param('type', 'site_open');
+        $req->set_param('domain', 'KhanAcademy.org');
+        $req->set_param('duration_seconds', 0);
+
+        $res = (new ChildSelfController())->eventsCreate($req);
+        self::assertInstanceOf(WP_REST_Response::class, $res);
+        self::assertSame(201, $res->get_status());
+    }
+
+    public function testEventsCreateReturns422OnInvalidType(): void
+    {
+        $req = $this->authedRequest('POST', '/child/events');
+        $req->set_param('type', 'banana');
+        $res = (new ChildSelfController())->eventsCreate($req);
+        self::assertInstanceOf(WP_Error::class, $res);
+        self::assertSame(422, $res->get_error_data()['status']);
+    }
+
+    public function testEventsCreateReturns422OnSiteOpenWithoutDomain(): void
+    {
+        $req = $this->authedRequest('POST', '/child/events');
+        $req->set_param('type', 'site_open');
+        // sem domain
+        $res = (new ChildSelfController())->eventsCreate($req);
+        self::assertInstanceOf(WP_Error::class, $res);
+        self::assertSame(422, $res->get_error_data()['status']);
+    }
+
+    public function testEventsCreateReturns422OnDurationOverCap(): void
+    {
+        $req = $this->authedRequest('POST', '/child/events');
+        $req->set_param('type', 'heartbeat');
+        $req->set_param('duration_seconds', 3601);
+        $res = (new ChildSelfController())->eventsCreate($req);
         self::assertInstanceOf(WP_Error::class, $res);
         self::assertSame(422, $res->get_error_data()['status']);
     }

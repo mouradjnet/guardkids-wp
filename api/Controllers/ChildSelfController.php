@@ -7,6 +7,7 @@ namespace GuardKids\Api\Controllers;
 use GuardKids\Auth\ChildAuth;
 use GuardKids\Database\ChildRepository;
 use GuardKids\Database\RequestRepository;
+use GuardKids\Database\UsageEventRepository;
 use WP_Error;
 use WP_REST_Request;
 use WP_REST_Response;
@@ -20,12 +21,14 @@ final class ChildSelfController
     private readonly ChildAuth $auth;
     private readonly ChildRepository $children;
     private readonly RequestRepository $requests;
+    private readonly UsageEventRepository $events;
 
     public function __construct()
     {
         $this->auth     = new ChildAuth();
         $this->children = new ChildRepository();
         $this->requests = new RequestRepository();
+        $this->events   = new UsageEventRepository();
     }
 
     public function me(WP_REST_Request $req): WP_REST_Response|WP_Error
@@ -83,6 +86,48 @@ final class ChildSelfController
         return new WP_REST_Response($this->requestToJson($created ?? []), 201);
     }
 
+    public function eventsCreate(WP_REST_Request $req): WP_REST_Response|WP_Error
+    {
+        $childId = $this->auth->resolveChildId($req);
+        if ($childId === null) {
+            return new WP_Error('child_auth_required', 'Token inválido.', ['status' => 401]);
+        }
+
+        $type = (string) $req->get_param('type');
+        if (! in_array($type, ['heartbeat', 'site_open'], true)) {
+            return new WP_Error('invalid_payload', 'type inválido.', ['status' => 422]);
+        }
+
+        $duration = (int) $req->get_param('duration_seconds');
+        if ($duration < 0 || $duration > 3600) {
+            return new WP_Error('invalid_payload', 'duration_seconds fora do range.', ['status' => 422]);
+        }
+
+        $domain = null;
+        if ($type === 'site_open') {
+            $raw = (string) $req->get_param('domain');
+            if ($raw === '') {
+                return new WP_Error('invalid_payload', 'domain obrigatório.', ['status' => 422]);
+            }
+            $domain = strtolower($raw);
+        }
+
+        $id = $this->events->insert([
+            'child_id'         => $childId,
+            'type'             => $type,
+            'domain'           => $domain,
+            'duration_seconds' => $duration,
+        ]);
+        if ($id === 0) {
+            return new WP_Error('db_error', 'Não foi possível salvar.', ['status' => 500]);
+        }
+
+        return new WP_REST_Response([
+            'id'        => $id,
+            'createdAt' => current_time('mysql', true),
+        ], 201);
+    }
+
     /**
      * @return array<string, array<string, mixed>>
      */
@@ -98,6 +143,31 @@ final class ChildSelfController
             'description' => ['type' => 'string', 'sanitize_callback' => 'sanitize_text_field'],
             'highlight'   => ['type' => 'string', 'sanitize_callback' => 'sanitize_text_field'],
             'reason'      => ['type' => 'string', 'sanitize_callback' => 'sanitize_textarea_field'],
+        ];
+    }
+
+    /**
+     * @return array<string, array<string, mixed>>
+     */
+    public function createEventsArgs(): array
+    {
+        return [
+            'type' => [
+                'type'              => 'string',
+                'required'          => true,
+                'enum'              => ['heartbeat', 'site_open'],
+                'sanitize_callback' => 'sanitize_text_field',
+            ],
+            'domain' => [
+                'type'              => 'string',
+                'sanitize_callback' => 'sanitize_text_field',
+            ],
+            'duration_seconds' => [
+                'type'    => 'integer',
+                'minimum' => 0,
+                'maximum' => 3600,
+                'default' => 0,
+            ],
         ];
     }
 
