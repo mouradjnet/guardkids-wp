@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Icon } from '../components/Icon';
 import { allowedSites, type AllowedSite } from '../data/mockData';
+import { getActiveTracker } from '../lib/usageTracker';
 
 const colorMap: Record<AllowedSite['color'], { bg: string; text: string }> = {
   primary: { bg: 'bg-primary-container', text: 'text-on-primary-container' },
@@ -91,9 +92,13 @@ export function Browser() {
 
 function SiteShortcut({ site }: { site: AllowedSite }) {
   const tone = colorMap[site.color];
+  function onClick() {
+    getActiveTracker()?.trackSiteOpen(site.domain);
+  }
   return (
     <button
       type="button"
+      onClick={onClick}
       className="glass-panel flex flex-col items-start gap-3 rounded-2xl p-4 text-left shadow-ambient transition-transform active:scale-95"
     >
       <div className={`flex h-12 w-12 items-center justify-center rounded-xl ${tone.bg} ${tone.text}`}>

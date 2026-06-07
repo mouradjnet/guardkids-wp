@@ -18,6 +18,16 @@ export type UsageTracker = {
   flushSync: () => void;
 };
 
+let activeTracker: UsageTracker | null = null;
+
+export function setActiveTracker(tracker: UsageTracker | null): void {
+  activeTracker = tracker;
+}
+
+export function getActiveTracker(): UsageTracker | null {
+  return activeTracker;
+}
+
 export function createUsageTracker(deps: UsageTrackerDeps = {}): UsageTracker {
   const fetcher: Fetcher = deps.fetcher ?? ((path, init) => apiFetch(path, init));
   const doc: Document = deps.doc ?? document;

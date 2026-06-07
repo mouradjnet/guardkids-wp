@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { getStoredToken, setStoredToken } from './api/token';
 import { BottomNav } from './components/BottomNav';
 import { Header } from './components/Header';
-import { createUsageTracker, type UsageTracker } from './lib/usageTracker';
+import { createUsageTracker, setActiveTracker, type UsageTracker } from './lib/usageTracker';
 import { Alerts } from './pages/Alerts';
 import { Blocked } from './pages/Blocked';
 import { Browser } from './pages/Browser';
@@ -21,7 +21,11 @@ export default function App() {
     if (!token) return;
     if (!trackerSingleton) trackerSingleton = createUsageTracker();
     trackerSingleton.start();
-    return () => trackerSingleton?.stop();
+    setActiveTracker(trackerSingleton);
+    return () => {
+      trackerSingleton?.stop();
+      setActiveTracker(null);
+    };
   }, [token]);
 
   if (!token) {
