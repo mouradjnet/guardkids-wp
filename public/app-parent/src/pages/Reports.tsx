@@ -6,6 +6,7 @@ import { getReport, type Report, type ReportPerChild, type ReportRange, type Rep
 import type { Child } from '../api/types';
 import { Icon } from '../components/Icon';
 import { PageHeader } from '../components/PageHeader';
+import { downloadReportCsv } from '../lib/exportReportCsv';
 
 const CHILD_COLORS = ['#00236f', '#F59E0B', '#006c49', '#6B46C1'] as const;
 
@@ -40,9 +41,9 @@ export function Reports() {
             <RangeButton active={range === 'month'} onClick={() => setRange('month')} label="Mês" />
             <button
               type="button"
-              disabled
-              title="Em breve"
-              className="inline-flex items-center gap-2 rounded-full border border-outline-variant bg-white px-4 py-2 text-label-md font-semibold text-on-surface-variant opacity-60"
+              disabled={!report || report.dailyByChild.length === 0}
+              onClick={report ? () => downloadReportCsv(report) : undefined}
+              className="inline-flex items-center gap-2 rounded-full border border-outline-variant bg-white px-4 py-2 text-label-md font-semibold text-on-surface shadow-sm hover:bg-surface-variant disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:bg-white"
             >
               <Icon name="download" className="text-sm" />
               Exportar

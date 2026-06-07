@@ -141,4 +141,33 @@ describe('Reports page', () => {
     await screen.findByText('720');
     expect(screen.getAllByText('—').length).toBeGreaterThan(0);
   });
+
+  it('botao Exportar fica disabled em loading e empty', async () => {
+    getReportMock.mockReturnValue(new Promise(() => {}));
+    renderPage();
+    const button = await screen.findByRole('button', { name: /exportar/i });
+    expect(button).toBeDisabled();
+  });
+
+  it('click em Exportar dispara download CSV', async () => {
+    getReportMock.mockResolvedValue(sampleReport);
+
+    const createObjectURL = vi.fn().mockReturnValue('blob:mock-url');
+    const revokeObjectURL = vi.fn();
+    Object.defineProperty(globalThis.URL, 'createObjectURL', { writable: true, value: createObjectURL });
+    Object.defineProperty(globalThis.URL, 'revokeObjectURL', { writable: true, value: revokeObjectURL });
+    const clickSpy = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
+
+    const user = userEvent.setup();
+    renderPage();
+    await screen.findByRole('heading', { name: 'Lucas' });
+
+    await user.click(screen.getByRole('button', { name: /exportar/i }));
+
+    expect(createObjectURL).toHaveBeenCalledTimes(1);
+    expect(clickSpy).toHaveBeenCalledTimes(1);
+    expect(revokeObjectURL).toHaveBeenCalledTimes(1);
+
+    clickSpy.mockRestore();
+  });
 });
