@@ -391,19 +391,6 @@ export const guardians: Guardian[] = [
   },
 ];
 
-export const licenseInfo = {
-  plan: 'Premium' as const,
-  status: 'active' as 'active' | 'expired' | 'pending',
-  key: 'GK-PRO-2025-7F4A-9B2C-DE81',
-  domain: '2fautoshop.site',
-  activatedAt: '12/03/2026',
-  expiresAt: '12/03/2027',
-  daysLeft: 282,
-  seats: 5,
-  seatsUsed: 3,
-  autoRenew: true,
-};
-
 export const planFeatures = [
   { id: 'kids', label: 'Filhos cadastrados', free: '1 filho', premium: 'Filhos ilimitados' },
   { id: 'blacklist', label: 'Blacklist manual', free: true, premium: true },

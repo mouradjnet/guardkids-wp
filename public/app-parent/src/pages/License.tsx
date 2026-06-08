@@ -1,209 +1,385 @@
-import { useState } from 'react';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useState, type FormEvent } from 'react';
+import { activateLicense, deactivateLicense, type LicenseStatus } from '../api/license';
+import { ApiError } from '../api/client';
 import { Icon } from '../components/Icon';
 import { PageHeader } from '../components/PageHeader';
-import { licenseInfo } from '../data/mockData';
+import { useLicense } from '../hooks/useLicense';
 
 export function License() {
-  const [showKey, setShowKey] = useState(false);
-  const [newKey, setNewKey] = useState('');
+  const license = useLicense();
+  const queryClient = useQueryClient();
+  const [keyInput, setKeyInput] = useState('');
 
-  const pct = Math.round((1 - licenseInfo.daysLeft / 365) * 100);
+  const activate = useMutation({
+    mutationFn: (key: string) => activateLicense(key),
+    onSuccess: (snapshot) => {
+      queryClient.setQueryData(['license'], snapshot);
+      setKeyInput('');
+    },
+  });
+
+  const deactivate = useMutation({
+    mutationFn: () => deactivateLicense(),
+    onSuccess: (snapshot) => {
+      queryClient.setQueryData(['license'], snapshot);
+    },
+  });
+
+  function submit(e: FormEvent) {
+    e.preventDefault();
+    const key = keyInput.trim();
+    if (key === '') return;
+    activate.mutate(key);
+  }
 
   return (
     <main className="mx-auto flex w-full max-w-[1440px] flex-1 flex-col gap-stack-lg p-container-padding-mobile pb-24 md:ml-64 md:p-container-padding-desktop md:pb-container-padding-desktop">
       <PageHeader
         title="Licença"
-        subtitle="Gerencie sua licença premium, domínio ativado e renovações."
+        subtitle="Gerencie sua licença premium do GuardKids."
       />
 
-      <section className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-primary via-primary-container to-primary p-8 text-white shadow-ambient md:p-10">
-        <div className="pointer-events-none absolute -right-10 -top-10 opacity-10">
-          <span className="material-symbols-outlined" style={{ fontSize: 220 }}>
-            workspace_premium
-          </span>
-        </div>
-        <div className="relative z-10 flex flex-col items-start gap-5 md:flex-row md:items-center md:justify-between">
-          <div className="max-w-xl space-y-3">
-            <span className="inline-flex items-center gap-1 rounded-full bg-secondary-container/30 px-3 py-1 text-label-sm font-bold text-secondary-fixed">
-              <Icon name="verified" className="text-sm" filled />
-              Licença ativa
-            </span>
-            <h2 className="font-display text-headline-lg text-white">
-              GuardKids {licenseInfo.plan}
-            </h2>
-            <p className="text-body-md text-white/85">
-              Ativado em {licenseInfo.activatedAt}, expira em {licenseInfo.expiresAt}.
-            </p>
+      {license.isLoading ? (
+        <section className="glass-panel flex items-center justify-center rounded-2xl p-10 text-on-surface-variant shadow-ambient">
+          <Icon name="progress_activity" className="animate-spin text-2xl" />
+        </section>
+      ) : (
+        <StatusHero license={license} />
+      )}
 
-            <div className="space-y-2 pt-2">
-              <div className="flex items-center justify-between text-label-sm">
-                <span className="text-white/70">Tempo até renovar</span>
-                <span className="font-semibold text-white">{licenseInfo.daysLeft} dias</span>
-              </div>
-              <div className="h-2 w-full overflow-hidden rounded-full bg-white/15">
-                <div
-                  className="h-full rounded-full bg-secondary-fixed-dim"
-                  style={{ width: `${pct}%` }}
-                />
-              </div>
-            </div>
-          </div>
-
-          <div className="flex flex-col gap-3 md:items-end">
-            <div className="rounded-xl bg-white/10 p-3 text-right backdrop-blur">
-              <div className="text-label-sm text-white/70">Vagas usadas</div>
-              <div className="font-display text-display-lg leading-none text-white">
-                {licenseInfo.seatsUsed}
-                <span className="text-headline-md font-semibold text-white/70">
-                  /{licenseInfo.seats}
-                </span>
-              </div>
-            </div>
-            <button
-              type="button"
-              className="inline-flex items-center gap-2 rounded-xl bg-white px-5 py-3 text-label-md font-bold text-primary shadow-sm transition-colors hover:bg-white/95"
-            >
-              <Icon name="autorenew" className="text-sm" filled />
-              Renovar agora
-            </button>
-          </div>
-        </div>
-      </section>
-
-      <div className="grid grid-cols-1 gap-gutter lg:grid-cols-2">
-        <article className="glass-panel rounded-2xl p-6 shadow-ambient">
-          <header className="mb-4 flex items-center gap-3">
-            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary-container text-on-primary-container">
-              <Icon name="key" className="text-2xl" filled />
-            </div>
-            <div>
-              <h3 className="font-display text-headline-md text-on-surface">Chave de licença</h3>
-              <p className="text-label-sm text-on-surface-variant">
-                Use essa chave em outro domínio ou após reinstalar
-              </p>
-            </div>
-          </header>
-
-          <div className="flex items-center gap-2 rounded-xl border border-outline-variant bg-surface-container-low p-3">
-            <Icon name="vpn_key" className="text-on-surface-variant" />
-            <code className="flex-1 truncate font-mono text-label-md text-on-surface">
-              {showKey ? licenseInfo.key : '•'.repeat(licenseInfo.key.length)}
-            </code>
-            <button
-              type="button"
-              onClick={() => setShowKey((v) => !v)}
-              aria-label={showKey ? 'Ocultar chave' : 'Mostrar chave'}
-              className="rounded-lg p-2 text-on-surface-variant hover:bg-surface-variant"
-            >
-              <Icon name={showKey ? 'visibility_off' : 'visibility'} />
-            </button>
-            <button
-              type="button"
-              aria-label="Copiar chave"
-              className="rounded-lg p-2 text-on-surface-variant hover:bg-surface-variant"
-            >
-              <Icon name="content_copy" />
-            </button>
-          </div>
-
-          <ul className="mt-4 space-y-2 text-label-md text-on-surface">
-            <DetailRow icon="domain" label="Domínio ativo" value={licenseInfo.domain} />
-            <DetailRow icon="event_available" label="Ativado em" value={licenseInfo.activatedAt} />
-            <DetailRow icon="event_busy" label="Expira em" value={licenseInfo.expiresAt} />
-            <DetailRow
-              icon="autorenew"
-              label="Renovação automática"
-              value={licenseInfo.autoRenew ? 'Ativada' : 'Desativada'}
-            />
-          </ul>
-        </article>
-
-        <article className="glass-panel rounded-2xl p-6 shadow-ambient">
-          <header className="mb-4 flex items-center gap-3">
-            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-secondary-container/60 text-secondary">
-              <Icon name="add_circle" className="text-2xl" filled />
-            </div>
-            <div>
-              <h3 className="font-display text-headline-md text-on-surface">Ativar nova chave</h3>
-              <p className="text-label-sm text-on-surface-variant">
-                Use uma nova chave de licença para esse site
-              </p>
-            </div>
-          </header>
-
-          <label className="block">
-            <span className="text-label-sm text-on-surface-variant">Chave de licença</span>
-            <input
-              type="text"
-              value={newKey}
-              onChange={(e) => setNewKey(e.target.value)}
-              placeholder="GK-PRO-2025-XXXX-XXXX-XXXX"
-              className="mt-1 w-full rounded-xl border border-outline-variant bg-surface-container-low px-4 py-3 font-mono text-label-md text-on-surface placeholder:text-on-surface-variant focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30"
-            />
-          </label>
-          <button
-            type="button"
-            className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-primary py-3 text-label-md font-bold text-white shadow-sm transition-colors hover:bg-primary-container disabled:cursor-not-allowed disabled:opacity-50"
-            disabled={newKey.trim().length === 0}
-          >
-            <Icon name="bolt" className="text-sm" filled />
-            Ativar licença
-          </button>
-          <p className="mt-3 text-label-sm text-on-surface-variant">
-            Ao ativar, a chave anterior será desvinculada deste domínio. Você poderá usá-la em outro
-            site.
-          </p>
-        </article>
-      </div>
-
-      <section className="glass-panel rounded-2xl p-6 shadow-ambient">
-        <h3 className="mb-4 font-display text-headline-md text-on-surface">Histórico de cobrança</h3>
-        <div className="overflow-hidden rounded-xl border border-outline-variant">
-          <table className="w-full text-left text-label-md">
-            <thead className="bg-surface-container-low text-on-surface">
-              <tr>
-                <th className="px-4 py-3 font-bold">Data</th>
-                <th className="px-4 py-3 font-bold">Período</th>
-                <th className="px-4 py-3 font-bold">Valor</th>
-                <th className="px-4 py-3 text-center font-bold">Status</th>
-                <th className="px-4 py-3 text-right font-bold">Recibo</th>
-              </tr>
-            </thead>
-            <tbody>
-              <BillingRow date="12/03/2026" period="12/03/26 → 12/03/27" amount="R$ 228,00" status="paid" />
-              <BillingRow date="12/03/2025" period="12/03/25 → 12/03/26" amount="R$ 199,00" status="paid" />
-              <BillingRow date="12/03/2024" period="12/03/24 → 12/03/25" amount="R$ 199,00" status="paid" />
-            </tbody>
-          </table>
-        </div>
-      </section>
-
-      <section className="grid grid-cols-1 gap-gutter md:grid-cols-3">
-        <SupportCard
-          icon="support_agent"
-          title="Suporte premium"
-          body="Chat com SLA de 4h em horário comercial."
-          cta="Abrir chamado"
+      {license.snapshot !== null && license.status !== 'none' && (
+        <DetailsCard
+          email={license.email}
+          activatedAt={license.activatedAt}
+          expiresAt={license.expiresAt}
+          features={license.features}
         />
-        <SupportCard
-          icon="swap_horiz"
-          title="Transferir licença"
-          body="Mover essa chave pra outro domínio que você administra."
-          cta="Transferir"
+      )}
+
+      <ActivateCard
+        value={keyInput}
+        onChange={setKeyInput}
+        onSubmit={submit}
+        submitting={activate.isPending}
+        error={activate.error}
+      />
+
+      {license.status === 'active' || license.status === 'expired' ? (
+        <DeactivateCard
+          onDeactivate={() => deactivate.mutate()}
+          deactivating={deactivate.isPending}
         />
-        <SupportCard
-          icon="cancel_schedule_send"
-          title="Cancelar renovação"
-          body="Você mantém o premium até a data de expiração."
-          cta="Cancelar"
-          tone="danger"
-        />
-      </section>
+      ) : null}
     </main>
   );
 }
 
-function DetailRow({ icon, label, value }: { icon: string; label: string; value: string }) {
+function StatusHero({ license }: { license: ReturnType<typeof useLicense> }) {
+  const { status, daysLeft, email } = license;
+
+  const visual = visualFor(status);
+  const pct = daysLeft !== null && license.expiresAt
+    ? Math.max(0, Math.min(100, Math.round((daysLeft / 365) * 100)))
+    : 0;
+
+  return (
+    <section
+      data-testid="license-hero"
+      data-status={status}
+      className={`relative overflow-hidden rounded-2xl ${visual.bg} p-8 text-white shadow-ambient md:p-10`}
+    >
+      <div className="pointer-events-none absolute -right-10 -top-10 opacity-10">
+        <span className="material-symbols-outlined" style={{ fontSize: 220 }}>
+          {visual.icon}
+        </span>
+      </div>
+      <div className="relative z-10 flex flex-col items-start gap-5 md:flex-row md:items-center md:justify-between">
+        <div className="max-w-xl space-y-3">
+          <span className="inline-flex items-center gap-1 rounded-full bg-white/15 px-3 py-1 text-label-sm font-bold text-white">
+            <Icon name={visual.badgeIcon} className="text-sm" filled />
+            {visual.badge}
+          </span>
+          <h2 className="font-display text-headline-lg text-white">{visual.title}</h2>
+          <p className="text-body-md text-white/85">{visual.subtitle(license)}</p>
+          {email && (
+            <p className="text-label-sm text-white/70">Cliente: {email}</p>
+          )}
+
+          {status === 'active' && daysLeft !== null && (
+            <div className="space-y-2 pt-2">
+              <div className="flex items-center justify-between text-label-sm">
+                <span className="text-white/70">Tempo até renovar</span>
+                <span className="font-semibold text-white">{daysLeft} dias</span>
+              </div>
+              <div className="h-2 w-full overflow-hidden rounded-full bg-white/15">
+                <div
+                  className="h-full rounded-full bg-white"
+                  style={{ width: `${pct}%` }}
+                />
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+type Visual = {
+  bg: string;
+  icon: string;
+  badge: string;
+  badgeIcon: string;
+  title: string;
+  subtitle: (license: ReturnType<typeof useLicense>) => string;
+};
+
+function visualFor(status: LicenseStatus): Visual {
+  switch (status) {
+    case 'active':
+      return {
+        bg: 'bg-gradient-to-br from-primary via-primary-container to-primary',
+        icon: 'workspace_premium',
+        badge: 'Licença ativa',
+        badgeIcon: 'verified',
+        title: 'GuardKids Premium',
+        subtitle: (l) =>
+          l.expiresAt
+            ? `Expira em ${formatDate(l.expiresAt)}.`
+            : 'Premium ativo nesta instalação.',
+      };
+    case 'expired':
+      return {
+        bg: 'bg-gradient-to-br from-orange-warm via-orange-warm to-orange-warm/80',
+        icon: 'schedule',
+        badge: 'Licença expirada',
+        badgeIcon: 'warning',
+        title: 'Sua licença Premium expirou',
+        subtitle: (l) =>
+          l.expiresAt
+            ? `Expirou em ${formatDate(l.expiresAt)}. Você ainda vê seus dados antigos, mas features premium estão bloqueadas.`
+            : 'Você ainda vê seus dados antigos, mas features premium estão bloqueadas.',
+      };
+    case 'domain_mismatch':
+      return {
+        bg: 'bg-gradient-to-br from-error to-error/80',
+        icon: 'domain_disabled',
+        badge: 'Domínio diferente',
+        badgeIcon: 'error',
+        title: 'Esta chave é de outro domínio',
+        subtitle: () =>
+          'A licença foi emitida pra um domínio diferente desta instalação. Solicite uma chave nova ou desative no domínio anterior.',
+      };
+    case 'revoked':
+      return {
+        bg: 'bg-gradient-to-br from-error to-error/80',
+        icon: 'gpp_bad',
+        badge: 'Chave revogada',
+        badgeIcon: 'error',
+        title: 'Esta chave foi revogada',
+        subtitle: () => 'Entre em contato com o suporte para regularizar.',
+      };
+    case 'none':
+    default:
+      return {
+        bg: 'bg-gradient-to-br from-surface-container-highest via-surface-container-high to-surface-container-highest text-on-surface',
+        icon: 'lock_open',
+        badge: 'Plano Free',
+        badgeIcon: 'shield',
+        title: 'Você está no Plano Free',
+        subtitle: () =>
+          'Cole sua chave de licença abaixo pra desbloquear as features premium.',
+      };
+  }
+}
+
+function DetailsCard({
+  email,
+  activatedAt,
+  expiresAt,
+  features,
+}: {
+  email: string | null;
+  activatedAt: string | null;
+  expiresAt: string | null;
+  features: string[];
+}) {
+  return (
+    <article className="glass-panel rounded-2xl p-6 shadow-ambient">
+      <header className="mb-4 flex items-center gap-3">
+        <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary-container text-on-primary-container">
+          <Icon name="description" className="text-2xl" filled />
+        </div>
+        <div>
+          <h3 className="font-display text-headline-md text-on-surface">
+            Detalhes da licença
+          </h3>
+          <p className="text-label-sm text-on-surface-variant">
+            Dados extraídos da chave assinada
+          </p>
+        </div>
+      </header>
+
+      <ul className="space-y-2 text-label-md text-on-surface">
+        {email && <DetailRow icon="alternate_email" label="E-mail" value={email} />}
+        {activatedAt && (
+          <DetailRow icon="event_available" label="Ativada em" value={activatedAt} />
+        )}
+        {expiresAt && (
+          <DetailRow icon="event_busy" label="Expira em" value={formatDate(expiresAt)} />
+        )}
+      </ul>
+
+      {features.length > 0 && (
+        <div className="mt-4">
+          <p className="mb-2 text-label-sm font-semibold text-on-surface-variant">
+            Features liberadas
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {features.map((f) => (
+              <span
+                key={f}
+                className="inline-flex items-center gap-1 rounded-full bg-primary-container px-3 py-1 text-label-sm font-semibold text-on-primary-container"
+              >
+                <Icon name="check_circle" className="text-sm" filled />
+                {f}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+    </article>
+  );
+}
+
+function ActivateCard({
+  value,
+  onChange,
+  onSubmit,
+  submitting,
+  error,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  onSubmit: (e: FormEvent) => void;
+  submitting: boolean;
+  error: unknown;
+}) {
+  return (
+    <article className="glass-panel rounded-2xl p-6 shadow-ambient">
+      <header className="mb-4 flex items-center gap-3">
+        <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-secondary-container/60 text-secondary">
+          <Icon name="add_circle" className="text-2xl" filled />
+        </div>
+        <div>
+          <h3 className="font-display text-headline-md text-on-surface">
+            Ativar nova chave
+          </h3>
+          <p className="text-label-sm text-on-surface-variant">
+            Cole a chave que você recebeu por e-mail
+          </p>
+        </div>
+      </header>
+
+      <form onSubmit={onSubmit}>
+        <label className="block">
+          <span className="text-label-sm text-on-surface-variant">
+            Chave de licença
+          </span>
+          <textarea
+            value={value}
+            onChange={(e) => onChange(e.target.value)}
+            placeholder="cole sua chave aqui"
+            rows={3}
+            spellCheck={false}
+            autoComplete="off"
+            className="mt-1 w-full resize-none rounded-xl border border-outline-variant bg-surface-container-low px-4 py-3 font-mono text-label-sm text-on-surface placeholder:text-on-surface-variant focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30"
+          />
+        </label>
+
+        {error !== null && error !== undefined && (
+          <p role="alert" className="mt-3 rounded-lg bg-error/10 p-3 text-label-sm text-error">
+            {errorMessage(error)}
+          </p>
+        )}
+
+        <button
+          type="submit"
+          disabled={submitting || value.trim() === ''}
+          className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-primary py-3 text-label-md font-bold text-white shadow-sm transition-colors hover:bg-primary-container disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          <Icon
+            name={submitting ? 'progress_activity' : 'bolt'}
+            className={`text-sm ${submitting ? 'animate-spin' : ''}`}
+            filled={!submitting}
+          />
+          {submitting ? 'Validando…' : 'Ativar licença'}
+        </button>
+      </form>
+    </article>
+  );
+}
+
+function DeactivateCard({
+  onDeactivate,
+  deactivating,
+}: {
+  onDeactivate: () => void;
+  deactivating: boolean;
+}) {
+  function confirmAndDeactivate() {
+    if (
+      typeof window !== 'undefined' &&
+      window.confirm(
+        'Tem certeza? A licença será removida deste domínio. Você pode reativar a mesma chave em outro WordPress.',
+      )
+    ) {
+      onDeactivate();
+    }
+  }
+
+  return (
+    <article className="glass-panel flex flex-col gap-3 rounded-2xl border border-error/30 bg-error/5 p-6">
+      <header className="flex items-center gap-3">
+        <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-error-container/60 text-error">
+          <Icon name="link_off" className="text-2xl" filled />
+        </div>
+        <div>
+          <h3 className="font-display text-headline-md text-on-surface">
+            Desativar licença
+          </h3>
+          <p className="text-label-sm text-on-surface-variant">
+            Libera a chave pra ser usada em outro domínio
+          </p>
+        </div>
+      </header>
+
+      <button
+        type="button"
+        onClick={confirmAndDeactivate}
+        disabled={deactivating}
+        className="inline-flex items-center justify-center gap-2 self-start rounded-xl border border-error/40 bg-error/10 px-4 py-2 text-label-md font-bold text-error transition-colors hover:bg-error/20 disabled:opacity-50"
+      >
+        <Icon
+          name={deactivating ? 'progress_activity' : 'link_off'}
+          className={`text-sm ${deactivating ? 'animate-spin' : ''}`}
+        />
+        {deactivating ? 'Desativando…' : 'Desativar nesta instalação'}
+      </button>
+    </article>
+  );
+}
+
+function DetailRow({
+  icon,
+  label,
+  value,
+}: {
+  icon: string;
+  label: string;
+  value: string;
+}) {
   return (
     <li className="flex items-center gap-3 rounded-lg border border-outline-variant bg-surface-container-low px-3 py-2">
       <Icon name={icon} className="text-on-surface-variant" />
@@ -213,81 +389,20 @@ function DetailRow({ icon, label, value }: { icon: string; label: string; value:
   );
 }
 
-function BillingRow({
-  date,
-  period,
-  amount,
-  status,
-}: {
-  date: string;
-  period: string;
-  amount: string;
-  status: 'paid' | 'pending';
-}) {
-  return (
-    <tr className="border-t border-outline-variant bg-white">
-      <td className="px-4 py-3 text-on-surface">{date}</td>
-      <td className="px-4 py-3 text-on-surface-variant">{period}</td>
-      <td className="px-4 py-3 font-semibold text-on-surface">{amount}</td>
-      <td className="px-4 py-3 text-center">
-        <span
-          className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-label-sm font-semibold ${
-            status === 'paid'
-              ? 'bg-secondary-container/40 text-secondary'
-              : 'bg-tertiary-fixed-dim text-on-tertiary-fixed-variant'
-          }`}
-        >
-          <Icon name={status === 'paid' ? 'check_circle' : 'schedule'} className="text-sm" filled />
-          {status === 'paid' ? 'Pago' : 'Pendente'}
-        </span>
-      </td>
-      <td className="px-4 py-3 text-right">
-        <button
-          type="button"
-          className="inline-flex items-center gap-1 text-label-md font-semibold text-primary hover:underline"
-        >
-          <Icon name="download" className="text-sm" />
-          PDF
-        </button>
-      </td>
-    </tr>
-  );
+function errorMessage(error: unknown): string {
+  if (error instanceof ApiError) {
+    return error.message;
+  }
+  if (error instanceof Error) {
+    return error.message;
+  }
+  return 'Erro ao ativar a licença.';
 }
 
-function SupportCard({
-  icon,
-  title,
-  body,
-  cta,
-  tone,
-}: {
-  icon: string;
-  title: string;
-  body: string;
-  cta: string;
-  tone?: 'danger';
-}) {
-  return (
-    <article className="glass-panel flex flex-col gap-3 rounded-2xl p-5 shadow-ambient">
-      <div
-        className={`flex h-11 w-11 items-center justify-center rounded-xl ${
-          tone === 'danger' ? 'bg-error-container/60 text-error' : 'bg-surface-container-high text-primary'
-        }`}
-      >
-        <Icon name={icon} className="text-2xl" filled />
-      </div>
-      <h4 className="font-display text-headline-md text-on-surface">{title}</h4>
-      <p className="text-body-md text-on-surface-variant">{body}</p>
-      <button
-        type="button"
-        className={`mt-auto inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-label-md font-bold transition-colors ${
-          tone === 'danger'
-            ? 'bg-error text-white hover:bg-error/90'
-            : 'border border-outline-variant bg-surface-container text-on-surface hover:bg-surface-variant'
-        }`}
-      >
-        {cta}
-      </button>
-    </article>
-  );
+function formatDate(iso: string): string {
+  try {
+    return new Date(iso).toLocaleDateString('pt-BR');
+  } catch {
+    return iso;
+  }
 }
