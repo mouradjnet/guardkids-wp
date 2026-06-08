@@ -44,7 +44,7 @@ jobs:
         run: vendor/bin/phpunit --coverage-clover=coverage.xml
 
       - name: Upload PHP coverage to Codecov
-        uses: codecov/codecov-action@v5
+        uses: codecov/codecov-action@v7
         with:
           files: ./coverage.xml
           flags: phpunit
@@ -77,7 +77,7 @@ jobs:
         run: pnpm test:coverage
 
       - name: Upload TS coverage to Codecov
-        uses: codecov/codecov-action@v5
+        uses: codecov/codecov-action@v7
         with:
           files: public/app-parent/coverage/lcov.info
           flags: vitest
