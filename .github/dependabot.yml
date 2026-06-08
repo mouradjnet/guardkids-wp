@@ -48,6 +48,10 @@ updates:
         update-types: ["version-update:semver-major"]
       - dependency-name: "@vitest/ui"
         update-types: ["version-update:semver-major"]
+      # Tailwind 4 reescreveu a engine (PostCSS plugin movido, @tailwind → @import,
+      # classes utilitárias mudaram). Migração manual com QA visual; segurar 3.x.
+      - dependency-name: tailwindcss
+        update-types: ["version-update:semver-major"]
 
   # Frontend filho — Vite/React/vite-plugin-pwa/Workbox
   - package-ecosystem: npm
@@ -70,6 +74,14 @@ updates:
         update-types:
           - minor
           - patch
+    ignore:
+      # Tailwind 4 reescreveu a engine — mesma situação do app-parent.
+      - dependency-name: tailwindcss
+        update-types: ["version-update:semver-major"]
+      # Vite 8 mudou tipos do dev server middleware (quebra o proxy customizado
+      # de vite.config.ts). Segurar enquanto vite-plugin-pwa não acompanha.
+      - dependency-name: vite
+        update-types: ["version-update:semver-major"]
 
   # GitHub Actions — bump das versões dos actions usados no ci.yml
   - package-ecosystem: github-actions
