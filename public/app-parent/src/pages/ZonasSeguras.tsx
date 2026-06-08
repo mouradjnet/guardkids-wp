@@ -5,9 +5,35 @@ import { deleteSafeZone, listSafeZones } from '../api/safeZones';
 import type { SafeZone } from '../api/types';
 import { Icon } from '../components/Icon';
 import { PageHeader } from '../components/PageHeader';
+import { PremiumLock } from '../components/PremiumLock';
 import { SafeZoneDialog } from '../components/SafeZoneDialog';
+import { useLicense } from '../hooks/useLicense';
 
 export function ZonasSeguras() {
+  const license = useLicense();
+
+  if (!license.isLoading && !license.can('location')) {
+    return (
+      <main className="mx-auto flex w-full max-w-[1440px] flex-1 flex-col gap-stack-lg p-container-padding-mobile pb-24 md:ml-64 md:p-container-padding-desktop md:pb-container-padding-desktop">
+        <PageHeader
+          title="Zonas seguras"
+          subtitle="Receba alertas quando seu filho chegar ou sair de lugares marcados."
+        />
+        <div className="min-h-[300px]">
+          <PremiumLock
+            featureId="location"
+            title="Zonas seguras é uma feature Premium"
+            description="Defina escola, casa de avós e outros pontos pra ver chegadas e saídas."
+          />
+        </div>
+      </main>
+    );
+  }
+
+  return <ZonasSegurasContent />;
+}
+
+function ZonasSegurasContent() {
   const { data, isLoading, error } = useQuery({
     queryKey: ['safe-zones'],
     queryFn: listSafeZones,

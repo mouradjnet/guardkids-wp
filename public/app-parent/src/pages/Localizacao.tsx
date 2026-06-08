@@ -7,10 +7,33 @@ import { listLocations } from '../api/locations';
 import type { LocationFix } from '../api/types';
 import { Icon } from '../components/Icon';
 import { PageHeader } from '../components/PageHeader';
+import { PremiumLock } from '../components/PremiumLock';
+import { useLicense } from '../hooks/useLicense';
 
 const ONLINE_THRESHOLD_MS = 5 * 60 * 1000;
 
 export function Localizacao() {
+  const license = useLicense();
+
+  if (!license.isLoading && !license.can('location')) {
+    return (
+      <main className="mx-auto flex w-full max-w-[1440px] flex-1 flex-col gap-stack-lg p-container-padding-mobile pb-24 md:ml-64 md:p-container-padding-desktop md:pb-container-padding-desktop">
+        <PageHeader title="Localização" subtitle="Veja onde seu filho está em tempo real." />
+        <div className="min-h-[300px]">
+          <PremiumLock
+            featureId="location"
+            title="Localização é uma feature Premium"
+            description="Acompanhe em tempo real onde seu filho está, com histórico e zonas seguras."
+          />
+        </div>
+      </main>
+    );
+  }
+
+  return <LocalizacaoContent />;
+}
+
+function LocalizacaoContent() {
   const childrenQuery = useQuery({
     queryKey: ['children'],
     queryFn: listChildren,

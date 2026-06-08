@@ -10,11 +10,13 @@ const {
   createSafeZoneMock,
   updateSafeZoneMock,
   deleteSafeZoneMock,
+  getLicenseMock,
 } = vi.hoisted(() => ({
   listSafeZonesMock: vi.fn(),
   createSafeZoneMock: vi.fn(),
   updateSafeZoneMock: vi.fn(),
   deleteSafeZoneMock: vi.fn(),
+  getLicenseMock: vi.fn(),
 }));
 vi.mock('../api/safeZones', () => ({
   listSafeZones: listSafeZonesMock,
@@ -22,6 +24,12 @@ vi.mock('../api/safeZones', () => ({
   updateSafeZone: updateSafeZoneMock,
   deleteSafeZone: deleteSafeZoneMock,
 }));
+vi.mock('../api/license', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../api/license')>();
+  return { ...actual, getLicense: getLicenseMock };
+});
+
+import { ACTIVE_PREMIUM_SNAPSHOT, FREE_NONE_SNAPSHOT } from '../test/licenseMock';
 
 vi.mock('react-leaflet', () => ({
   MapContainer: ({ children }: { children: ReactNode }) => (
@@ -67,6 +75,24 @@ describe('ZonasSeguras page', () => {
     createSafeZoneMock.mockReset();
     updateSafeZoneMock.mockReset();
     deleteSafeZoneMock.mockReset();
+    // Default: licença premium ativa. Tests de bloqueio sobrescrevem.
+    getLicenseMock.mockReset().mockResolvedValue(ACTIVE_PREMIUM_SNAPSHOT);
+  });
+
+  it('mostra PremiumLock overlay quando licença está em estado Free', async () => {
+    getLicenseMock.mockResolvedValue(FREE_NONE_SNAPSHOT);
+    listSafeZonesMock.mockResolvedValue([]);
+    render(
+      <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false, gcTime: 0 } } })}>
+        <ZonasSeguras />
+      </QueryClientProvider>,
+    );
+
+    expect(
+      await screen.findByText(/zonas seguras é uma feature premium/i),
+    ).toBeInTheDocument();
+    // CTA de criar zona não deve aparecer
+    expect(screen.queryByRole('button', { name: /nova zona/i })).not.toBeInTheDocument();
   });
 
   it('renders empty state with CTA when list is empty', async () => {

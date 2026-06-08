@@ -5,9 +5,10 @@ import type { ReactNode } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Child, LocationFix } from '../api/types';
 
-const { listChildrenMock, listLocationsMock } = vi.hoisted(() => ({
+const { listChildrenMock, listLocationsMock, getLicenseMock } = vi.hoisted(() => ({
   listChildrenMock: vi.fn(),
   listLocationsMock: vi.fn(),
+  getLicenseMock: vi.fn(),
 }));
 vi.mock('../api/children', () => ({
   listChildren: listChildrenMock,
@@ -18,6 +19,12 @@ vi.mock('../api/children', () => ({
 vi.mock('../api/locations', () => ({
   listLocations: listLocationsMock,
 }));
+vi.mock('../api/license', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../api/license')>();
+  return { ...actual, getLicense: getLicenseMock };
+});
+
+import { ACTIVE_PREMIUM_SNAPSHOT, FREE_NONE_SNAPSHOT } from '../test/licenseMock';
 
 // react-leaflet usa window APIs que jsdom não suporta — stubamos os componentes
 vi.mock('react-leaflet', () => ({
@@ -76,10 +83,25 @@ describe('Localizacao page', () => {
   beforeEach(() => {
     listChildrenMock.mockReset();
     listLocationsMock.mockReset();
+    // Default: licença premium ativa (libera o conteúdo da página).
+    // Tests específicos de bloqueio sobrescrevem com FREE_NONE_SNAPSHOT.
+    getLicenseMock.mockReset().mockResolvedValue(ACTIVE_PREMIUM_SNAPSHOT);
   });
 
   afterEach(() => {
     vi.useRealTimers();
+  });
+
+  it('mostra PremiumLock overlay quando licença está em estado Free', async () => {
+    getLicenseMock.mockResolvedValue(FREE_NONE_SNAPSHOT);
+    listChildrenMock.mockResolvedValue([lucas]);
+    renderPage();
+
+    expect(
+      await screen.findByText(/localização é uma feature premium/i),
+    ).toBeInTheDocument();
+    // Conteúdo interno (children list, map) não deve aparecer
+    expect(screen.queryByText(/sem localização registrada/i)).not.toBeInTheDocument();
   });
 
   it('shows empty state when no children exist', async () => {
