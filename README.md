@@ -6,7 +6,7 @@
 [![codecov](https://codecov.io/gh/mouradjnet/guardkids-wp/branch/master/graph/badge.svg)](https://codecov.io/gh/mouradjnet/guardkids-wp)
 [![PHP 8.1+](https://img.shields.io/badge/PHP-8.1%2B-777BB4?logo=php&logoColor=white)](composer.json)
 [![WordPress 6.4+](https://img.shields.io/badge/WordPress-6.4%2B-21759B?logo=wordpress&logoColor=white)](guardkids.php)
-[![Tests](https://img.shields.io/badge/tests-350%20passing-brightgreen)](#testes)
+[![Tests](https://img.shields.io/badge/tests-383%20passing-brightgreen)](#testes)
 [![License: GPL-2.0+](https://img.shields.io/badge/license-GPL--2.0%2B-blue)](#licença)
 
 ## Visão geral
@@ -133,7 +133,7 @@ Para integração REST funcionar fora de produção, copie `public/app-parent/.e
 
 Cobre Repository base + subclasses (incluindo `UsageEventRepository`), ChildAuth (token + lookup), MigrationRunner (idempotência + ordem), RestHeaders (escopo de namespace) e os controllers de ingest/reports.
 
-**Vitest app-parent (158 tests) + app-child (9 tests):**
+**Vitest app-parent (158 tests) + app-child (52 tests):**
 
 ```powershell
 cd public/app-parent
@@ -141,7 +141,7 @@ pnpm test        # corrida única
 pnpm test:watch  # modo watch
 ```
 
-Cobre `api/client.ts` (auth dupla, parse de WP_Error), helpers (`requestDisplay`, `children`), diálogos (`AddChildDialog`, `PairDeviceDialog`), navegação (`TopNav`/`SideNav`/`BottomNav`) e todas as 7 páginas (Dashboard, Children, SitesRules, TimeLimits, Approvals, Reports, Settings). No `app-child`, cobre `usageTracker` (heartbeat visibility-aware) — e2e Playwright opcional via `pnpm test:e2e` (depois de `pnpm test:e2e:install`).
+Cobre `api/client.ts` (auth dupla, parse de WP_Error), helpers (`requestDisplay`, `children`), diálogos (`AddChildDialog`, `PairDeviceDialog`), navegação (`TopNav`/`SideNav`/`BottomNav`) e todas as 7 páginas do parent (Dashboard, Children, SitesRules, TimeLimits, Approvals, Reports, Settings). No `app-child`, cobre `usageTracker` + `locationTracker` e todas as 7 páginas (Home, Alerts, Blocked, Browser, PairScreen, Localizacao, Requests) — e2e Playwright opcional via `pnpm test:e2e` (depois de `pnpm test:e2e:install`).
 
 **CI** roda os dois automaticamente em cada push/PR. Status: badge no topo.
 
