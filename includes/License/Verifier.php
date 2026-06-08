@@ -19,10 +19,12 @@ namespace GuardKids\License;
 final class Verifier
 {
     /**
-     * Placeholder — substituído no Step 3 (scripts/issue-license.php) pela
-     * pubkey de produção. Ed25519 = 32 bytes raw → 44 chars base64.
+     * Pubkey Ed25519 do issuer GuardKids. Pareia com a privkey local
+     * `~/.guardkids/issuer.key` gerada por `scripts/issue-license.php
+     * --gen-keys`. Rotacionar essa constante invalida todas as chaves
+     * emitidas com a privkey anterior — não faça isso à toa.
      */
-    public const DEFAULT_ISSUER_PUBKEY_B64 = '__REPLACE_IN_STEP_3__';
+    public const DEFAULT_ISSUER_PUBKEY_B64 = 'VgG6LMMSO7+U/7IrQJXFuc5WqEy8f1T8MRO7YSelPck=';
 
     private readonly string $pubkey;
 

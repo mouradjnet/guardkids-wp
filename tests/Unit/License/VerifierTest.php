@@ -108,12 +108,18 @@ final class VerifierTest extends TestCase
         self::assertNull($verified->email);
     }
 
-    public function testDefaultPubkeyPlaceholderProducesNullPubkey(): void
+    public function testDefaultPubkeyIsConfiguredAsValidEd25519(): void
     {
-        // Sanity check: o placeholder embarcado não decodifica em 32 bytes,
-        // então o Verifier de produção (sem CLI rodado) recusa qualquer chave.
-        $defaultVerifier = new Verifier();
-        self::assertNull($defaultVerifier->verify('a.b'));
+        // Sanity check: o DEFAULT_ISSUER_PUBKEY_B64 deve ser uma pubkey
+        // Ed25519 válida (32 bytes após base64). Se voltar pro placeholder
+        // ou ficar corrompida, o Verifier rejeita TODAS as chaves silenciosamente.
+        $raw = base64_decode(Verifier::DEFAULT_ISSUER_PUBKEY_B64, true);
+        self::assertNotFalse($raw, 'DEFAULT_ISSUER_PUBKEY_B64 deve ser base64 válido');
+        self::assertSame(
+            SODIUM_CRYPTO_SIGN_PUBLICKEYBYTES,
+            \strlen($raw),
+            'DEFAULT_ISSUER_PUBKEY_B64 deve decodificar em 32 bytes',
+        );
     }
 
     /**
