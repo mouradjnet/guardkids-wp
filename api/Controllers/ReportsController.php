@@ -6,6 +6,7 @@ namespace GuardKids\Api\Controllers;
 
 use GuardKids\Database\ChildRepository;
 use GuardKids\Database\UsageEventRepository;
+use GuardKids\License\Gate;
 use WP_Error;
 use WP_REST_Request;
 use WP_REST_Response;
@@ -20,11 +21,13 @@ final class ReportsController
 {
     private readonly UsageEventRepository $events;
     private readonly ChildRepository $children;
+    private readonly Gate $gate;
 
-    public function __construct()
+    public function __construct(?Gate $gate = null)
     {
         $this->events   = new UsageEventRepository();
         $this->children = new ChildRepository();
+        $this->gate     = $gate ?? new Gate();
     }
 
     public function index(WP_REST_Request $req): WP_REST_Response|WP_Error
@@ -32,6 +35,12 @@ final class ReportsController
         $range = (string) ($req->get_param('range') ?: 'week');
         if (! in_array($range, ['week', 'month'], true)) {
             return new WP_Error('invalid_range', 'range inválido.', ['status' => 422]);
+        }
+
+        // Free só vê 7 dias. Se pedir mês, força pra week (não 402 — UX
+        // melhor: degrada silenciosamente em vez de derrubar a tela inteira).
+        if ($range === 'month' && ! $this->gate->can('full_history')) {
+            $range = 'week';
         }
 
         $rangeDays = $range === 'week' ? 7 : 30;

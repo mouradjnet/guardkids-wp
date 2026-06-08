@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace GuardKids\Tests\Unit\Api;
 
 use GuardKids\Api\Controllers\SiteController;
+use GuardKids\Tests\Support\AlwaysAllowGate;
 use PHPUnit\Framework\TestCase;
 use WP_Error;
 use WP_REST_Request;
@@ -77,7 +78,7 @@ final class SiteControllerTest extends TestCase
         $req = new WP_REST_Request('GET', '/sites');
         $req->set_param('list', 'all');
 
-        $res = (new SiteController())->index($req);
+        $res = (new SiteController(new AlwaysAllowGate()))->index($req);
         self::assertCount(2, $res->get_data());
     }
 
@@ -86,7 +87,7 @@ final class SiteControllerTest extends TestCase
         $req = new WP_REST_Request('POST', '/sites');
         $req->set_param('domain', 'khanacademy.org');
 
-        $res = (new SiteController())->create($req);
+        $res = (new SiteController(new AlwaysAllowGate()))->create($req);
         self::assertInstanceOf(WP_REST_Response::class, $res);
         self::assertSame(201, $res->get_status());
         self::assertSame('khanacademy.org', $res->get_data()['domain']);
@@ -100,7 +101,7 @@ final class SiteControllerTest extends TestCase
         $req->set_param('list_type', 'blacklist');
         $req->set_param('applies_to', [1, 2]);
 
-        $res = (new SiteController())->create($req);
+        $res = (new SiteController(new AlwaysAllowGate()))->create($req);
         self::assertSame('blacklist', $res->get_data()['listType']);
         self::assertSame([1, 2], $res->get_data()['appliesTo']);
     }
@@ -110,7 +111,7 @@ final class SiteControllerTest extends TestCase
         $req = new WP_REST_Request('POST', '/sites');
         $req->set_param('domain', '');
 
-        $res = (new SiteController())->create($req);
+        $res = (new SiteController(new AlwaysAllowGate()))->create($req);
         self::assertInstanceOf(WP_Error::class, $res);
         self::assertSame(422, $res->get_error_data()['status']);
     }
@@ -122,7 +123,7 @@ final class SiteControllerTest extends TestCase
         $req = new WP_REST_Request('DELETE', '/sites/3');
         $req['id'] = 3;
 
-        $res = (new SiteController())->destroy($req);
+        $res = (new SiteController(new AlwaysAllowGate()))->destroy($req);
         self::assertInstanceOf(WP_REST_Response::class, $res);
         self::assertTrue($res->get_data()['deleted']);
         self::assertSame(3, $res->get_data()['id']);

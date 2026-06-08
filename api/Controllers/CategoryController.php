@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace GuardKids\Api\Controllers;
 
 use GuardKids\Database\CategoryRepository;
+use GuardKids\License\Gate;
 use WP_Error;
 use WP_REST_Request;
 use WP_REST_Response;
@@ -12,10 +13,12 @@ use WP_REST_Response;
 final class CategoryController
 {
     private readonly CategoryRepository $repo;
+    private readonly Gate $gate;
 
-    public function __construct()
+    public function __construct(?Gate $gate = null)
     {
         $this->repo = new CategoryRepository();
+        $this->gate = $gate ?? new Gate();
     }
 
     /**
@@ -35,6 +38,14 @@ final class CategoryController
 
     public function update(WP_REST_Request $req): WP_REST_Response|WP_Error
     {
+        if (! $this->gate->can('categories')) {
+            return new WP_Error(
+                'plan_limit',
+                'Categorias inteligentes é uma feature Premium.',
+                ['status' => 402],
+            );
+        }
+
         $id = (int) $req['id'];
         $row = $this->repo->findById($id);
         if ($row === null) {

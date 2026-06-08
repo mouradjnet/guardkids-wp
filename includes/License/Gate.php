@@ -17,7 +17,12 @@ namespace GuardKids\License;
  * `free`, nunca pra erro 500. Premium só é concedido quando a verificação
  * passa por todos os checks (assinatura, domain lock, expiry, revogação).
  */
-final class Gate
+/**
+ * Não é `final` propositadamente: testes que não exercitam o gating real
+ * estendem em {@see GuardKids\Tests\Support\AlwaysAllowGate} pra liberar tudo
+ * sem precisar instalar fixture de licença.
+ */
+class Gate
 {
     /**
      * Features bloqueadas no plano Free — única source-of-truth do servidor.

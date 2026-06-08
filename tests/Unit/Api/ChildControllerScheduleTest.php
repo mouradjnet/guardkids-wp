@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace GuardKids\Tests\Unit\Api;
 
 use GuardKids\Api\Controllers\ChildController;
+use GuardKids\Tests\Support\AlwaysAllowGate;
 use PHPUnit\Framework\TestCase;
 use WP_Error;
 use WP_REST_Request;
@@ -84,7 +85,7 @@ final class ChildControllerScheduleTest extends TestCase
     public function testUpdateAllowedWeekdaysPersists(): void
     {
         $req = $this->makeRequest(['allowed_weekdays' => 'YYYYYNN']);
-        $res = (new ChildController())->update($req);
+        $res = (new ChildController(new AlwaysAllowGate()))->update($req);
 
         self::assertInstanceOf(WP_REST_Response::class, $res);
         $update = array_filter($this->wpdb->log, fn ($e) => $e['method'] === 'update');
@@ -100,7 +101,7 @@ final class ChildControllerScheduleTest extends TestCase
             'bedtime_start'   => '21:30',
             'bedtime_end'     => '07:00',
         ]);
-        $res = (new ChildController())->update($req);
+        $res = (new ChildController(new AlwaysAllowGate()))->update($req);
 
         self::assertInstanceOf(WP_REST_Response::class, $res);
         $patch = end($this->wpdb->log)['args'][1];
@@ -112,7 +113,7 @@ final class ChildControllerScheduleTest extends TestCase
     public function testUpdateBedtimeEnabledTrueWithoutStartReturns422(): void
     {
         $req = $this->makeRequest(['bedtime_enabled' => true]);
-        $res = (new ChildController())->update($req);
+        $res = (new ChildController(new AlwaysAllowGate()))->update($req);
 
         self::assertInstanceOf(WP_Error::class, $res);
         self::assertSame(422, $res->get_error_data()['status']);
@@ -126,7 +127,7 @@ final class ChildControllerScheduleTest extends TestCase
         $this->wpdb->rows[1]['bedtime_end']   = '06:00:00';
 
         $req = $this->makeRequest(['bedtime_enabled' => true]);
-        $res = (new ChildController())->update($req);
+        $res = (new ChildController(new AlwaysAllowGate()))->update($req);
 
         self::assertInstanceOf(WP_REST_Response::class, $res);
     }
@@ -134,7 +135,7 @@ final class ChildControllerScheduleTest extends TestCase
     public function testUpdatePartialDoesNotTouchOtherFields(): void
     {
         $req = $this->makeRequest(['allowed_weekdays' => 'YYYYYNN']);
-        (new ChildController())->update($req);
+        (new ChildController(new AlwaysAllowGate()))->update($req);
 
         $patch = end($this->wpdb->log)['args'][1];
         self::assertArrayNotHasKey('bedtime_enabled', $patch);
@@ -152,7 +153,7 @@ final class ChildControllerScheduleTest extends TestCase
 
         $req = new WP_REST_Request('GET', '/children/1');
         $req['id'] = 1;
-        $res = (new ChildController())->show($req);
+        $res = (new ChildController(new AlwaysAllowGate()))->show($req);
 
         $data = $res->get_data();
         self::assertTrue($data['bedtimeEnabled']);
@@ -169,7 +170,7 @@ final class ChildControllerScheduleTest extends TestCase
         $this->wpdb->rows[1]['bedtime_end']     = '07:00:00';
 
         $req = $this->makeRequest(['bedtime_enabled' => false]);
-        $res = (new ChildController())->update($req);
+        $res = (new ChildController(new AlwaysAllowGate()))->update($req);
 
         self::assertInstanceOf(WP_REST_Response::class, $res);
         $patch = end($this->wpdb->log)['args'][1];
@@ -186,7 +187,7 @@ final class ChildControllerScheduleTest extends TestCase
             'bedtime_enabled' => true,
             'bedtime_start'   => '21:30',
         ]);
-        $res = (new ChildController())->update($req);
+        $res = (new ChildController(new AlwaysAllowGate()))->update($req);
 
         self::assertInstanceOf(WP_Error::class, $res);
         self::assertSame(422, $res->get_error_data()['status']);
@@ -203,7 +204,7 @@ final class ChildControllerScheduleTest extends TestCase
 
         $req = new WP_REST_Request('GET', '/children/1');
         $req['id'] = 1;
-        $res = (new ChildController())->show($req);
+        $res = (new ChildController(new AlwaysAllowGate()))->show($req);
 
         $data = $res->get_data();
         self::assertFalse($data['bedtimeEnabled']);

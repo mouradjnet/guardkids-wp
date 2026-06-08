@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace GuardKids\Tests\Unit\Api;
 
 use GuardKids\Api\Controllers\ReportsController;
+use GuardKids\Tests\Support\AlwaysAllowGate;
 use PHPUnit\Framework\TestCase;
 use WP_Error;
 use WP_REST_Request;
@@ -58,7 +59,7 @@ final class ReportsControllerTest extends TestCase
     public function testIndexReturnsExpectedShapeWithWeekDefault(): void
     {
         $req = new WP_REST_Request('GET', '/reports');
-        $res = (new ReportsController())->index($req);
+        $res = (new ReportsController(new AlwaysAllowGate()))->index($req);
 
         self::assertInstanceOf(WP_REST_Response::class, $res);
         $data = $res->get_data();
@@ -75,7 +76,7 @@ final class ReportsControllerTest extends TestCase
     {
         $req = new WP_REST_Request('GET', '/reports');
         $req->set_param('range', 'month');
-        $res = (new ReportsController())->index($req);
+        $res = (new ReportsController(new AlwaysAllowGate()))->index($req);
         self::assertSame('month', $res->get_data()['range']);
     }
 
@@ -83,7 +84,7 @@ final class ReportsControllerTest extends TestCase
     {
         $req = new WP_REST_Request('GET', '/reports');
         $req->set_param('range', 'forever');
-        $res = (new ReportsController())->index($req);
+        $res = (new ReportsController(new AlwaysAllowGate()))->index($req);
         self::assertInstanceOf(WP_Error::class, $res);
         self::assertSame(422, $res->get_error_data()['status']);
     }
@@ -91,7 +92,7 @@ final class ReportsControllerTest extends TestCase
     public function testIndexEmptyArraysWhenNoData(): void
     {
         $req = new WP_REST_Request('GET', '/reports');
-        $res = (new ReportsController())->index($req);
+        $res = (new ReportsController(new AlwaysAllowGate()))->index($req);
         $data = $res->get_data();
         self::assertSame([], $data['dailyByChild']);
         self::assertSame([], $data['topSites']);
@@ -107,7 +108,7 @@ final class ReportsControllerTest extends TestCase
         $req = new WP_REST_Request('GET', '/reports');
         $req->set_param('child_id', 1);
 
-        $res = (new ReportsController())->index($req);
+        $res = (new ReportsController(new AlwaysAllowGate()))->index($req);
         $data = $res->get_data();
         self::assertCount(1, $data['perChild']);
         self::assertSame(1, $data['perChild'][0]['childId']);

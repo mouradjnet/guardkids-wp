@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace GuardKids\Api\Controllers;
 
 use GuardKids\Database\ChildRepository;
+use GuardKids\License\Gate;
 use WP_Error;
 use WP_REST_Request;
 use WP_REST_Response;
@@ -12,10 +13,12 @@ use WP_REST_Response;
 final class ChildController
 {
     private readonly ChildRepository $repo;
+    private readonly Gate $gate;
 
-    public function __construct()
+    public function __construct(?Gate $gate = null)
     {
         $this->repo = new ChildRepository();
+        $this->gate = $gate ?? new Gate();
     }
 
     /**
@@ -82,6 +85,24 @@ final class ChildController
             return new WP_Error('invalid_payload', 'Nome obrigatório.', ['status' => 422]);
         }
 
+        // Free permite 1 filho; premium ilimitado.
+        if (! $this->gate->can('unlimited_kids') && \count($this->repo->findAll('id')) >= 1) {
+            return new WP_Error(
+                'plan_limit',
+                'O plano Free permite 1 filho. Faça upgrade pra cadastrar mais.',
+                ['status' => 402],
+            );
+        }
+
+        // Bedtime/schedule precisam de premium.
+        if ($this->touchesSchedule($req) && ! $this->gate->can('schedule')) {
+            return new WP_Error(
+                'plan_limit',
+                'Rotina escolar (bedtime/weekdays) é uma feature Premium.',
+                ['status' => 402],
+            );
+        }
+
         $slug = (string) ($req->get_param('slug') ?? sanitize_title($name));
 
         $id = $this->repo->insert([
@@ -109,6 +130,14 @@ final class ChildController
         $row = $this->repo->findById($id);
         if ($row === null) {
             return new WP_Error('not_found', 'Filho não encontrado.', ['status' => 404]);
+        }
+
+        if ($this->touchesSchedule($req) && ! $this->gate->can('schedule')) {
+            return new WP_Error(
+                'plan_limit',
+                'Rotina escolar (bedtime/weekdays) é uma feature Premium.',
+                ['status' => 402],
+            );
         }
 
         $bedtimeEnabledParam = $req->get_param('bedtime_enabled');
@@ -144,6 +173,19 @@ final class ChildController
             return new WP_Error('db_error', 'Falha ao atualizar.', ['status' => 500]);
         }
         return rest_ensure_response($this->toJson($this->repo->findById($id) ?? []));
+    }
+
+    /**
+     * Detecta se o request mexe em algum campo de schedule/bedtime.
+     */
+    private function touchesSchedule(WP_REST_Request $req): bool
+    {
+        foreach (['bedtime_enabled', 'bedtime_start', 'bedtime_end', 'allowed_weekdays'] as $field) {
+            if ($req->get_param($field) !== null) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /**

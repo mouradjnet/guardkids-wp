@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace GuardKids\Api\Controllers;
 
 use GuardKids\Database\SiteRepository;
+use GuardKids\License\Gate;
 use WP_Error;
 use WP_REST_Request;
 use WP_REST_Response;
@@ -12,10 +13,12 @@ use WP_REST_Response;
 final class SiteController
 {
     private readonly SiteRepository $repo;
+    private readonly Gate $gate;
 
-    public function __construct()
+    public function __construct(?Gate $gate = null)
     {
         $this->repo = new SiteRepository();
+        $this->gate = $gate ?? new Gate();
     }
 
     /**
@@ -45,6 +48,17 @@ final class SiteController
         $domain = (string) $req->get_param('domain');
         if ($domain === '') {
             return new WP_Error('invalid_payload', 'Domínio obrigatório.', ['status' => 422]);
+        }
+
+        // Whitelist faz parte do "navegador infantil seguro" (premium); blacklist
+        // continua livre porque é defesa básica que o Free tem direito.
+        $listType = (string) ($req->get_param('list_type') ?? 'whitelist');
+        if ($listType === 'whitelist' && ! $this->gate->can('browser')) {
+            return new WP_Error(
+                'plan_limit',
+                'Whitelist do navegador seguro é Premium. Use blacklist no plano Free.',
+                ['status' => 402],
+            );
         }
 
         $appliesTo = $req->get_param('applies_to');

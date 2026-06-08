@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace GuardKids\Api\Controllers;
 
 use GuardKids\Database\SafeZoneRepository;
+use GuardKids\License\Gate;
 use WP_Error;
 use WP_REST_Request;
 use WP_REST_Response;
@@ -18,10 +19,24 @@ use WP_REST_Response;
 final class SafeZoneController
 {
     private readonly SafeZoneRepository $repo;
+    private readonly Gate $gate;
 
-    public function __construct()
+    public function __construct(?Gate $gate = null)
     {
         $this->repo = new SafeZoneRepository();
+        $this->gate = $gate ?? new Gate();
+    }
+
+    private function denyIfFree(): ?WP_Error
+    {
+        if (! $this->gate->can('location')) {
+            return new WP_Error(
+                'plan_limit',
+                'Zonas Seguras dependem de Localização (feature Premium).',
+                ['status' => 402],
+            );
+        }
+        return null;
     }
 
     public function index(): WP_REST_Response
@@ -32,6 +47,10 @@ final class SafeZoneController
 
     public function create(WP_REST_Request $req): WP_REST_Response|WP_Error
     {
+        if (($denied = $this->denyIfFree()) !== null) {
+            return $denied;
+        }
+
         $data = $this->extractData($req);
         $id   = $this->repo->insert($data);
 
@@ -45,6 +64,10 @@ final class SafeZoneController
 
     public function update(WP_REST_Request $req): WP_REST_Response|WP_Error
     {
+        if (($denied = $this->denyIfFree()) !== null) {
+            return $denied;
+        }
+
         $id = (int) $req['id'];
         $existing = $this->repo->findById($id);
         if ($existing === null) {

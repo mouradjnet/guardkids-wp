@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace GuardKids\Tests\Unit\Api;
 
 use GuardKids\Api\Controllers\CategoryController;
+use GuardKids\Tests\Support\AlwaysAllowGate;
 use PHPUnit\Framework\TestCase;
 use WP_Error;
 use WP_REST_Request;
@@ -66,7 +67,7 @@ final class CategoryControllerTest extends TestCase
             2 => ['id' => 2, 'slug' => 'videos', 'name' => 'Videos', 'blocked' => 0],
         ];
 
-        $res = (new CategoryController())->index();
+        $res = (new CategoryController(new AlwaysAllowGate()))->index();
         self::assertInstanceOf(WP_REST_Response::class, $res);
         $data = $res->get_data();
         self::assertCount(2, $data);
@@ -82,7 +83,7 @@ final class CategoryControllerTest extends TestCase
         $req['id'] = 1;
         $req->set_param('blocked', true);
 
-        $res = (new CategoryController())->update($req);
+        $res = (new CategoryController(new AlwaysAllowGate()))->update($req);
         self::assertInstanceOf(WP_REST_Response::class, $res);
         self::assertTrue($res->get_data()['blocked']);
     }
@@ -93,7 +94,7 @@ final class CategoryControllerTest extends TestCase
         $req['id'] = 999;
         $req->set_param('blocked', false);
 
-        $res = (new CategoryController())->update($req);
+        $res = (new CategoryController(new AlwaysAllowGate()))->update($req);
         self::assertInstanceOf(WP_Error::class, $res);
         self::assertSame(404, $res->get_error_data()['status']);
     }
@@ -105,7 +106,7 @@ final class CategoryControllerTest extends TestCase
         $req = new WP_REST_Request('PATCH', '/categories/1');
         $req['id'] = 1;
 
-        $res = (new CategoryController())->update($req);
+        $res = (new CategoryController(new AlwaysAllowGate()))->update($req);
         self::assertInstanceOf(WP_Error::class, $res);
         self::assertSame(422, $res->get_error_data()['status']);
     }

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace GuardKids\Tests\Unit\Api;
 
 use GuardKids\Api\Controllers\SafeZoneController;
+use GuardKids\Tests\Support\AlwaysAllowGate;
 use PHPUnit\Framework\TestCase;
 use WP_Error;
 use WP_REST_Request;
@@ -91,7 +92,7 @@ final class SafeZoneControllerTest extends TestCase
         $req = $this->zoneRequest('POST', 'Casa', -8.0476, -34.8770, 100);
         $req->set_param('address', 'Rua X, 123');
 
-        $res = (new SafeZoneController())->create($req);
+        $res = (new SafeZoneController(new AlwaysAllowGate()))->create($req);
 
         self::assertInstanceOf(WP_REST_Response::class, $res);
         self::assertSame(201, $res->get_status());
@@ -105,7 +106,7 @@ final class SafeZoneControllerTest extends TestCase
     {
         $req = $this->zoneRequest('POST', 'Escola', -8.05, -34.88, 200);
         // sem address
-        $res = (new SafeZoneController())->create($req);
+        $res = (new SafeZoneController(new AlwaysAllowGate()))->create($req);
 
         self::assertInstanceOf(WP_REST_Response::class, $res);
         self::assertNull($res->get_data()['address']);
@@ -121,7 +122,7 @@ final class SafeZoneControllerTest extends TestCase
             ],
         ];
 
-        $res = (new SafeZoneController())->index();
+        $res = (new SafeZoneController(new AlwaysAllowGate()))->index();
         $data = $res->get_data();
 
         self::assertCount(1, $data);
@@ -143,7 +144,7 @@ final class SafeZoneControllerTest extends TestCase
         $req->set_param('id', 5);
         $req['id'] = 5;
 
-        $res = (new SafeZoneController())->update($req);
+        $res = (new SafeZoneController(new AlwaysAllowGate()))->update($req);
 
         self::assertInstanceOf(WP_REST_Response::class, $res);
         self::assertSame('Casa nova', $res->get_data()['name']);
@@ -155,7 +156,7 @@ final class SafeZoneControllerTest extends TestCase
         $req = $this->zoneRequest('PUT', 'X', 0, 0, 100);
         $req['id'] = 999;
 
-        $res = (new SafeZoneController())->update($req);
+        $res = (new SafeZoneController(new AlwaysAllowGate()))->update($req);
 
         self::assertInstanceOf(WP_Error::class, $res);
         self::assertSame(404, $res->get_error_data()['status']);
@@ -170,7 +171,7 @@ final class SafeZoneControllerTest extends TestCase
         $req = new WP_REST_Request('DELETE', '/safe-zones/5');
         $req['id'] = 5;
 
-        $res = (new SafeZoneController())->destroy($req);
+        $res = (new SafeZoneController(new AlwaysAllowGate()))->destroy($req);
 
         self::assertInstanceOf(WP_REST_Response::class, $res);
         self::assertSame(204, $res->get_status());
@@ -182,14 +183,14 @@ final class SafeZoneControllerTest extends TestCase
         $req = new WP_REST_Request('DELETE', '/safe-zones/99');
         $req['id'] = 99;
 
-        $res = (new SafeZoneController())->destroy($req);
+        $res = (new SafeZoneController(new AlwaysAllowGate()))->destroy($req);
         self::assertInstanceOf(WP_Error::class, $res);
         self::assertSame(404, $res->get_error_data()['status']);
     }
 
     public function testCreateArgsValidatesRadiusBounds(): void
     {
-        $args = (new SafeZoneController())->createArgs();
+        $args = (new SafeZoneController(new AlwaysAllowGate()))->createArgs();
         self::assertSame(10, $args['radius_meters']['minimum']);
         self::assertSame(5000, $args['radius_meters']['maximum']);
     }

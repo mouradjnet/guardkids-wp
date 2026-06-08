@@ -23,6 +23,19 @@ define('GUARDKIDS_FILE', __DIR__ . '/../guardkids.php');
 
 (new GuardKids\Autoloader())->register();
 
+// Autoload de helpers de teste (GuardKids\Tests\Support\…)
+spl_autoload_register(static function (string $class): void {
+    $prefix = 'GuardKids\\Tests\\Support\\';
+    if (! str_starts_with($class, $prefix)) {
+        return;
+    }
+    $relative = substr($class, strlen($prefix));
+    $file     = __DIR__ . '/Support/' . str_replace('\\', '/', $relative) . '.php';
+    if (is_readable($file)) {
+        require $file;
+    }
+});
+
 // --- Stubs mínimos das funções do WP que o código sob teste chama ---
 
 if (! function_exists('current_time')) {
