@@ -7,6 +7,7 @@ namespace GuardKids\Api;
 use GuardKids\Api\Controllers\CategoryController;
 use GuardKids\Api\Controllers\ChildController;
 use GuardKids\Api\Controllers\ChildSelfController;
+use GuardKids\Api\Controllers\LicenseController;
 use GuardKids\Api\Controllers\LocationController;
 use GuardKids\Api\Controllers\ReportsController;
 use GuardKids\Api\Controllers\RequestController;
@@ -41,6 +42,7 @@ final class RestApi
         $this->registerReportsRoutes();
         $this->registerLocationsRoutes();
         $this->registerSafeZonesRoutes();
+        $this->registerLicenseRoutes();
     }
 
     /**
@@ -275,6 +277,30 @@ final class RestApi
                 'child_id' => [
                     'type' => 'integer',
                 ],
+            ],
+        ]);
+    }
+
+    private function registerLicenseRoutes(): void
+    {
+        $controller = new LicenseController();
+
+        register_rest_route(self::NAMESPACE, '/license', [
+            [
+                'methods'             => \WP_REST_Server::READABLE,
+                'callback'            => [$controller, 'index'],
+                'permission_callback' => [self::class, 'requireManage'],
+            ],
+            [
+                'methods'             => \WP_REST_Server::CREATABLE,
+                'callback'            => [$controller, 'activate'],
+                'permission_callback' => [self::class, 'requireManage'],
+                'args'                => $controller->activateArgs(),
+            ],
+            [
+                'methods'             => \WP_REST_Server::DELETABLE,
+                'callback'            => [$controller, 'deactivate'],
+                'permission_callback' => [self::class, 'requireManage'],
             ],
         ]);
     }

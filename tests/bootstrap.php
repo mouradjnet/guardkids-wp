@@ -110,6 +110,17 @@ if (! function_exists('update_option')) {
     }
 }
 
+if (! function_exists('delete_option')) {
+    function delete_option(string $key): bool
+    {
+        if (! array_key_exists($key, $GLOBALS['gk_options'])) {
+            return false;
+        }
+        unset($GLOBALS['gk_options'][$key]);
+        return true;
+    }
+}
+
 // Setup mínimo de ABSPATH + stub do wp-admin/includes/upgrade.php que o
 // MigrationRunner faz require_once. dbDelta vira no-op nos testes.
 if (! defined('ABSPATH')) {
