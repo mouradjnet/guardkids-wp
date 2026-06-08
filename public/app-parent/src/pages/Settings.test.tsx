@@ -40,7 +40,7 @@ describe('Settings page', () => {
     updateSettingsMock.mockReset();
   });
 
-  it('renders all 4 sections', async () => {
+  it('renders all 6 sections', async () => {
     listSettingsMock.mockResolvedValue({});
     renderPage();
     expect(
@@ -48,7 +48,86 @@ describe('Settings page', () => {
     ).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: /^segurança$/i, level: 3 })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: /família/i, level: 3 })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /localização/i, level: 3 })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /premium/i, level: 3 })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: /privacidade/i, level: 3 })).toBeInTheDocument();
+  });
+
+  it('upgrade URL: input vazio quando bag não tem guardkids_upgrade_url', async () => {
+    listSettingsMock.mockResolvedValue({});
+    renderPage();
+    const input = await screen.findByLabelText(/link de upgrade/i);
+    expect(input).toHaveValue('');
+  });
+
+  it('upgrade URL: pré-preenche com valor do servidor', async () => {
+    listSettingsMock.mockResolvedValue({
+      guardkids_upgrade_url: 'https://comprar.exemplo.com/premium',
+    });
+    renderPage();
+    // O input remonta quando a query resolve (key force-reset) — re-busca dentro do waitFor
+    await waitFor(() => {
+      expect(screen.getByLabelText(/link de upgrade/i)).toHaveValue(
+        'https://comprar.exemplo.com/premium',
+      );
+    });
+  });
+
+  it('upgrade URL: botão Salvar desabilitado quando valor não mudou', async () => {
+    listSettingsMock.mockResolvedValue({
+      guardkids_upgrade_url: 'https://x.com',
+    });
+    renderPage();
+    await screen.findByLabelText(/link de upgrade/i);
+    const button = await screen.findByRole('button', { name: /salvar/i });
+    expect(button).toBeDisabled();
+  });
+
+  it('upgrade URL: submit chama updateSettings com valor trim()ado', async () => {
+    listSettingsMock.mockResolvedValue({});
+    updateSettingsMock.mockResolvedValue({
+      guardkids_upgrade_url: 'https://novo.com',
+    });
+    const user = userEvent.setup();
+    renderPage();
+    // Espera query resolver pra evitar re-mount do form via `key`
+    await waitFor(() => expect(listSettingsMock).toHaveBeenCalled());
+    await screen.findByText(/notificações push/i);
+
+    const input = screen.getByLabelText(/link de upgrade/i);
+    await user.type(input, '  https://novo.com  ');
+    await user.click(screen.getByRole('button', { name: /salvar/i }));
+
+    await waitFor(() => {
+      expect(updateSettingsMock).toHaveBeenCalledWith(
+        { guardkids_upgrade_url: 'https://novo.com' },
+        expect.anything(),
+      );
+    });
+  });
+
+  it('upgrade URL: submit com valor vazio limpa a setting (envia string vazia)', async () => {
+    listSettingsMock.mockResolvedValue({
+      guardkids_upgrade_url: 'https://antigo.com',
+    });
+    updateSettingsMock.mockResolvedValue({ guardkids_upgrade_url: '' });
+    const user = userEvent.setup();
+    renderPage();
+    await waitFor(() =>
+      expect(screen.getByLabelText(/link de upgrade/i)).toHaveValue(
+        'https://antigo.com',
+      ),
+    );
+
+    await user.clear(screen.getByLabelText(/link de upgrade/i));
+    await user.click(screen.getByRole('button', { name: /salvar/i }));
+
+    await waitFor(() => {
+      expect(updateSettingsMock).toHaveBeenCalledWith(
+        { guardkids_upgrade_url: '' },
+        expect.anything(),
+      );
+    });
   });
 
   it('uses fallback values when settings bag is empty', async () => {

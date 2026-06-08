@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import type { ReactNode } from 'react';
+import { useState, type FormEvent, type ReactNode } from 'react';
 import { ApiError } from '../api/client';
 import { listSettings, updateSettings, type SettingsBag } from '../api/settings';
 import { Icon } from '../components/Icon';
@@ -163,6 +163,20 @@ export function Settings() {
       </Section>
 
       <Section
+        icon="workspace_premium"
+        iconTone="primary"
+        title="Premium"
+        subtitle="Configurações relacionadas à licença e upgrade"
+      >
+        <UpgradeUrlRow
+          currentValue={typeof bag.guardkids_upgrade_url === 'string' ? bag.guardkids_upgrade_url : ''}
+          loading={settingsQuery.isLoading}
+          saving={mutation.isPending}
+          onSave={(value) => mutation.mutate({ guardkids_upgrade_url: value })}
+        />
+      </Section>
+
+      <Section
         icon="policy"
         iconTone="primary"
         title="Privacidade"
@@ -191,6 +205,91 @@ export function Settings() {
         />
       </Section>
     </main>
+  );
+}
+
+function UpgradeUrlRow({
+  currentValue,
+  loading,
+  saving,
+  onSave,
+}: {
+  currentValue: string;
+  loading: boolean;
+  saving: boolean;
+  onSave: (value: string) => void;
+}) {
+  // `key` no input força reset quando o server value muda externamente
+  // (ex.: mutation success). Mantém UX simples sem useEffect.
+  return (
+    <UpgradeUrlForm
+      key={currentValue}
+      initialValue={currentValue}
+      loading={loading}
+      saving={saving}
+      onSave={onSave}
+    />
+  );
+}
+
+function UpgradeUrlForm({
+  initialValue,
+  loading,
+  saving,
+  onSave,
+}: {
+  initialValue: string;
+  loading: boolean;
+  saving: boolean;
+  onSave: (value: string) => void;
+}) {
+  const [value, setValue] = useState(initialValue);
+
+  function submit(e: FormEvent) {
+    e.preventDefault();
+    const trimmed = value.trim();
+    if (trimmed === initialValue) return;
+    onSave(trimmed);
+  }
+
+  const isDirty = value.trim() !== initialValue;
+
+  return (
+    <form
+      onSubmit={submit}
+      className="flex flex-col gap-2 rounded-xl border border-outline-variant bg-surface-container-low p-4"
+    >
+      <label className="block">
+        <span className="text-label-md font-bold text-on-surface">
+          Link de upgrade
+        </span>
+        <p className="mt-0.5 text-label-sm text-on-surface-variant">
+          URL que abre quando o usuário clica em "Fazer upgrade" no painel.
+          Deixe em branco pra ocultar o botão até você configurar.
+        </p>
+        <input
+          type="url"
+          value={value}
+          onChange={(e) => setValue(e.target.value)}
+          placeholder="https://comprar.exemplo.com/premium"
+          disabled={loading}
+          aria-label="Link de upgrade"
+          className="mt-2 w-full rounded-xl border border-outline-variant bg-surface px-4 py-3 text-label-md text-on-surface placeholder:text-on-surface-variant focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30"
+        />
+      </label>
+      <button
+        type="submit"
+        disabled={!isDirty || saving || loading}
+        className="inline-flex items-center justify-center gap-2 self-end rounded-xl bg-primary px-5 py-2.5 text-label-md font-bold text-white shadow-sm transition-colors hover:bg-primary-container disabled:cursor-not-allowed disabled:opacity-50"
+      >
+        <Icon
+          name={saving ? 'progress_activity' : 'save'}
+          className={`text-sm ${saving ? 'animate-spin' : ''}`}
+          filled={!saving}
+        />
+        {saving ? 'Salvando…' : 'Salvar'}
+      </button>
+    </form>
   );
 }
 
