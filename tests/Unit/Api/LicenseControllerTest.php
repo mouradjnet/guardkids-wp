@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace GuardKids\Tests\Unit\Api;
 
 use GuardKids\Api\Controllers\LicenseController;
+use GuardKids\Database\SettingsRepository;
 use GuardKids\License\Gate;
 use GuardKids\License\Verifier;
 use PHPUnit\Framework\TestCase;
@@ -26,6 +27,8 @@ final class LicenseControllerTest extends TestCase
         ];
         $GLOBALS['gk_options']            = [];
         $GLOBALS['gk_options']['siteurl'] = 'https://example.test';
+        // SettingsRepository default: wpdb stub vazio (get_var → null → cai no $default)
+        $GLOBALS['wpdb'] = new \wpdb();
     }
 
     public function testIndexReturnsNoneSnapshotWithoutLicense(): void
@@ -46,9 +49,9 @@ final class LicenseControllerTest extends TestCase
 
     public function testIndexReturnsUpgradeUrlWhenSettingPresent(): void
     {
-        $GLOBALS['gk_options']['guardkids_upgrade_url'] = 'https://comprar.exemplo.com/premium';
+        $settings = $this->settingsWith(['upgrade_url' => 'https://comprar.exemplo.com/premium']);
 
-        $res = $this->controller()->index();
+        $res = $this->controller($settings)->index();
         self::assertSame(
             'https://comprar.exemplo.com/premium',
             $res->get_data()['upgradeUrl'],
@@ -184,11 +187,46 @@ final class LicenseControllerTest extends TestCase
         self::assertSame('none', $res->get_data()['status']);
     }
 
-    private function controller(): LicenseController
+    private function controller(?SettingsRepository $settings = null): LicenseController
     {
         $verifier = new Verifier(base64_encode($this->keys['pubkey']));
         $gate     = new Gate($verifier);
-        return new LicenseController($gate, $verifier);
+        return new LicenseController($gate, $verifier, $settings);
+    }
+
+    /**
+     * Cria SettingsRepository real apoiado num wpdb stub in-memory.
+     * Segue o padrão de SettingsRepositoryTest (SettingsRepository é final, então
+     * stubamos pela camada de baixo).
+     *
+     * @param array<string, mixed> $values
+     */
+    private function settingsWith(array $values): SettingsRepository
+    {
+        $jsonValues = [];
+        foreach ($values as $k => $v) {
+            $jsonValues[$k] = (string) json_encode($v);
+        }
+        $GLOBALS['wpdb'] = new class ($jsonValues) extends \wpdb {
+            private ?string $lastKey = null;
+
+            /** @param array<string, string> $values key → JSON-encoded value */
+            public function __construct(private array $values)
+            {
+            }
+
+            public function prepare($query, ...$args)
+            {
+                $this->lastKey = isset($args[0]) ? (string) $args[0] : null;
+                return $query;
+            }
+
+            public function get_var($sql, $x = 0, $y = 0)
+            {
+                return $this->values[$this->lastKey ?? ''] ?? null;
+            }
+        };
+        return new SettingsRepository();
     }
 
     /**

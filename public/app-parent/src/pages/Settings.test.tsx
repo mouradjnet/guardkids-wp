@@ -53,7 +53,7 @@ describe('Settings page', () => {
     expect(screen.getByRole('heading', { name: /privacidade/i, level: 3 })).toBeInTheDocument();
   });
 
-  it('upgrade URL: input vazio quando bag não tem guardkids_upgrade_url', async () => {
+  it('upgrade URL: input vazio quando bag não tem upgrade_url', async () => {
     listSettingsMock.mockResolvedValue({});
     renderPage();
     const input = await screen.findByLabelText(/link de upgrade/i);
@@ -62,7 +62,7 @@ describe('Settings page', () => {
 
   it('upgrade URL: pré-preenche com valor do servidor', async () => {
     listSettingsMock.mockResolvedValue({
-      guardkids_upgrade_url: 'https://comprar.exemplo.com/premium',
+      upgrade_url: 'https://comprar.exemplo.com/premium',
     });
     renderPage();
     // O input remonta quando a query resolve (key force-reset) — re-busca dentro do waitFor
@@ -75,7 +75,7 @@ describe('Settings page', () => {
 
   it('upgrade URL: botão Salvar desabilitado quando valor não mudou', async () => {
     listSettingsMock.mockResolvedValue({
-      guardkids_upgrade_url: 'https://x.com',
+      upgrade_url: 'https://x.com',
     });
     renderPage();
     await screen.findByLabelText(/link de upgrade/i);
@@ -86,7 +86,7 @@ describe('Settings page', () => {
   it('upgrade URL: submit chama updateSettings com valor trim()ado', async () => {
     listSettingsMock.mockResolvedValue({});
     updateSettingsMock.mockResolvedValue({
-      guardkids_upgrade_url: 'https://novo.com',
+      upgrade_url: 'https://novo.com',
     });
     const user = userEvent.setup();
     renderPage();
@@ -100,7 +100,7 @@ describe('Settings page', () => {
 
     await waitFor(() => {
       expect(updateSettingsMock).toHaveBeenCalledWith(
-        { guardkids_upgrade_url: 'https://novo.com' },
+        { upgrade_url: 'https://novo.com' },
         expect.anything(),
       );
     });
@@ -108,9 +108,9 @@ describe('Settings page', () => {
 
   it('upgrade URL: submit com valor vazio limpa a setting (envia string vazia)', async () => {
     listSettingsMock.mockResolvedValue({
-      guardkids_upgrade_url: 'https://antigo.com',
+      upgrade_url: 'https://antigo.com',
     });
-    updateSettingsMock.mockResolvedValue({ guardkids_upgrade_url: '' });
+    updateSettingsMock.mockResolvedValue({ upgrade_url: '' });
     const user = userEvent.setup();
     renderPage();
     await waitFor(() =>
@@ -124,7 +124,7 @@ describe('Settings page', () => {
 
     await waitFor(() => {
       expect(updateSettingsMock).toHaveBeenCalledWith(
-        { guardkids_upgrade_url: '' },
+        { upgrade_url: '' },
         expect.anything(),
       );
     });

@@ -169,10 +169,10 @@ export function Settings() {
         subtitle="Configurações relacionadas à licença e upgrade"
       >
         <UpgradeUrlRow
-          currentValue={typeof bag.guardkids_upgrade_url === 'string' ? bag.guardkids_upgrade_url : ''}
+          currentValue={typeof bag.upgrade_url === 'string' ? bag.upgrade_url : ''}
           loading={settingsQuery.isLoading}
           saving={mutation.isPending}
-          onSave={(value) => mutation.mutate({ guardkids_upgrade_url: value })}
+          onSave={(value) => mutation.mutate({ upgrade_url: value })}
         />
       </Section>
 

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace GuardKids\Api\Controllers;
 
+use GuardKids\Database\SettingsRepository;
 use GuardKids\License\Gate;
 use GuardKids\License\Payload;
 use GuardKids\License\Verifier;
@@ -22,11 +23,16 @@ final class LicenseController
 {
     private readonly Gate $gate;
     private readonly Verifier $verifier;
+    private readonly SettingsRepository $settings;
 
-    public function __construct(?Gate $gate = null, ?Verifier $verifier = null)
-    {
+    public function __construct(
+        ?Gate $gate = null,
+        ?Verifier $verifier = null,
+        ?SettingsRepository $settings = null,
+    ) {
         $this->verifier = $verifier ?? new Verifier();
         $this->gate     = $gate ?? new Gate($this->verifier);
+        $this->settings = $settings ?? new SettingsRepository();
     }
 
     public function index(): WP_REST_Response
@@ -132,7 +138,10 @@ final class LicenseController
 
     private function readUpgradeUrl(): ?string
     {
-        $url = get_option('guardkids_upgrade_url', '');
+        // Vive na tabela do plugin (wp_guardkids_settings) — mesmo lugar das
+        // outras settings (location_enabled, notifications.*). Settings.tsx
+        // escreve via PATCH /settings, esse método lê.
+        $url = $this->settings->get('upgrade_url', '');
         return \is_string($url) && $url !== '' ? $url : null;
     }
 
