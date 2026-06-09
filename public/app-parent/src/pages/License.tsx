@@ -28,7 +28,10 @@ export function License() {
 
   function submit(e: FormEvent) {
     e.preventDefault();
-    const key = keyInput.trim();
+    // Tira QUALQUER whitespace (incluindo newlines internas). Sem isso o WP
+    // `sanitize_text_field` converte quebras em espaço, destruindo o base64url
+    // e fazendo a verificação Ed25519 falhar — bug visto em smoke 2026-06-09.
+    const key = keyInput.replace(/\s+/g, '');
     if (key === '') return;
     activate.mutate(key);
   }

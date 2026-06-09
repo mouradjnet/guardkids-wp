@@ -138,6 +138,24 @@ describe('License page', () => {
     });
   });
 
+  it('submit limpa whitespace interno (newlines/tabs) antes de ativar', async () => {
+    // Bug do smoke 2026-06-09: paste de chave com quebras visuais quebrava o
+    // base64url no backend porque sanitize_text_field convertia em espaço.
+    getLicenseMock.mockResolvedValueOnce(FREE_NONE);
+    activateLicenseMock.mockResolvedValueOnce(ACTIVE_SNAPSHOT);
+    renderInClient(<License />);
+    await screen.findByTestId('license-hero');
+
+    fireEvent.change(screen.getByLabelText(/chave de licença/i), {
+      target: { value: '  abc.\n\ndef\tghi  ' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: /ativar licença/i }));
+
+    await waitFor(() => {
+      expect(activateLicenseMock).toHaveBeenCalledWith('abc.defghi');
+    });
+  });
+
   it('exibe erro do backend quando activate falha', async () => {
     getLicenseMock.mockResolvedValueOnce(FREE_NONE);
     activateLicenseMock.mockRejectedValueOnce(
