@@ -1,3 +1,11 @@
+export type ScheduleReason = 'bedtime' | 'weekday';
+
+export type ChildSchedule = {
+  isBlocked: boolean;
+  reason: ScheduleReason | null;
+  unlockAt: string | null;
+};
+
 export type Child = {
   id: number;
   slug: string;
@@ -8,6 +16,7 @@ export type Child = {
   status: 'online' | 'offline';
   usedMinutes: number;
   limitMinutes: number;
+  schedule?: ChildSchedule;
 };
 
 export type MyRequestStatus = 'pending' | 'approved' | 'denied';
