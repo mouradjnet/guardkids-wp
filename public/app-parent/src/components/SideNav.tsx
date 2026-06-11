@@ -1,6 +1,8 @@
 import { Icon } from './Icon';
 import { Logo } from './Logo';
 import { navItems, type PageId } from '../data/mockData';
+import { useCurrentRole } from '../hooks/useCurrentRole';
+import { canAccessPage } from '../lib/roleAccess';
 
 type SideNavProps = {
   activePage: PageId;
@@ -8,6 +10,9 @@ type SideNavProps = {
 };
 
 export function SideNav({ activePage, onNavigate }: SideNavProps) {
+  const { role, name, isCollaborator } = useCurrentRole();
+  const visibleItems = navItems.filter((item) => canAccessPage(role, item.id));
+
   return (
     <aside className="fixed left-0 top-0 z-50 hidden h-screen w-64 flex-col border-r border-outline-variant bg-surface shadow-sm md:flex">
       <div className="flex h-full flex-col py-stack-lg">
@@ -26,14 +31,16 @@ export function SideNav({ activePage, onNavigate }: SideNavProps) {
           </div>
           <div>
             <div className="font-sans text-label-md font-semibold text-on-surface">
-              Parent Admin
+              {name || 'Parent Admin'}
             </div>
-            <div className="text-label-sm text-on-surface-variant">Controle Parental</div>
+            <div className="text-label-sm text-on-surface-variant">
+              {isCollaborator ? 'Colaborador' : 'Controle Parental'}
+            </div>
           </div>
         </div>
 
         <nav className="flex-1 space-y-2 px-4">
-          {navItems.map((item) => {
+          {visibleItems.map((item) => {
             const isActive = activePage === item.id;
             const badge = 'badge' in item ? item.badge : undefined;
             return (
@@ -59,16 +66,18 @@ export function SideNav({ activePage, onNavigate }: SideNavProps) {
           })}
         </nav>
 
-        <div className="mt-auto mb-6 px-6">
-          <button
-            type="button"
-            onClick={() => onNavigate('children')}
-            className="flex w-full items-center justify-center gap-2 rounded-full bg-primary-container px-4 py-3 text-label-md font-semibold text-on-primary-container transition-colors hover:bg-surface-tint hover:text-white"
-          >
-            <Icon name="add" className="text-lg" />
-            Adicionar Novo Filho
-          </button>
-        </div>
+        {!isCollaborator && (
+          <div className="mt-auto mb-6 px-6">
+            <button
+              type="button"
+              onClick={() => onNavigate('children')}
+              className="flex w-full items-center justify-center gap-2 rounded-full bg-primary-container px-4 py-3 text-label-md font-semibold text-on-primary-container transition-colors hover:bg-surface-tint hover:text-white"
+            >
+              <Icon name="add" className="text-lg" />
+              Adicionar Novo Filho
+            </button>
+          </div>
+        )}
 
         <div className="space-y-2 border-t border-outline-variant px-6 pt-4">
           <a
