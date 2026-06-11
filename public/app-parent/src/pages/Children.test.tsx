@@ -2,18 +2,36 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { ReactNode } from 'react';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Child } from '../api/types';
 
-const { listChildrenMock, createChildMock, pairMock } = vi.hoisted(() => ({
+const {
+  listChildrenMock,
+  createChildMock,
+  updateChildMock,
+  pauseChildMock,
+  resumeChildMock,
+  deleteChildMock,
+  uploadAvatarMock,
+  pairMock,
+} = vi.hoisted(() => ({
   listChildrenMock: vi.fn(),
   createChildMock: vi.fn(),
+  updateChildMock: vi.fn(),
+  pauseChildMock: vi.fn(),
+  resumeChildMock: vi.fn(),
+  deleteChildMock: vi.fn(),
+  uploadAvatarMock: vi.fn(),
   pairMock: vi.fn(),
 }));
 vi.mock('../api/children', () => ({
   listChildren: listChildrenMock,
   createChild: createChildMock,
-  updateChild: vi.fn(),
+  updateChild: updateChildMock,
+  pauseChild: pauseChildMock,
+  resumeChild: resumeChildMock,
+  deleteChild: deleteChildMock,
+  uploadAvatar: uploadAvatarMock,
   pairChildDevice: pairMock,
 }));
 
@@ -43,6 +61,14 @@ const paloma: Child = {
   device: null,
 };
 
+const pausedKid: Child = {
+  ...lucas,
+  id: 3,
+  slug: 'thiago',
+  name: 'Thiago',
+  status: 'paused',
+};
+
 function renderPage() {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   const wrapper = ({ children }: { children: ReactNode }) => (
@@ -55,6 +81,11 @@ describe('Children page', () => {
   beforeEach(() => {
     listChildrenMock.mockReset();
     createChildMock.mockReset();
+    updateChildMock.mockReset();
+    pauseChildMock.mockReset();
+    resumeChildMock.mockReset();
+    deleteChildMock.mockReset();
+    uploadAvatarMock.mockReset();
     pairMock.mockReset();
   });
 
@@ -70,7 +101,6 @@ describe('Children page', () => {
 
     expect(await screen.findByText('Lucas')).toBeInTheDocument();
     expect(screen.getByText('Paloma')).toBeInTheDocument();
-    // status badges
     expect(screen.getByText(/online agora/i)).toBeInTheDocument();
     expect(screen.getByText(/^offline$/i)).toBeInTheDocument();
   });
@@ -86,7 +116,6 @@ describe('Children page', () => {
     listChildrenMock.mockResolvedValue([]);
     renderPage();
 
-    // só o placeholder dashboard placeholder card aparece
     expect(await screen.findAllByText(/adicionar novo filho/i)).not.toHaveLength(0);
   });
 
@@ -96,7 +125,6 @@ describe('Children page', () => {
     renderPage();
 
     await screen.findByText('Lucas');
-    // Clicar no botão do header (não no card placeholder)
     const headerBtn = screen.getAllByRole('button', { name: /adicionar novo filho/i })[0];
     await user.click(headerBtn);
 
@@ -120,7 +148,6 @@ describe('Children page', () => {
     renderPage();
 
     await screen.findByText('Lucas');
-    // "L" deve aparecer no fallback do avatar
     expect(screen.getByText('L', { selector: 'div' })).toBeInTheDocument();
   });
 
@@ -138,5 +165,115 @@ describe('Children page', () => {
     await waitFor(() => {
       expect(screen.getByText(/idade não informada/i)).toBeInTheDocument();
     });
+  });
+
+  it('opens edit dialog with child name pre-filled when clicking Editar button', async () => {
+    listChildrenMock.mockResolvedValue([lucas]);
+    const user = userEvent.setup();
+    renderPage();
+
+    await screen.findByText('Lucas');
+    const editBtn = screen.getByRole('button', { name: /^editar$/i });
+    await user.click(editBtn);
+
+    expect(screen.getByRole('dialog', { name: /editar lucas/i })).toBeInTheDocument();
+    expect(screen.getByDisplayValue('Lucas')).toBeInTheDocument();
+  });
+
+  it('calls pauseChild when clicking Pausar', async () => {
+    listChildrenMock.mockResolvedValue([lucas]);
+    pauseChildMock.mockResolvedValue({ ...lucas, status: 'paused' });
+    const user = userEvent.setup();
+    renderPage();
+
+    await screen.findByText('Lucas');
+    const pauseBtn = screen.getByRole('button', { name: /^pausar$/i });
+    await user.click(pauseBtn);
+
+    await waitFor(() => expect(pauseChildMock).toHaveBeenCalledWith(1));
+  });
+
+  it('shows Retomar and calls resumeChild when child is paused', async () => {
+    listChildrenMock.mockResolvedValue([pausedKid]);
+    resumeChildMock.mockResolvedValue({ ...pausedKid, status: 'offline' });
+    const user = userEvent.setup();
+    renderPage();
+
+    await screen.findByText('Thiago');
+    expect(screen.getByText(/^pausado$/i)).toBeInTheDocument();
+    const resumeBtn = screen.getByRole('button', { name: /^retomar$/i });
+    await user.click(resumeBtn);
+
+    await waitFor(() => expect(resumeChildMock).toHaveBeenCalledWith(3));
+    expect(pauseChildMock).not.toHaveBeenCalled();
+  });
+
+  it('opens the 3-dots menu with 4 items', async () => {
+    listChildrenMock.mockResolvedValue([lucas]);
+    const user = userEvent.setup();
+    renderPage();
+
+    await screen.findByText('Lucas');
+    const moreBtn = screen.getByRole('button', { name: /mais ações/i });
+    await user.click(moreBtn);
+
+    const menu = screen.getByRole('menu');
+    const items = menu.querySelectorAll('[role="menuitem"]');
+    expect(items).toHaveLength(4);
+  });
+
+  it('confirms before deleting and calls deleteChild', async () => {
+    listChildrenMock.mockResolvedValue([lucas]);
+    deleteChildMock.mockResolvedValue({ deleted: true, id: 1 });
+    const user = userEvent.setup();
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
+    renderPage();
+
+    await screen.findByText('Lucas');
+    await user.click(screen.getByRole('button', { name: /mais ações/i }));
+    await user.click(screen.getByRole('menuitem', { name: /excluir/i }));
+
+    expect(confirmSpy).toHaveBeenCalled();
+    await waitFor(() => expect(deleteChildMock).toHaveBeenCalledWith(1));
+    confirmSpy.mockRestore();
+  });
+
+  it('does not call deleteChild when confirm is canceled', async () => {
+    listChildrenMock.mockResolvedValue([lucas]);
+    const user = userEvent.setup();
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(false);
+    renderPage();
+
+    await screen.findByText('Lucas');
+    await user.click(screen.getByRole('button', { name: /mais ações/i }));
+    await user.click(screen.getByRole('menuitem', { name: /excluir/i }));
+
+    expect(confirmSpy).toHaveBeenCalled();
+    expect(deleteChildMock).not.toHaveBeenCalled();
+    confirmSpy.mockRestore();
+  });
+
+  it('uploads avatar and updates child when avatar button is clicked', async () => {
+    listChildrenMock.mockResolvedValue([lucas]);
+    uploadAvatarMock.mockResolvedValue('https://cdn/example.jpg');
+    updateChildMock.mockResolvedValue({ ...lucas, avatarUrl: 'https://cdn/example.jpg' });
+    const user = userEvent.setup();
+    renderPage();
+
+    await screen.findByText('Lucas');
+    const avatarBtn = screen.getByRole('button', { name: /trocar foto/i });
+    const input = avatarBtn.parentElement?.querySelector('input[type="file"]') as HTMLInputElement;
+    expect(input).toBeTruthy();
+    const file = new File(['x'], 'avatar.png', { type: 'image/png' });
+    await user.upload(input, file);
+
+    await waitFor(() => expect(uploadAvatarMock).toHaveBeenCalledWith(file));
+    await waitFor(() =>
+      expect(updateChildMock).toHaveBeenCalledWith(1, { avatar_url: 'https://cdn/example.jpg' }),
+    );
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
   });
 });
