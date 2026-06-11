@@ -83,4 +83,14 @@ final class GuardianRepositoryTest extends TestCase
         $sql = (string) $this->wpdb->log[0]['sql'];
         self::assertStringContainsString("role = 'admin'", $sql);
     }
+
+    public function testFindByInviteTokenHashFiltersByInviteTokenColumn(): void
+    {
+        $this->wpdb->rows = [['id' => 9, 'invite_token' => 'abc']];
+        $row = (new GuardianRepository())->findByInviteTokenHash('abc');
+
+        self::assertIsArray($row);
+        $sql = (string) $this->wpdb->log[0]['sql'];
+        self::assertStringContainsString("invite_token = 'abc'", $sql);
+    }
 }
