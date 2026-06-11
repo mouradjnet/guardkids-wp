@@ -208,6 +208,28 @@ final class ChildController
         return rest_ensure_response(['deleted' => true, 'id' => $id]);
     }
 
+    public function pause(WP_REST_Request $req): WP_REST_Response|WP_Error
+    {
+        return $this->setStatus((int) $req['id'], 'paused');
+    }
+
+    public function resume(WP_REST_Request $req): WP_REST_Response|WP_Error
+    {
+        return $this->setStatus((int) $req['id'], 'offline');
+    }
+
+    private function setStatus(int $id, string $status): WP_REST_Response|WP_Error
+    {
+        $row = $this->repo->findById($id);
+        if ($row === null) {
+            return new WP_Error('not_found', 'Filho não encontrado.', ['status' => 404]);
+        }
+        if (! $this->repo->update($id, ['status' => $status])) {
+            return new WP_Error('db_error', 'Falha ao atualizar.', ['status' => 500]);
+        }
+        return rest_ensure_response($this->toJson($this->repo->findById($id) ?? []));
+    }
+
     public function issueDeviceToken(WP_REST_Request $req): WP_REST_Response|WP_Error
     {
         $id   = (int) $req['id'];
