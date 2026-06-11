@@ -6,7 +6,7 @@
 [![codecov](https://codecov.io/gh/mouradjnet/guardkids-wp/branch/master/graph/badge.svg)](https://codecov.io/gh/mouradjnet/guardkids-wp)
 [![PHP 8.1+](https://img.shields.io/badge/PHP-8.1%2B-777BB4?logo=php&logoColor=white)](composer.json)
 [![WordPress 6.4+](https://img.shields.io/badge/WordPress-6.4%2B-21759B?logo=wordpress&logoColor=white)](guardkids.php)
-[![Tests](https://img.shields.io/badge/tests-696%20passing-brightgreen)](#testes)
+[![Tests](https://img.shields.io/badge/tests-698%20passing-brightgreen)](#testes)
 [![License: GPL-2.0+](https://img.shields.io/badge/license-GPL--2.0%2B-blue)](#licença)
 
 ## Visão geral
@@ -132,7 +132,7 @@ Para integração REST funcionar fora de produção, copie `public/app-parent/.e
 
 ## Testes
 
-**PHPUnit (218 tests):**
+**PHPUnit (219 tests):**
 
 ```powershell
 & $php -d extension_dir="$(Split-Path $php)\ext" `
@@ -142,7 +142,7 @@ Para integração REST funcionar fora de produção, copie `public/app-parent/.e
 
 Cobre Repository base + subclasses (Child, Request, Site, Category, Settings, UsageEvent, Location, SafeZone, Guardian), ChildAuth + GuardianAuth (resolve role efetiva), MigrationRunner (idempotência + ordem), RestHeaders (escopo de namespace), Schedule (ScheduleEvaluator), License (Verifier Ed25519 + Gate + gating em controllers) e os controllers REST (inclui MeController).
 
-**PHPUnit Integration (MySQL real, 178 tests):**
+**PHPUnit Integration (MySQL real, 179 tests):**
 
 ```powershell
 # 1) sobe MySQL 8 em :3307 (porta dedicada, nao colide com LocalWP)
@@ -181,7 +181,7 @@ Documentação detalhada em [`docs/superpowers/`](docs/superpowers/):
 - [Design atual](docs/superpowers/specs/2026-05-21-guardkids-wp-fundacao-design.md) — schema, autenticação, REST endpoints, segurança.
 - [Plano de implementação](docs/superpowers/plans/2026-05-21-guardkids-wp-fundacao-plan.md) — fases entregues + próximos passos.
 
-Fundação completa: schema, autenticação dupla (parent + child), 11 controllers REST + endpoint `/me`, License premium (Ed25519), Schedule (bedtime/weekday), Reports, Localização (Locations + SafeZones), gestão de Guardiões da família (admin/colaborador + lazy-seed do current user), permissões por role (admin vê tudo; collaborator só Painel + Aprovações), full suite de testes (696 testes — unit + integration + vitest).
+Fundação completa: schema, autenticação dupla (parent + child), 11 controllers REST + endpoint `/me`, License premium (Ed25519), Schedule (bedtime/weekday), Reports, Localização (Locations + SafeZones), gestão de Guardiões da família (admin/colaborador + lazy-seed do current user), permissões por role (admin vê tudo; collaborator só Painel + Aprovações), full suite de testes (698 testes — unit + integration + vitest).
 
 ## Licença
 
