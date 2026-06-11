@@ -13,6 +13,7 @@
             <exclude>tests/Integration/Support</exclude>
             <exclude>tests/Integration/bootstrap.php</exclude>
             <exclude>tests/Integration/IntegrationTestCase.php</exclude>
+            <exclude>tests/Integration/ControllerIntegrationTestCase.php</exclude>
         </testsuite>
     </testsuites>
     <php>

@@ -36,6 +36,19 @@ spl_autoload_register(static function (string $class): void {
     }
 });
 
+// Autoload de helpers compartilhados com unit (GuardKids\Tests\Support\…)
+spl_autoload_register(static function (string $class): void {
+    $prefix = 'GuardKids\\Tests\\Support\\';
+    if (! str_starts_with($class, $prefix)) {
+        return;
+    }
+    $relative = substr($class, strlen($prefix));
+    $file     = dirname(__DIR__) . '/Support/' . str_replace('\\', '/', $relative) . '.php';
+    if (is_readable($file)) {
+        require $file;
+    }
+});
+
 // --- WP function stubs (devem ficar em sincronia com tests/bootstrap.php) ---
 
 if (! function_exists('current_time')) {
@@ -121,6 +134,185 @@ if (! function_exists('delete_option')) {
 if (! defined('OBJECT')) define('OBJECT', 'OBJECT');
 if (! defined('ARRAY_A')) define('ARRAY_A', 'ARRAY_A');
 if (! defined('ARRAY_N')) define('ARRAY_N', 'ARRAY_N');
+
+// --- Stubs REST necessarios pra controller integration tests ---
+
+if (! class_exists('WP_REST_Request')) {
+    class WP_REST_Request implements ArrayAccess
+    {
+        /** @var array<string, string> */
+        private array $headers = [];
+        /** @var array<string, mixed> */
+        private array $params = [];
+        /** @var mixed */
+        private $jsonBody = null;
+
+        public function __construct(private string $method = '', private string $route = '')
+        {
+        }
+
+        public function set_header(string $key, string $value): void
+        {
+            $this->headers[strtolower(str_replace('-', '_', $key))] = $value;
+        }
+
+        public function get_header(string $key): string
+        {
+            $normalized = strtolower(str_replace('-', '_', $key));
+            return $this->headers[$normalized] ?? '';
+        }
+
+        public function get_route(): string
+        {
+            return $this->route;
+        }
+
+        public function get_method(): string
+        {
+            return $this->method;
+        }
+
+        public function set_param(string $key, mixed $value): void
+        {
+            $this->params[$key] = $value;
+        }
+
+        public function get_param(string $key): mixed
+        {
+            return $this->params[$key] ?? null;
+        }
+
+        public function set_json_params(array $body): void
+        {
+            $this->jsonBody = $body;
+        }
+
+        public function get_json_params(): mixed
+        {
+            return $this->jsonBody;
+        }
+
+        public function offsetExists(mixed $offset): bool
+        {
+            return isset($this->params[$offset]);
+        }
+
+        public function offsetGet(mixed $offset): mixed
+        {
+            return $this->params[$offset] ?? null;
+        }
+
+        public function offsetSet(mixed $offset, mixed $value): void
+        {
+            $this->params[(string) $offset] = $value;
+        }
+
+        public function offsetUnset(mixed $offset): void
+        {
+            unset($this->params[$offset]);
+        }
+    }
+}
+
+if (! class_exists('WP_Error')) {
+    class WP_Error
+    {
+        public string $code;
+        public string $message;
+        /** @var array<string, mixed> */
+        public array $data;
+
+        public function __construct(string $code = '', string $message = '', array $data = [])
+        {
+            $this->code = $code;
+            $this->message = $message;
+            $this->data = $data;
+        }
+
+        public function get_error_code(): string
+        {
+            return $this->code;
+        }
+
+        public function get_error_message(): string
+        {
+            return $this->message;
+        }
+
+        public function get_error_data(): array
+        {
+            return $this->data;
+        }
+    }
+}
+
+if (! class_exists('WP_REST_Response')) {
+    class WP_REST_Response
+    {
+        public mixed $data;
+        public int $status;
+        /** @var array<string, string> */
+        public array $headers = [];
+
+        public function __construct(mixed $data = null, int $status = 200)
+        {
+            $this->data = $data;
+            $this->status = $status;
+        }
+
+        public function header(string $name, string $value): void
+        {
+            $this->headers[$name] = $value;
+        }
+
+        public function get_status(): int
+        {
+            return $this->status;
+        }
+
+        public function get_data(): mixed
+        {
+            return $this->data;
+        }
+    }
+}
+
+if (! class_exists('WP_REST_Server')) {
+    class WP_REST_Server
+    {
+        public const READABLE  = 'GET';
+        public const CREATABLE = 'POST';
+        public const EDITABLE  = 'POST, PUT, PATCH';
+        public const DELETABLE = 'DELETE';
+    }
+}
+
+if (! function_exists('rest_ensure_response')) {
+    function rest_ensure_response($value)
+    {
+        if ($value instanceof WP_REST_Response) {
+            return $value;
+        }
+        if ($value instanceof WP_Error) {
+            return $value;
+        }
+        return new WP_REST_Response($value);
+    }
+}
+
+if (! function_exists('get_current_user_id')) {
+    function get_current_user_id(): int
+    {
+        return (int) ($GLOBALS['gk_current_user_id'] ?? 1);
+    }
+}
+
+if (! function_exists('current_user_can')) {
+    function current_user_can(string $cap): bool
+    {
+        return true; // Integration tests rodam como admin por padrao
+    }
+}
 
 // ABSPATH + dbDelta stub. dbDelta delega ao $wpdb real, executando o SQL direto.
 // MigrationRunner faz require_once ABSPATH . 'wp-admin/includes/upgrade.php'.
