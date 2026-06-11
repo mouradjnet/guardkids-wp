@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace GuardKids\Ui;
 
+use GuardKids\Auth\GuardianAuth;
+
 /**
  * Serve a SPA `app-parent` numa URL standalone (`/painel-pais`), sem chrome do
  * wp-admin, exigindo `manage_options`. Le `dist/.vite/manifest.json` pra resolver
@@ -49,7 +51,7 @@ final class ParentApp
             return;
         }
 
-        if (! is_user_logged_in() || ! current_user_can('manage_options')) {
+        if (! is_user_logged_in() || ! GuardianAuth::isCollaboratorOrAbove()) {
             auth_redirect();
             exit;
         }

@@ -310,7 +310,22 @@ if (! function_exists('get_current_user_id')) {
 if (! function_exists('current_user_can')) {
     function current_user_can(string $cap): bool
     {
-        return true; // Integration tests rodam como admin por padrao
+        if (isset($GLOBALS['gk_user_caps'][$cap])) {
+            return (bool) $GLOBALS['gk_user_caps'][$cap];
+        }
+        return true; // default: integration tests rodam como admin
+    }
+}
+
+if (! function_exists('wp_get_current_user')) {
+    function wp_get_current_user(): object
+    {
+        $id = (int) ($GLOBALS['gk_current_user_id'] ?? 0);
+        $user = $GLOBALS['gk_users'][$id] ?? null;
+        if ($user === null) {
+            return (object) ['ID' => 0, 'user_email' => '', 'display_name' => '', 'user_login' => ''];
+        }
+        return (object) $user;
     }
 }
 

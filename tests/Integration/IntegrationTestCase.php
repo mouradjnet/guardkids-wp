@@ -39,5 +39,11 @@ abstract class IntegrationTestCase extends TestCase
             $this->db->query("TRUNCATE TABLE `{$this->db->prefix}guardkids_{$table}`");
         }
         $this->db->query('SET FOREIGN_KEY_CHECKS = 1');
+
+        // Reset globals para defaults — evita contaminação entre tests.
+        // Subclasses podem sobrescrever em seu próprio setUp.
+        $GLOBALS['gk_current_user_id'] = 1;
+        $GLOBALS['gk_user_caps']       = ['manage_options' => true];
+        $GLOBALS['gk_users']           = [];
     }
 }
