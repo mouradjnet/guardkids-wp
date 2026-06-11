@@ -6,7 +6,7 @@
 [![codecov](https://codecov.io/gh/mouradjnet/guardkids-wp/branch/master/graph/badge.svg)](https://codecov.io/gh/mouradjnet/guardkids-wp)
 [![PHP 8.1+](https://img.shields.io/badge/PHP-8.1%2B-777BB4?logo=php&logoColor=white)](composer.json)
 [![WordPress 6.4+](https://img.shields.io/badge/WordPress-6.4%2B-21759B?logo=wordpress&logoColor=white)](guardkids.php)
-[![Tests](https://img.shields.io/badge/tests-472%20passing-brightgreen)](#testes)
+[![Tests](https://img.shields.io/badge/tests-633%20passing-brightgreen)](#testes)
 [![License: GPL-2.0+](https://img.shields.io/badge/license-GPL--2.0%2B-blue)](#licença)
 
 ## Visão geral
@@ -49,7 +49,7 @@ Plugin WordPress que gerencia controle de tela e navegação de crianças. Toda 
 | Frontend | Vite 5 + React 19 + TypeScript 6 + Tailwind 3 + TanStack Query 5 |
 | PWA do child | `vite-plugin-pwa` + Workbox; ícones gerados via `@vite-pwa/assets-generator` |
 | Testes | PHPUnit 9.6 (stubs minimos do WP, sem Docker) + Vitest 2 + Testing Library |
-| CI | GitHub Actions (3 jobs paralelos: phpunit + 2 builds + vitest) |
+| CI | GitHub Actions (4 jobs paralelos: phpunit unit + phpunit integration + 2 vitest) |
 
 ## Estrutura do repo
 
@@ -140,7 +140,7 @@ Para integração REST funcionar fora de produção, copie `public/app-parent/.e
 
 Cobre Repository base + subclasses (Child, Request, Site, Category, Settings, UsageEvent, Location, SafeZone), ChildAuth (token + lookup), MigrationRunner (idempotência + ordem), RestHeaders (escopo de namespace), Schedule (ScheduleEvaluator), License (Verifier Ed25519 + Gate + gating em controllers) e os controllers REST.
 
-**PHPUnit Integration (MySQL real, 6 tests):**
+**PHPUnit Integration (MySQL real, 161 tests):**
 
 ```powershell
 # 1) sobe MySQL 8 em :3307 (porta dedicada, nao colide com LocalWP)
@@ -152,7 +152,10 @@ docker compose -f docker-compose.test.yml up -d
        vendor/bin/phpunit -c phpunit-integration.xml.dist
 ```
 
-Valida contra MySQL real (não stubs) que migrations rodam idempotentes e queries dos Repositories executam corretamente. Primeiro teste é `ChildRepositoryTest` — CRUD completo + UNIQUE constraint em slug + colunas da migration 003. Demais repositories virão em PRs incrementais.
+Valida contra MySQL real (não stubs) que migrations rodam idempotentes, queries dos Repositories executam corretamente e o ciclo REST → DB → response dos 10 controllers se comporta como esperado. Cobre:
+
+- **8 Repository tests** (56 testes): Child, Request, UsageEvent, Location, SafeZone, Site, Category, Settings — incluindo agregações reais (`SUM`/`GROUP BY DATE()`/subquery), UNIQUE constraints, precisão `DECIMAL(10,7)` e defaults de schema.
+- **10 Controller tests** (105 testes): Child, ChildSelf (PWA infantil + auth por token), Site, Category, Settings, Request (approve/deny), Reports (KPIs/topSites/perChild), Location, SafeZone, License (Ed25519 + persistência cross-instance + rollback).
 
 **Vitest app-parent (213 tests) + app-child (57 tests):**
 
@@ -175,9 +178,7 @@ Documentação detalhada em [`docs/superpowers/`](docs/superpowers/):
 - [Design atual](docs/superpowers/specs/2026-05-21-guardkids-wp-fundacao-design.md) — schema, autenticação, REST endpoints, segurança.
 - [Plano de implementação](docs/superpowers/plans/2026-05-21-guardkids-wp-fundacao-plan.md) — fases entregues + próximos passos.
 
-Itens em aberto (não bloqueantes):
-
-- Expandir integration tests pros demais repositories + controllers (bootstrap entregue, primeiro teste em `ChildRepositoryTest`).
+Fundação completa: schema, autenticação dupla (parent + child), 10 controllers REST, License premium (Ed25519), Schedule (bedtime/weekday), Reports, Localização (Locations + SafeZones), full suite de testes (633 testes — unit + integration + vitest).
 
 ## Licença
 
