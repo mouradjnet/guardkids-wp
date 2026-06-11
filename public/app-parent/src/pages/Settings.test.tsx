@@ -2,7 +2,8 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { ReactNode } from 'react';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import type { Guardian } from '../api/types';
 
 const { listSettingsMock, updateSettingsMock } = vi.hoisted(() => ({
   listSettingsMock: vi.fn(),
@@ -13,7 +14,49 @@ vi.mock('../api/settings', () => ({
   updateSettings: updateSettingsMock,
 }));
 
+const {
+  listGuardiansMock,
+  createGuardianMock,
+  updateGuardianRoleMock,
+  activateGuardianMock,
+  removeGuardianMock,
+} = vi.hoisted(() => ({
+  listGuardiansMock: vi.fn(),
+  createGuardianMock: vi.fn(),
+  updateGuardianRoleMock: vi.fn(),
+  activateGuardianMock: vi.fn(),
+  removeGuardianMock: vi.fn(),
+}));
+vi.mock('../api/guardians', () => ({
+  listGuardians: listGuardiansMock,
+  createGuardian: createGuardianMock,
+  updateGuardianRole: updateGuardianRoleMock,
+  activateGuardian: activateGuardianMock,
+  removeGuardian: removeGuardianMock,
+}));
+
 import { Settings } from './Settings';
+
+const djair: Guardian = {
+  id: 1,
+  wpUserId: 1,
+  name: 'Djair',
+  email: 'djair@familia.com',
+  role: 'admin',
+  status: 'active',
+  createdAt: null,
+  updatedAt: null,
+};
+const marinaPending: Guardian = {
+  id: 2,
+  wpUserId: null,
+  name: 'Marina',
+  email: 'marina@familia.com',
+  role: 'collaborator',
+  status: 'pending',
+  createdAt: null,
+  updatedAt: null,
+};
 
 function renderPage() {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
@@ -38,7 +81,13 @@ describe('Settings page', () => {
   beforeEach(() => {
     listSettingsMock.mockReset();
     updateSettingsMock.mockReset();
+    listGuardiansMock.mockReset().mockResolvedValue([]);
+    createGuardianMock.mockReset();
+    updateGuardianRoleMock.mockReset();
+    activateGuardianMock.mockReset();
+    removeGuardianMock.mockReset();
   });
+  afterEach(() => vi.restoreAllMocks());
 
   it('renders all 6 sections', async () => {
     listSettingsMock.mockResolvedValue({});
@@ -65,7 +114,6 @@ describe('Settings page', () => {
       upgrade_url: 'https://comprar.exemplo.com/premium',
     });
     renderPage();
-    // O input remonta quando a query resolve (key force-reset) — re-busca dentro do waitFor
     await waitFor(() => {
       expect(screen.getByLabelText(/link de upgrade/i)).toHaveValue(
         'https://comprar.exemplo.com/premium',
@@ -90,7 +138,6 @@ describe('Settings page', () => {
     });
     const user = userEvent.setup();
     renderPage();
-    // Espera query resolver pra evitar re-mount do form via `key`
     await waitFor(() => expect(listSettingsMock).toHaveBeenCalled());
     await screen.findByText(/notificações push/i);
 
@@ -135,7 +182,6 @@ describe('Settings page', () => {
     renderPage();
     await screen.findByText('Notificações push');
 
-    // fallbacks: push=true, email=true, realtime=false, weekly_report=true, two_fa=false, pin_child=true, auto_logout=false
     expect(toggleFor('Notificações push')).toHaveAttribute('aria-checked', 'true');
     expect(toggleFor('Alertas em tempo real')).toHaveAttribute('aria-checked', 'false');
     expect(toggleFor('Autenticação em 2 fatores (2FA)')).toHaveAttribute('aria-checked', 'false');
@@ -195,13 +241,143 @@ describe('Settings page', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent(/falha ao salvar/i);
   });
 
-  it('renders ComingSoonBadge on Família and Privacidade headings', async () => {
+  it('renders ComingSoonBadge only on Privacidade now', async () => {
     listSettingsMock.mockResolvedValue({});
     renderPage();
 
-    const familia = await screen.findByRole('heading', { name: /família/i });
-    expect(familia).toHaveTextContent(/em breve/i);
-    const privacidade = screen.getByRole('heading', { name: /privacidade/i });
+    const privacidade = await screen.findByRole('heading', { name: /privacidade/i });
     expect(privacidade).toHaveTextContent(/em breve/i);
+    const familia = screen.getByRole('heading', { name: /família/i });
+    expect(familia).not.toHaveTextContent(/em breve/i);
+  });
+
+  it('Família: shows empty state when no guardians', async () => {
+    listSettingsMock.mockResolvedValue({});
+    listGuardiansMock.mockResolvedValue([]);
+    renderPage();
+
+    expect(await screen.findByText(/sem guardiões cadastrados/i)).toBeInTheDocument();
+  });
+
+  it('Família: renders rows with name/email/role badge', async () => {
+    listSettingsMock.mockResolvedValue({});
+    listGuardiansMock.mockResolvedValue([djair, marinaPending]);
+    renderPage();
+
+    expect(await screen.findByText('Djair')).toBeInTheDocument();
+    expect(screen.getByText('Marina')).toBeInTheDocument();
+    expect(screen.getByText('djair@familia.com')).toBeInTheDocument();
+    expect(screen.getByText('marina@familia.com')).toBeInTheDocument();
+    // role badges
+    expect(screen.getByText(/^admin$/i)).toBeInTheDocument();
+    expect(screen.getByText(/^colaborador$/i)).toBeInTheDocument();
+    // pending badge
+    expect(screen.getByText(/^pendente$/i)).toBeInTheDocument();
+  });
+
+  it('Família: opens invite dialog when Convidar clicked', async () => {
+    listSettingsMock.mockResolvedValue({});
+    listGuardiansMock.mockResolvedValue([djair]);
+    const user = userEvent.setup();
+    renderPage();
+
+    await screen.findByText('Djair');
+    await user.click(screen.getByRole('button', { name: /^convidar$/i }));
+
+    expect(screen.getByRole('dialog', { name: /convidar guardião/i })).toBeInTheDocument();
+  });
+
+  it('Família: submits new guardian through dialog', async () => {
+    listSettingsMock.mockResolvedValue({});
+    listGuardiansMock.mockResolvedValue([djair]);
+    createGuardianMock.mockResolvedValue({ ...marinaPending });
+    const user = userEvent.setup();
+    renderPage();
+
+    await screen.findByText('Djair');
+    await user.click(screen.getByRole('button', { name: /^convidar$/i }));
+
+    await user.type(screen.getByLabelText(/nome/i), 'Marina');
+    await user.type(screen.getByLabelText(/e-mail/i), 'marina@familia.com');
+    await user.click(screen.getByRole('button', { name: /enviar convite/i }));
+
+    await waitFor(() => {
+      expect(createGuardianMock).toHaveBeenCalled();
+      expect(createGuardianMock.mock.calls[0]?.[0]).toEqual({
+        name: 'Marina',
+        email: 'marina@familia.com',
+        role: 'collaborator',
+      });
+    });
+  });
+
+  it('Família: clicking activate triggers activateGuardian for pending row', async () => {
+    listSettingsMock.mockResolvedValue({});
+    listGuardiansMock.mockResolvedValue([djair, marinaPending]);
+    activateGuardianMock.mockResolvedValue({ ...marinaPending, status: 'active' });
+    const user = userEvent.setup();
+    renderPage();
+
+    await screen.findByText('Marina');
+    await user.click(screen.getByRole('button', { name: /ativar marina/i }));
+
+    await waitFor(() => {
+      expect(activateGuardianMock).toHaveBeenCalled();
+      expect(activateGuardianMock.mock.calls[0]?.[0]).toBe(2);
+    });
+  });
+
+  it('Família: promote confirms and calls updateGuardianRole(admin)', async () => {
+    listSettingsMock.mockResolvedValue({});
+    listGuardiansMock.mockResolvedValue([djair, marinaPending]);
+    updateGuardianRoleMock.mockResolvedValue({ ...marinaPending, role: 'admin' });
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
+    const user = userEvent.setup();
+    renderPage();
+
+    await screen.findByText('Marina');
+    await user.click(screen.getByRole('button', { name: /promover marina/i }));
+
+    expect(confirmSpy).toHaveBeenCalled();
+    await waitFor(() => {
+      expect(updateGuardianRoleMock).toHaveBeenCalled();
+      expect(updateGuardianRoleMock.mock.calls[0]?.[0]).toBe(2);
+      expect(updateGuardianRoleMock.mock.calls[0]?.[1]).toBe('admin');
+    });
+    confirmSpy.mockRestore();
+  });
+
+  it('Família: remove confirms and calls removeGuardian', async () => {
+    listSettingsMock.mockResolvedValue({});
+    listGuardiansMock.mockResolvedValue([djair, marinaPending]);
+    removeGuardianMock.mockResolvedValue({ deleted: true, id: 2 });
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
+    const user = userEvent.setup();
+    renderPage();
+
+    await screen.findByText('Marina');
+    await user.click(screen.getByRole('button', { name: /remover marina/i }));
+
+    expect(confirmSpy).toHaveBeenCalled();
+    await waitFor(() => {
+      expect(removeGuardianMock).toHaveBeenCalled();
+      expect(removeGuardianMock.mock.calls[0]?.[0]).toBe(2);
+    });
+    confirmSpy.mockRestore();
+  });
+
+  it('Família: cancelar o confirm não chama removeGuardian', async () => {
+    listSettingsMock.mockResolvedValue({});
+    listGuardiansMock.mockResolvedValue([djair, marinaPending]);
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(false);
+    const user = userEvent.setup();
+    renderPage();
+
+    await screen.findByText('Marina');
+    await user.click(screen.getByRole('button', { name: /remover marina/i }));
+
+    expect(confirmSpy).toHaveBeenCalled();
+    expect(removeGuardianMock).not.toHaveBeenCalled();
+    confirmSpy.mockRestore();
   });
 });

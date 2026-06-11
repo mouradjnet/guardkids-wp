@@ -57,6 +57,20 @@ export type LocationFix = {
   recordedAt: string;
 };
 
+export type GuardianRole = 'admin' | 'collaborator';
+export type GuardianStatus = 'active' | 'pending';
+
+export type Guardian = {
+  id: number;
+  wpUserId: number | null;
+  name: string;
+  email: string;
+  role: GuardianRole;
+  status: GuardianStatus;
+  createdAt: string | null;
+  updatedAt: string | null;
+};
+
 export type SafeZone = {
   id: number;
   name: string;

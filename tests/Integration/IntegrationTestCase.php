@@ -24,6 +24,7 @@ abstract class IntegrationTestCase extends TestCase
         'usage_events',
         'locations',
         'safe_zones',
+        'guardians',
     ];
 
     protected \wpdb $db;

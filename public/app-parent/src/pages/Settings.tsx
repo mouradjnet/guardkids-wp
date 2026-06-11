@@ -1,14 +1,23 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState, type FormEvent, type ReactNode } from 'react';
 import { ApiError } from '../api/client';
+import {
+  activateGuardian,
+  listGuardians,
+  removeGuardian,
+  updateGuardianRole,
+} from '../api/guardians';
 import { listSettings, updateSettings, type SettingsBag } from '../api/settings';
+import type { Guardian, GuardianRole } from '../api/types';
 import { Icon } from '../components/Icon';
+import { InviteGuardianDialog } from '../components/InviteGuardianDialog';
 import { PageHeader } from '../components/PageHeader';
-import { guardians, type Guardian } from '../data/mockData';
 
 export function Settings() {
   const queryClient = useQueryClient();
   const settingsQuery = useQuery({ queryKey: ['settings'], queryFn: listSettings });
+  const guardiansQuery = useQuery({ queryKey: ['guardians'], queryFn: listGuardians });
+  const [inviteOpen, setInviteOpen] = useState(false);
 
   const mutation = useMutation({
     mutationFn: updateSettings,
@@ -125,23 +134,18 @@ export function Settings() {
         iconTone="tertiary"
         title="Família"
         subtitle="Pessoas que podem administrar essa conta"
-        comingSoon
         action={
           <button
             type="button"
-            disabled
-            className="inline-flex items-center gap-2 rounded-full bg-primary/40 px-4 py-2 text-label-md font-semibold text-white shadow-sm opacity-60"
+            onClick={() => setInviteOpen(true)}
+            className="inline-flex items-center gap-2 rounded-full bg-primary px-4 py-2 text-label-md font-semibold text-white shadow-sm transition-colors hover:bg-primary-container"
           >
             <Icon name="person_add" className="text-sm" filled />
             Convidar
           </button>
         }
       >
-        <ul className="space-y-2">
-          {guardians.map((g) => (
-            <GuardianRow key={g.id} guardian={g} />
-          ))}
-        </ul>
+        <GuardiansList query={guardiansQuery} />
       </Section>
 
       <Section
@@ -204,7 +208,46 @@ export function Settings() {
           tone="danger"
         />
       </Section>
+
+      <InviteGuardianDialog open={inviteOpen} onClose={() => setInviteOpen(false)} />
     </main>
+  );
+}
+
+function GuardiansList({
+  query,
+}: {
+  query: ReturnType<typeof useQuery<Guardian[]>>;
+}) {
+  if (query.isLoading) {
+    return (
+      <div className="flex items-center justify-center gap-2 rounded-xl border border-outline-variant bg-surface-container-low p-4 text-on-surface-variant">
+        <Icon name="progress_activity" className="animate-spin text-sm" />
+        <span className="text-label-sm">Carregando guardiões…</span>
+      </div>
+    );
+  }
+  if (query.error) {
+    return (
+      <p role="alert" className="rounded-lg bg-error/10 p-3 text-label-sm text-error">
+        Falha ao carregar guardiões.
+      </p>
+    );
+  }
+  const items = query.data ?? [];
+  if (items.length === 0) {
+    return (
+      <p className="rounded-xl border border-dashed border-outline-variant bg-surface-container-low p-4 text-label-sm text-on-surface-variant">
+        Sem guardiões cadastrados — clique em "Convidar".
+      </p>
+    );
+  }
+  return (
+    <ul className="space-y-2">
+      {items.map((g) => (
+        <GuardianRow key={g.id} guardian={g} />
+      ))}
+    </ul>
   );
 }
 
@@ -409,26 +452,131 @@ function SessionRow({
 }
 
 function GuardianRow({ guardian }: { guardian: Guardian }) {
+  const queryClient = useQueryClient();
+  const invalidate = () => queryClient.invalidateQueries({ queryKey: ['guardians'] });
+
+  const roleMutation = useMutation({
+    mutationFn: (role: GuardianRole) => updateGuardianRole(guardian.id, role),
+    onSuccess: invalidate,
+  });
+  const activateMutation = useMutation({
+    mutationFn: () => activateGuardian(guardian.id),
+    onSuccess: invalidate,
+  });
+  const removeMutation = useMutation({
+    mutationFn: () => removeGuardian(guardian.id),
+    onSuccess: invalidate,
+  });
+
+  const errorOf = (m: { error: unknown }): string | null => {
+    if (m.error instanceof ApiError) return `${m.error.message} (${m.error.status})`;
+    if (m.error instanceof Error) return m.error.message;
+    return null;
+  };
+  const error = errorOf(roleMutation) ?? errorOf(activateMutation) ?? errorOf(removeMutation);
+
+  const toggleRole = () => {
+    const next: GuardianRole = guardian.role === 'admin' ? 'collaborator' : 'admin';
+    const label = next === 'admin' ? 'promover a administrador' : 'rebaixar a colaborador';
+    if (window.confirm(`Deseja ${label} ${guardian.name}?`)) {
+      roleMutation.mutate(next);
+    }
+  };
+
+  const remove = () => {
+    if (window.confirm(`Remover ${guardian.name} da família? Essa ação não pode ser desfeita.`)) {
+      removeMutation.mutate();
+    }
+  };
+
+  const busy =
+    roleMutation.isPending || activateMutation.isPending || removeMutation.isPending;
+  const pending = guardian.status === 'pending';
+
   return (
-    <li className="flex items-center gap-3 rounded-xl border border-outline-variant bg-surface-container-low p-3">
-      <div className="flex h-11 w-11 items-center justify-center rounded-full bg-primary-container text-on-primary-container font-display text-headline-md font-bold">
-        {guardian.name.charAt(0)}
-      </div>
-      <div className="flex-1">
-        <div className="flex items-center gap-2">
-          <span className="text-label-md font-semibold text-on-surface">{guardian.name}</span>
-          {guardian.role === 'admin' && (
-            <span className="rounded-full bg-primary px-2 py-0.5 text-label-sm font-semibold text-white">
-              Admin
+    <li className="flex flex-col gap-2 rounded-xl border border-outline-variant bg-surface-container-low p-3 sm:flex-row sm:items-center">
+      <div className="flex flex-1 items-center gap-3">
+        <div className="flex h-11 w-11 items-center justify-center rounded-full bg-primary-container text-on-primary-container font-display text-headline-md font-bold">
+          {guardian.name.charAt(0).toUpperCase()}
+        </div>
+        <div className="flex-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-label-md font-semibold text-on-surface">{guardian.name}</span>
+            <span
+              className={`rounded-full px-2 py-0.5 text-label-sm font-semibold ${
+                guardian.role === 'admin'
+                  ? 'bg-primary text-white'
+                  : 'bg-surface-container-high text-on-surface'
+              }`}
+            >
+              {guardian.role === 'admin' ? 'Admin' : 'Colaborador'}
             </span>
-          )}
-          {guardian.pendingInvite && (
-            <span className="rounded-full bg-orange-warm/15 px-2 py-0.5 text-label-sm font-semibold text-orange-warm">
-              Convite pendente
-            </span>
+            {pending && (
+              <span className="rounded-full bg-orange-warm/15 px-2 py-0.5 text-label-sm font-semibold text-orange-warm">
+                Pendente
+              </span>
+            )}
+          </div>
+          <div className="text-label-sm text-on-surface-variant">{guardian.email}</div>
+          {error && (
+            <p role="alert" className="mt-1 text-label-sm text-error">
+              {error}
+            </p>
           )}
         </div>
-        <div className="text-label-sm text-on-surface-variant">{guardian.email}</div>
+      </div>
+      <div className="flex items-center gap-1">
+        {pending && (
+          <button
+            type="button"
+            onClick={() => activateMutation.mutate()}
+            disabled={busy}
+            aria-label={`Ativar ${guardian.name}`}
+            title="Ativar guardião"
+            className="rounded-full p-2 text-secondary transition-colors hover:bg-secondary-container/40 disabled:opacity-50"
+          >
+            <Icon
+              name={activateMutation.isPending ? 'progress_activity' : 'check'}
+              className={`text-base ${activateMutation.isPending ? 'animate-spin' : ''}`}
+            />
+          </button>
+        )}
+        <button
+          type="button"
+          onClick={toggleRole}
+          disabled={busy}
+          aria-label={
+            guardian.role === 'admin'
+              ? `Rebaixar ${guardian.name} para colaborador`
+              : `Promover ${guardian.name} a administrador`
+          }
+          title={guardian.role === 'admin' ? 'Rebaixar' : 'Promover'}
+          className="rounded-full p-2 text-on-surface-variant transition-colors hover:bg-surface-variant/60 hover:text-primary disabled:opacity-50"
+        >
+          <Icon
+            name={
+              roleMutation.isPending
+                ? 'progress_activity'
+                : guardian.role === 'admin'
+                  ? 'arrow_downward'
+                  : 'arrow_upward'
+            }
+            className={`text-base ${roleMutation.isPending ? 'animate-spin' : ''}`}
+          />
+        </button>
+        <button
+          type="button"
+          onClick={remove}
+          disabled={busy}
+          aria-label={`Remover ${guardian.name}`}
+          title="Remover"
+          className="rounded-full p-2 text-error transition-colors hover:bg-error/10 disabled:opacity-50"
+        >
+          <Icon
+            name={removeMutation.isPending ? 'progress_activity' : 'delete'}
+            className={`text-base ${removeMutation.isPending ? 'animate-spin' : ''}`}
+          />
+        </button>
       </div>
     </li>
   );
