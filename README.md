@@ -6,7 +6,7 @@
 [![codecov](https://codecov.io/gh/mouradjnet/guardkids-wp/branch/master/graph/badge.svg)](https://codecov.io/gh/mouradjnet/guardkids-wp)
 [![PHP 8.1+](https://img.shields.io/badge/PHP-8.1%2B-777BB4?logo=php&logoColor=white)](composer.json)
 [![WordPress 6.4+](https://img.shields.io/badge/WordPress-6.4%2B-21759B?logo=wordpress&logoColor=white)](guardkids.php)
-[![Tests](https://img.shields.io/badge/tests-383%20passing-brightgreen)](#testes)
+[![Tests](https://img.shields.io/badge/tests-472%20passing-brightgreen)](#testes)
 [![License: GPL-2.0+](https://img.shields.io/badge/license-GPL--2.0%2B-blue)](#licença)
 
 ## Visão geral
@@ -26,7 +26,7 @@ Plugin WordPress que gerencia controle de tela e navegação de crianças. Toda 
            └───────────────┬──────────────┘
                            ▼
         ┌────────────────────────────────────┐
-        │  REST  guardkids/v1  (16 rotas)    │
+        │  REST  guardkids/v1  (10 grupos)   │
         │  permission_callback escopado      │
         └────────────────┬───────────────────┘
                          ▼
@@ -59,23 +59,30 @@ guardkids-wp/
 ├── uninstall.php              # drop das tabelas + opções
 ├── composer.json              # só require-dev (PHPUnit)
 ├── api/                       # REST controllers + RestApi
-│   ├── RestApi.php            # registra 16 rotas em guardkids/v1
-│   └── Controllers/
+│   ├── RestApi.php            # registra 10 grupos de rotas em guardkids/v1
+│   └── Controllers/           # Child, ChildSelf, Site, Category, Settings,
+│                              # Request, Reports, Location, SafeZone, License
 ├── includes/
 │   ├── Autoloader.php         # PSR-4 self-contained, 3 roots
 │   ├── Plugin.php             # boot + hooks + ativação
 │   ├── Auth/ChildAuth.php     # token de dispositivo (SHA-256)
+│   ├── License/               # Verifier (Ed25519) + Gate + Payload (gating premium)
+│   ├── Schedule/              # avaliação de bedtime/weekday limits
 │   ├── Security/RestHeaders.php # nosniff + Referrer-Policy + DENY + noindex
 │   └── Ui/                    # ParentApp + ChildApp (servem os SPAs)
 ├── database/
 │   ├── MigrationRunner.php
 │   ├── Repository.php         # base CRUD com prepare()
-│   ├── {Child,Request,Site,Category,Settings}Repository.php
-│   └── migrations/001_initial_schema.php
+│   ├── {Child,Request,Site,Category,Settings,UsageEvent,Location,SafeZone}Repository.php
+│   └── migrations/
+│       ├── 001_initial_schema.php
+│       ├── 002_usage_events.php
+│       ├── 003_schedule_columns.php
+│       └── 004_locations_and_safe_zones.php
 ├── public/
 │   ├── app-parent/            # SPA do responsável (Vite + React)
 │   └── app-child/             # PWA infantil (Vite + React + Workbox)
-├── tests/                     # PHPUnit unit tests (42)
+├── tests/                     # PHPUnit unit tests (202)
 └── docs/superpowers/{specs,plans}/  # design + roadmap
 ```
 
@@ -123,7 +130,7 @@ Para integração REST funcionar fora de produção, copie `public/app-parent/.e
 
 ## Testes
 
-**PHPUnit (97 tests, 243 assertions):**
+**PHPUnit (202 tests):**
 
 ```powershell
 & $php -d extension_dir="$(Split-Path $php)\ext" `
@@ -131,9 +138,9 @@ Para integração REST funcionar fora de produção, copie `public/app-parent/.e
        vendor/bin/phpunit
 ```
 
-Cobre Repository base + subclasses (incluindo `UsageEventRepository`), ChildAuth (token + lookup), MigrationRunner (idempotência + ordem), RestHeaders (escopo de namespace) e os controllers de ingest/reports.
+Cobre Repository base + subclasses (Child, Request, Site, Category, Settings, UsageEvent, Location, SafeZone), ChildAuth (token + lookup), MigrationRunner (idempotência + ordem), RestHeaders (escopo de namespace), Schedule (ScheduleEvaluator), License (Verifier Ed25519 + Gate + gating em controllers) e os controllers REST.
 
-**Vitest app-parent (158 tests) + app-child (52 tests):**
+**Vitest app-parent (213 tests) + app-child (57 tests):**
 
 ```powershell
 cd public/app-parent
@@ -141,7 +148,7 @@ pnpm test        # corrida única
 pnpm test:watch  # modo watch
 ```
 
-Cobre `api/client.ts` (auth dupla, parse de WP_Error), helpers (`requestDisplay`, `children`), diálogos (`AddChildDialog`, `PairDeviceDialog`), navegação (`TopNav`/`SideNav`/`BottomNav`) e todas as 7 páginas do parent (Dashboard, Children, SitesRules, TimeLimits, Approvals, Reports, Settings). No `app-child`, cobre `usageTracker` + `locationTracker` e todas as 7 páginas (Home, Alerts, Blocked, Browser, PairScreen, Localizacao, Requests) — e2e Playwright opcional via `pnpm test:e2e` (depois de `pnpm test:e2e:install`).
+Cobre `api/client.ts` (auth dupla, parse de WP_Error), helpers (`requestDisplay`, `children`, `exportReportCsv`), diálogos (`AddChildDialog`, `PairDeviceDialog`, `PendingRequests`), navegação (`TopNav`/`SideNav`/`BottomNav`), `PremiumLock` + hook `useLicense` e todas as 11 páginas do parent (Dashboard, Children, SitesRules, TimeLimits, Approvals, Reports, Settings, License, Upgrade, Localizacao, ZonasSeguras). No `app-child`, cobre `usageTracker` + `locationTracker` e todas as 7 páginas (Home, Alerts, Blocked, Browser, PairScreen, Localizacao, Requests) — e2e Playwright opcional via `pnpm test:e2e` (depois de `pnpm test:e2e:install`).
 
 **CI** roda os dois automaticamente em cada push/PR. Status: badge no topo.
 
@@ -156,9 +163,6 @@ Documentação detalhada em [`docs/superpowers/`](docs/superpowers/):
 
 Itens em aberto (não bloqueantes):
 
-- Schedule/bedtime/weekday limits (depende de migration 002 com tabela de schedule).
-- Reports/usage tracking (depende de tabela de uso/atividade).
-- License/billing (premium gating).
 - Integration tests dos controllers contra MySQL real.
 
 ## Licença
