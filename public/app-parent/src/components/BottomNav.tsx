@@ -1,5 +1,7 @@
 import { Icon } from './Icon';
 import type { PageId } from '../data/mockData';
+import { useCurrentRole } from '../hooks/useCurrentRole';
+import { canAccessPage } from '../lib/roleAccess';
 
 const items: {
   id: PageId;
@@ -20,9 +22,11 @@ type BottomNavProps = {
 };
 
 export function BottomNav({ activePage, onNavigate }: BottomNavProps) {
+  const { role } = useCurrentRole();
+  const visibleItems = items.filter((item) => canAccessPage(role, item.id));
   return (
     <nav className="fixed bottom-0 z-50 flex w-full items-center justify-around border-t border-outline-variant bg-surface/80 pb-safe pt-2 shadow-ambient-up backdrop-blur-md md:hidden">
-      {items.map((item) => {
+      {visibleItems.map((item) => {
         const isActive = activePage === item.id;
         return (
           <button

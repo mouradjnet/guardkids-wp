@@ -342,6 +342,33 @@ if (! function_exists('get_current_user_id')) {
     }
 }
 
+if (! function_exists('current_user_can')) {
+    function current_user_can(string $cap): bool
+    {
+        return (bool) ($GLOBALS['gk_user_caps'][$cap] ?? false);
+    }
+}
+
+if (! function_exists('get_userdata')) {
+    function get_userdata(int $userId): object|false
+    {
+        $user = $GLOBALS['gk_users'][$userId] ?? null;
+        return $user === null ? false : (object) $user;
+    }
+}
+
+if (! function_exists('wp_get_current_user')) {
+    function wp_get_current_user(): object
+    {
+        $id = (int) ($GLOBALS['gk_current_user_id'] ?? 0);
+        $user = $GLOBALS['gk_users'][$id] ?? null;
+        if ($user === null) {
+            return (object) ['ID' => 0, 'user_email' => '', 'display_name' => '', 'user_login' => ''];
+        }
+        return (object) $user;
+    }
+}
+
 // Stub mínimo do WP_REST_Response e WP_REST_Server pra RestHeaders/Controllers
 if (! class_exists('WP_REST_Response')) {
     class WP_REST_Response

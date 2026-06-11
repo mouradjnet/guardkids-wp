@@ -2,6 +2,17 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 
+vi.mock('./hooks/useCurrentRole', () => ({
+  useCurrentRole: () => ({
+    role: 'admin',
+    email: 'admin@x.com',
+    name: 'Parent Admin',
+    isAdmin: true,
+    isCollaborator: false,
+    isLoading: false,
+  }),
+}));
+
 vi.mock('./pages/Dashboard', () => ({ Dashboard: () => <div data-testid="page-dashboard" /> }));
 vi.mock('./pages/Children', () => ({ Children: () => <div data-testid="page-children" /> }));
 vi.mock('./pages/Approvals', () => ({ Approvals: () => <div data-testid="page-approvals" /> }));
