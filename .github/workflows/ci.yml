@@ -51,6 +51,45 @@ jobs:
           fail_ci_if_error: false
           use_oidc: true
 
+  phpunit-integration:
+    name: PHPUnit Integration (MySQL real)
+    runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: guardkids_test
+        ports:
+          - 3307:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h localhost -uroot -proot"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=10
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Setup PHP 8.2
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: mbstring, fileinfo, mysqli
+          tools: composer:v2
+
+      - name: Cache Composer
+        uses: actions/cache@v5
+        with:
+          path: vendor
+          key: composer-${{ runner.os }}-${{ hashFiles('**/composer.json') }}
+          restore-keys: composer-${{ runner.os }}-
+
+      - name: Install Composer deps
+        run: composer install --no-progress --no-interaction --prefer-dist
+
+      - name: Run PHPUnit Integration
+        run: vendor/bin/phpunit -c phpunit-integration.xml.dist
+
   app-parent:
     name: app-parent (vitest + build)
     runs-on: ubuntu-latest
