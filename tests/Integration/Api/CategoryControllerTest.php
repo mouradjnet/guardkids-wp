@@ -96,7 +96,7 @@ final class CategoryControllerTest extends ControllerIntegrationTestCase
         $this->assertFalse($this->dataOf($resp)['blocked']);
 
         // Confirma persistência no banco
-        $row = (new CategoryRepository())->findById($cat['id']);
+        $row = (new CategoryRepository())->findById((int) $cat['id']);
         $this->assertSame(0, (int) $row['blocked']);
     }
 }
