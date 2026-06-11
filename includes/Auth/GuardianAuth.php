@@ -24,17 +24,23 @@ final class GuardianAuth
      */
     public static function currentRole(?GuardianRepository $repo = null): ?string
     {
-        $userId = function_exists('get_current_user_id') ? (int) get_current_user_id() : 0;
-
+        // WP `manage_options` é autoridade final: um admin WP pode sempre
+        // mexer em tudo via wp-admin direto, então a UI/REST também respeita.
+        // Uma entry em guardians como `collaborator` não rebaixa o admin.
         $isWpAdmin = function_exists('current_user_can') && current_user_can('manage_options');
-        if ($userId === 0 && ! $isWpAdmin) {
+        if ($isWpAdmin) {
+            return 'admin';
+        }
+
+        $userId = function_exists('get_current_user_id') ? (int) get_current_user_id() : 0;
+        if ($userId === 0) {
             return null;
         }
 
         $repo ??= new GuardianRepository();
 
-        $row = $userId > 0 ? $repo->findByWpUserId($userId) : null;
-        if ($row === null && $userId > 0 && function_exists('get_userdata')) {
+        $row = $repo->findByWpUserId($userId);
+        if ($row === null && function_exists('get_userdata')) {
             $user = get_userdata($userId);
             if ($user) {
                 $email = strtolower((string) ($user->user_email ?? ''));
@@ -51,7 +57,7 @@ final class GuardianAuth
             }
         }
 
-        return $isWpAdmin ? 'admin' : null;
+        return null;
     }
 
     public static function isAdmin(): bool

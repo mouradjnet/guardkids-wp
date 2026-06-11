@@ -70,6 +70,19 @@ final class GuardianAuthTest extends TestCase
         self::assertSame('admin', GuardianAuth::currentRole(new GuardianRepository()));
     }
 
+    public function testManageOptionsOverridesGuardiansRow(): void
+    {
+        // Cenário do smoke: WP admin tem manage_options, mas a row em guardians
+        // foi marcada como collaborator. WP capability é autoridade final.
+        $GLOBALS['gk_user_caps']['manage_options'] = true;
+        $GLOBALS['gk_current_user_id'] = 1;
+        $this->wpdb->rowsByWpUserId = [
+            ['id' => 1, 'wp_user_id' => 1, 'role' => 'collaborator', 'status' => 'active'],
+        ];
+
+        self::assertSame('admin', GuardianAuth::currentRole(new GuardianRepository()));
+    }
+
     public function testGuardianAdminActiveByWpUserIdReturnsAdmin(): void
     {
         $GLOBALS['gk_current_user_id'] = 5;
