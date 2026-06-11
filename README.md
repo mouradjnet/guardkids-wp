@@ -140,6 +140,20 @@ Para integração REST funcionar fora de produção, copie `public/app-parent/.e
 
 Cobre Repository base + subclasses (Child, Request, Site, Category, Settings, UsageEvent, Location, SafeZone), ChildAuth (token + lookup), MigrationRunner (idempotência + ordem), RestHeaders (escopo de namespace), Schedule (ScheduleEvaluator), License (Verifier Ed25519 + Gate + gating em controllers) e os controllers REST.
 
+**PHPUnit Integration (MySQL real, 6 tests):**
+
+```powershell
+# 1) sobe MySQL 8 em :3307 (porta dedicada, nao colide com LocalWP)
+docker compose -f docker-compose.test.yml up -d
+
+# 2) roda a suite integration (config + env vars em phpunit-integration.xml.dist)
+& $php -d extension_dir="$(Split-Path $php)\ext" `
+       -d extension=mbstring -d extension=mysqli `
+       vendor/bin/phpunit -c phpunit-integration.xml.dist
+```
+
+Valida contra MySQL real (não stubs) que migrations rodam idempotentes e queries dos Repositories executam corretamente. Primeiro teste é `ChildRepositoryTest` — CRUD completo + UNIQUE constraint em slug + colunas da migration 003. Demais repositories virão em PRs incrementais.
+
 **Vitest app-parent (213 tests) + app-child (57 tests):**
 
 ```powershell
@@ -163,7 +177,7 @@ Documentação detalhada em [`docs/superpowers/`](docs/superpowers/):
 
 Itens em aberto (não bloqueantes):
 
-- Integration tests dos controllers contra MySQL real.
+- Expandir integration tests pros demais repositories + controllers (bootstrap entregue, primeiro teste em `ChildRepositoryTest`).
 
 ## Licença
 

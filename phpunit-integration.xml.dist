@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<phpunit xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:noNamespaceSchemaLocation="vendor/phpunit/phpunit/phpunit.xsd"
+         bootstrap="tests/Integration/bootstrap.php"
+         colors="true"
+         cacheResultFile=".phpunit.cache/integration-results"
+         executionOrder="depends,defects"
+         beStrictAboutOutputDuringTests="true"
+         failOnWarning="true">
+    <testsuites>
+        <testsuite name="integration">
+            <directory>tests/Integration</directory>
+            <exclude>tests/Integration/Support</exclude>
+            <exclude>tests/Integration/bootstrap.php</exclude>
+            <exclude>tests/Integration/IntegrationTestCase.php</exclude>
+        </testsuite>
+    </testsuites>
+    <php>
+        <ini name="error_reporting" value="-1"/>
+        <ini name="display_errors" value="1"/>
+        <env name="GUARDKIDS_TEST" value="1"/>
+        <env name="GUARDKIDS_TEST_DB_HOST" value="127.0.0.1"/>
+        <env name="GUARDKIDS_TEST_DB_PORT" value="3307"/>
+        <env name="GUARDKIDS_TEST_DB_USER" value="root"/>
+        <env name="GUARDKIDS_TEST_DB_PASS" value="root"/>
+        <env name="GUARDKIDS_TEST_DB_NAME" value="guardkids_test"/>
+    </php>
+</phpunit>
