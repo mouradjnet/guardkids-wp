@@ -1,33 +1,63 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react';
-import { createChild } from '../api/children';
+import { createChild, updateChild } from '../api/children';
 import { ApiError } from '../api/client';
+import type { Child } from '../api/types';
 import { Icon } from './Icon';
 
 type Props = {
   open: boolean;
   onClose: () => void;
+  /**
+   * Quando passado, o dialog entra em modo edicao (PATCH /children/{id}).
+   * Quando ausente, mantem o comportamento original de criacao (POST).
+   */
+  child?: Child;
 };
 
 const inputClass =
   'w-full rounded-lg border border-outline-variant bg-surface-container-low px-3 py-2 text-base text-on-surface placeholder:text-on-surface-variant focus:border-primary focus:outline-none';
 
-export function AddChildDialog({ open, onClose }: Props) {
+export function AddChildDialog({ open, onClose, child }: Props) {
   const queryClient = useQueryClient();
   const firstInputRef = useRef<HTMLInputElement>(null);
-  const [name, setName] = useState('');
-  const [age, setAge] = useState('');
-  const [device, setDevice] = useState('');
-  const [limitMinutes, setLimitMinutes] = useState('60');
+  const isEdit = Boolean(child);
+  const [name, setName] = useState(child?.name ?? '');
+  const [age, setAge] = useState(child?.age != null ? String(child.age) : '');
+  const [device, setDevice] = useState(child?.device ?? '');
+  const [limitMinutes, setLimitMinutes] = useState(
+    child?.limitMinutes != null ? String(child.limitMinutes) : '60',
+  );
+
+  // Resync quando o child prop muda (abre dialog pra outro filho)
+  useEffect(() => {
+    if (!open) return;
+    setName(child?.name ?? '');
+    setAge(child?.age != null ? String(child.age) : '');
+    setDevice(child?.device ?? '');
+    setLimitMinutes(child?.limitMinutes != null ? String(child.limitMinutes) : '60');
+  }, [open, child]);
 
   const mutation = useMutation({
-    mutationFn: createChild,
+    mutationFn: async (input: {
+      name: string;
+      age: number | null;
+      device: string | null;
+      limit_minutes: number;
+    }) => {
+      if (isEdit && child) {
+        return updateChild(child.id, input);
+      }
+      return createChild(input);
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['children'] });
-      setName('');
-      setAge('');
-      setDevice('');
-      setLimitMinutes('60');
+      if (!isEdit) {
+        setName('');
+        setAge('');
+        setDevice('');
+        setLimitMinutes('60');
+      }
       onClose();
     },
   });
@@ -73,6 +103,10 @@ export function AddChildDialog({ open, onClose }: Props) {
         ? mutation.error.message
         : null;
 
+  const title = isEdit ? `Editar ${child?.name ?? 'filho'}` : 'Adicionar novo filho';
+  const submitLabel = isEdit ? 'Salvar' : 'Adicionar';
+  const submitLoading = isEdit ? 'Salvando…' : 'Salvando…';
+
   return (
     <div
       role="dialog"
@@ -92,7 +126,7 @@ export function AddChildDialog({ open, onClose }: Props) {
             id="add-child-title"
             className="font-display text-headline-md text-on-surface"
           >
-            Adicionar novo filho
+            {title}
           </h2>
           <button
             type="button"
@@ -105,7 +139,9 @@ export function AddChildDialog({ open, onClose }: Props) {
         </div>
 
         <p className="mt-1 text-label-sm text-on-surface-variant">
-          Crie o perfil — você poderá ajustar regras e avatar depois.
+          {isEdit
+            ? 'Ajuste os dados do perfil. A foto e trocada direto no card.'
+            : 'Crie o perfil — você poderá ajustar regras e avatar depois.'}
         </p>
 
         <div className="mt-5 space-y-4">
@@ -188,10 +224,10 @@ export function AddChildDialog({ open, onClose }: Props) {
             {mutation.isPending ? (
               <>
                 <Icon name="progress_activity" className="animate-spin text-sm" />
-                Salvando…
+                {submitLoading}
               </>
             ) : (
-              'Adicionar'
+              submitLabel
             )}
           </button>
         </div>

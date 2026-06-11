@@ -98,6 +98,18 @@ final class RestApi
                 'label' => ['type' => 'string', 'sanitize_callback' => 'sanitize_text_field'],
             ],
         ]);
+
+        register_rest_route(self::NAMESPACE, '/children/(?P<id>\d+)/pause', [
+            'methods'             => \WP_REST_Server::CREATABLE,
+            'callback'            => [$controller, 'pause'],
+            'permission_callback' => [self::class, 'requireManage'],
+        ]);
+
+        register_rest_route(self::NAMESPACE, '/children/(?P<id>\d+)/resume', [
+            'methods'             => \WP_REST_Server::CREATABLE,
+            'callback'            => [$controller, 'resume'],
+            'permission_callback' => [self::class, 'requireManage'],
+        ]);
     }
 
     private function registerChildSelfRoutes(): void

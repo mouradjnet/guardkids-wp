@@ -10,7 +10,7 @@ export class ApiError extends Error {
   }
 }
 
-function authHeaders(): Record<string, string> {
+export function authHeaders(): Record<string, string> {
   const wpNonce = window.guardkidsApi?.nonce;
   if (wpNonce) {
     return { 'X-WP-Nonce': wpNonce };
