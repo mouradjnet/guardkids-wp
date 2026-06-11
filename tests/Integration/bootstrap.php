@@ -314,6 +314,24 @@ if (! function_exists('current_user_can')) {
     }
 }
 
+if (! function_exists('is_email')) {
+    function is_email(string $email): bool
+    {
+        return filter_var($email, FILTER_VALIDATE_EMAIL) !== false;
+    }
+}
+
+if (! function_exists('get_userdata')) {
+    function get_userdata(int $userId): object|false
+    {
+        $user = $GLOBALS['gk_users'][$userId] ?? null;
+        if ($user === null) {
+            return false;
+        }
+        return (object) $user;
+    }
+}
+
 // ABSPATH + dbDelta stub. dbDelta delega ao $wpdb real, executando o SQL direto.
 // MigrationRunner faz require_once ABSPATH . 'wp-admin/includes/upgrade.php'.
 if (! defined('ABSPATH')) {
@@ -368,7 +386,7 @@ $wpdb = new wpdb($mysqli);
 $GLOBALS['wpdb'] = $wpdb;
 
 // Drop tabelas existentes + roda migrations limpas
-$tables = ['settings', 'categories', 'sites', 'requests', 'usage_events', 'locations', 'safe_zones', 'children'];
+$tables = ['settings', 'categories', 'sites', 'requests', 'usage_events', 'locations', 'safe_zones', 'guardians', 'children'];
 foreach ($tables as $t) {
     $wpdb->query("DROP TABLE IF EXISTS `{$wpdb->prefix}guardkids_{$t}`");
 }

@@ -7,6 +7,7 @@ namespace GuardKids\Api;
 use GuardKids\Api\Controllers\CategoryController;
 use GuardKids\Api\Controllers\ChildController;
 use GuardKids\Api\Controllers\ChildSelfController;
+use GuardKids\Api\Controllers\GuardianController;
 use GuardKids\Api\Controllers\LicenseController;
 use GuardKids\Api\Controllers\LocationController;
 use GuardKids\Api\Controllers\ReportsController;
@@ -43,6 +44,7 @@ final class RestApi
         $this->registerLocationsRoutes();
         $this->registerSafeZonesRoutes();
         $this->registerLicenseRoutes();
+        $this->registerGuardiansRoutes();
     }
 
     /**
@@ -314,6 +316,45 @@ final class RestApi
                 'callback'            => [$controller, 'deactivate'],
                 'permission_callback' => [self::class, 'requireManage'],
             ],
+        ]);
+    }
+
+    private function registerGuardiansRoutes(): void
+    {
+        $controller = new GuardianController();
+
+        register_rest_route(self::NAMESPACE, '/guardians', [
+            [
+                'methods'             => \WP_REST_Server::READABLE,
+                'callback'            => [$controller, 'index'],
+                'permission_callback' => [self::class, 'requireManage'],
+            ],
+            [
+                'methods'             => \WP_REST_Server::CREATABLE,
+                'callback'            => [$controller, 'create'],
+                'permission_callback' => [self::class, 'requireManage'],
+                'args'                => $controller->createArgs(),
+            ],
+        ]);
+
+        register_rest_route(self::NAMESPACE, '/guardians/(?P<id>\d+)', [
+            [
+                'methods'             => \WP_REST_Server::EDITABLE,
+                'callback'            => [$controller, 'updateRole'],
+                'permission_callback' => [self::class, 'requireManage'],
+                'args'                => $controller->updateRoleArgs(),
+            ],
+            [
+                'methods'             => \WP_REST_Server::DELETABLE,
+                'callback'            => [$controller, 'destroy'],
+                'permission_callback' => [self::class, 'requireManage'],
+            ],
+        ]);
+
+        register_rest_route(self::NAMESPACE, '/guardians/(?P<id>\d+)/activate', [
+            'methods'             => \WP_REST_Server::CREATABLE,
+            'callback'            => [$controller, 'activate'],
+            'permission_callback' => [self::class, 'requireManage'],
         ]);
     }
 
