@@ -51,8 +51,16 @@ abstract class ControllerIntegrationTestCase extends IntegrationTestCase
     /**
      * @return array<string, mixed>
      */
-    protected function dataOf(WP_REST_Response $resp): array
+    protected function dataOf(WP_REST_Response|WP_Error $resp): array
     {
+        if ($resp instanceof WP_Error) {
+            $this->fail(sprintf(
+                'Expected WP_REST_Response, got WP_Error: %s — %s (data: %s)',
+                $resp->get_error_code(),
+                $resp->get_error_message(),
+                (string) json_encode($resp->get_error_data()),
+            ));
+        }
         $data = $resp->get_data();
         $this->assertIsArray($data);
         return $data;

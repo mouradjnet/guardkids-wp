@@ -136,14 +136,23 @@ class wpdb // phpcs:ignore PSR1.Classes.ClassDeclaration
     public function insert(string $table, array $data, ?array $format = null): int|false
     {
         $columns      = array_map(fn (string $c) => '`' . $c . '`', array_keys($data));
-        $placeholders = array_map(fn (mixed $v) => $this->inferPlaceholder($v), array_values($data));
-        $sql          = sprintf(
+        $placeholders = [];
+        $values       = [];
+        foreach (array_values($data) as $value) {
+            if ($value === null) {
+                $placeholders[] = 'NULL';
+                continue;
+            }
+            $placeholders[] = $this->inferPlaceholder($value);
+            $values[]       = $value;
+        }
+        $sql = sprintf(
             'INSERT INTO `%s` (%s) VALUES (%s)',
             $table,
             implode(', ', $columns),
             implode(', ', $placeholders),
         );
-        $prepared = $this->prepare($sql, ...array_values($data));
+        $prepared = $values === [] ? $sql : $this->prepare($sql, ...$values);
         $ok       = $this->mysqli->query($prepared);
         if ($ok === false) {
             return false;
@@ -168,11 +177,19 @@ class wpdb // phpcs:ignore PSR1.Classes.ClassDeclaration
         $setSegments = [];
         $values      = [];
         foreach ($data as $col => $value) {
+            if ($value === null) {
+                $setSegments[] = '`' . $col . '` = NULL';
+                continue;
+            }
             $setSegments[] = '`' . $col . '` = ' . $this->inferPlaceholder($value);
             $values[]      = $value;
         }
         $whereSegments = [];
         foreach ($where as $col => $value) {
+            if ($value === null) {
+                $whereSegments[] = '`' . $col . '` IS NULL';
+                continue;
+            }
             $whereSegments[] = '`' . $col . '` = ' . $this->inferPlaceholder($value);
             $values[]        = $value;
         }
@@ -182,7 +199,7 @@ class wpdb // phpcs:ignore PSR1.Classes.ClassDeclaration
             implode(', ', $setSegments),
             implode(' AND ', $whereSegments),
         );
-        $prepared = $this->prepare($sql, ...$values);
+        $prepared = $values === [] ? $sql : $this->prepare($sql, ...$values);
         $ok       = $this->mysqli->query($prepared);
         if ($ok === false) {
             return false;
@@ -199,6 +216,10 @@ class wpdb // phpcs:ignore PSR1.Classes.ClassDeclaration
         $whereSegments = [];
         $values        = [];
         foreach ($where as $col => $value) {
+            if ($value === null) {
+                $whereSegments[] = '`' . $col . '` IS NULL';
+                continue;
+            }
             $whereSegments[] = '`' . $col . '` = ' . $this->inferPlaceholder($value);
             $values[]        = $value;
         }
@@ -207,7 +228,7 @@ class wpdb // phpcs:ignore PSR1.Classes.ClassDeclaration
             $table,
             implode(' AND ', $whereSegments),
         );
-        $prepared = $this->prepare($sql, ...$values);
+        $prepared = $values === [] ? $sql : $this->prepare($sql, ...$values);
         $ok       = $this->mysqli->query($prepared);
         if ($ok === false) {
             return false;
