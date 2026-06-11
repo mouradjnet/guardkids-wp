@@ -131,10 +131,13 @@ final class ReportsControllerTest extends ControllerIntegrationTestCase
     {
         $alice = $this->seedChild('Alice');
         $now   = current_time('mysql', true);
-        $yesterday = gmdate('Y-m-d H:i:s', strtotime($now) - 86400);
+        // Janela do controller e [from, to) com to=now. Eventos em "now"
+        // exato caem fora — seeda 1h antes pra entrar no range.
+        $oneHourAgo = gmdate('Y-m-d H:i:s', strtotime($now) - 3600);
+        $yesterday  = gmdate('Y-m-d H:i:s', strtotime($now) - 86400);
 
-        $this->seedHeartbeat($alice, $yesterday, 1800); // 30 min
-        $this->seedHeartbeat($alice, $now, 1200);       // 20 min → total 50
+        $this->seedHeartbeat($alice, $yesterday,  1800); // 30 min
+        $this->seedHeartbeat($alice, $oneHourAgo, 1200); // 20 min → total 50
 
         $data = $this->dataOf($this->freeController()->index($this->makeRequest('GET', '/reports')));
         $this->assertSame(50, $data['kpis']['totalMinutes']);
@@ -184,9 +187,10 @@ final class ReportsControllerTest extends ControllerIntegrationTestCase
         $alice = $this->seedChild('Alice');
         $bob   = $this->seedChild('Bob');
         $now   = current_time('mysql', true);
+        $oneHourAgo = gmdate('Y-m-d H:i:s', strtotime($now) - 3600);
 
-        $this->seedHeartbeat($alice, $now, 600);  // 10 min
-        $this->seedHeartbeat($bob,   $now, 1200); // 20 min
+        $this->seedHeartbeat($alice, $oneHourAgo, 600);  // 10 min
+        $this->seedHeartbeat($bob,   $oneHourAgo, 1200); // 20 min
 
         $data = $this->dataOf($this->freeController()->index(
             $this->makeRequest('GET', '/reports', ['child_id' => $alice])
