@@ -33,6 +33,25 @@ final class RolePermissionsTest extends IntegrationTestCase
         self::assertTrue(RestApi::requireCollaboratorOrAbove());
     }
 
+    public function test_manage_options_overrides_guardian_row_role(): void
+    {
+        // Regressão do smoke E2E: admin WP cujo email foi cadastrado como
+        // collaborator continua sendo admin, porque manage_options é autoridade.
+        $GLOBALS['gk_user_caps']['manage_options'] = true;
+        $GLOBALS['gk_current_user_id'] = 1;
+        $GLOBALS['gk_users'][1] = ['ID' => 1, 'user_email' => 'admin@familia.com'];
+        (new GuardianRepository())->insert([
+            'wp_user_id' => 1,
+            'name'       => 'Admin via collab row',
+            'email'      => 'admin@familia.com',
+            'role'       => 'collaborator',
+            'status'     => 'active',
+        ]);
+
+        self::assertTrue(RestApi::requireAdmin());
+        self::assertTrue(RestApi::requireCollaboratorOrAbove());
+    }
+
     public function test_collaborator_guardian_passes_collab_but_not_admin(): void
     {
         $GLOBALS['gk_current_user_id'] = 5;
