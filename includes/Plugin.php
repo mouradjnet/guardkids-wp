@@ -8,6 +8,7 @@ use GuardKids\Api\RestApi;
 use GuardKids\Database\CategoryRepository;
 use GuardKids\Database\MigrationRunner;
 use GuardKids\Security\RestHeaders;
+use GuardKids\Ui\AcceptInviteApp;
 use GuardKids\Ui\ChildApp;
 use GuardKids\Ui\ParentApp;
 
@@ -52,6 +53,7 @@ final class Plugin
         (new RestHeaders())->register();
         (new ParentApp())->register();
         (new ChildApp())->register();
+        (new AcceptInviteApp())->register();
     }
 
     /**
@@ -89,6 +91,7 @@ final class Plugin
         (new CategoryRepository())->seed($this->defaultCategories());
         (new ParentApp())->addRewriteRule();
         (new ChildApp())->addRewriteRule();
+        (new AcceptInviteApp())->addRewriteRule();
         flush_rewrite_rules();
     }
 

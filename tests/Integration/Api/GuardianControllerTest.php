@@ -6,6 +6,7 @@ namespace GuardKids\Tests\Integration\Api;
 
 use GuardKids\Api\Controllers\GuardianController;
 use GuardKids\Database\GuardianRepository;
+use GuardKids\Invite\InviteToken;
 use GuardKids\Tests\Integration\ControllerIntegrationTestCase;
 
 /**
@@ -187,5 +188,109 @@ final class GuardianControllerTest extends ControllerIntegrationTestCase
         $this->assertArrayHasKey('wpUserId', $data[0]);
         $this->assertArrayHasKey('createdAt', $data[0]);
         $this->assertArrayHasKey('updatedAt', $data[0]);
+        $this->assertArrayHasKey('invitePending', $data[0]);
+        $this->assertArrayHasKey('inviteExpiresAt', $data[0]);
+    }
+
+    public function test_create_returns_invite_token_and_url_and_persists_hash(): void
+    {
+        $resp = (new GuardianController())->create($this->makeRequest('POST', '/guardians', [
+            'name'  => 'Marina',
+            'email' => 'marina@familia.com',
+            'role'  => 'collaborator',
+        ]));
+        $this->assertResponseStatus(201, $resp);
+        $data = $this->dataOf($resp);
+
+        $this->assertArrayHasKey('inviteToken', $data);
+        $this->assertArrayHasKey('inviteUrl', $data);
+        $this->assertMatchesRegularExpression('/^[a-f0-9]{64}$/', (string) $data['inviteToken']);
+        $this->assertStringContainsString('/aceitar-convite/' . $data['inviteToken'], (string) $data['inviteUrl']);
+        $this->assertTrue($data['invitePending']);
+        $this->assertNotNull($data['inviteExpiresAt']);
+
+        // O DB so' guarda o hash — nao o plaintext.
+        $row = (new GuardianRepository())->findById((int) $data['id']);
+        $this->assertNotNull($row);
+        $this->assertSame(InviteToken::hash((string) $data['inviteToken']), $row['invite_token']);
+    }
+
+    public function test_resend_regenerates_token_and_returns_new_url(): void
+    {
+        $createResp = (new GuardianController())->create($this->makeRequest('POST', '/guardians', [
+            'name'  => 'Marina',
+            'email' => 'marina@familia.com',
+        ]));
+        $created = $this->dataOf($createResp);
+        $originalToken = (string) $created['inviteToken'];
+        $id = (int) $created['id'];
+
+        $resendResp = (new GuardianController())->resend(
+            $this->makeRequest('POST', "/guardians/{$id}/resend", ['id' => $id]),
+        );
+        $this->assertResponseStatus(200, $resendResp);
+        $resent = $this->dataOf($resendResp);
+        $this->assertNotSame($originalToken, $resent['inviteToken']);
+        $this->assertMatchesRegularExpression('/^[a-f0-9]{64}$/', (string) $resent['inviteToken']);
+
+        // Hash antigo nao serve mais; o novo bate.
+        $row = (new GuardianRepository())->findById($id);
+        $this->assertSame(InviteToken::hash((string) $resent['inviteToken']), $row['invite_token']);
+        $this->assertNotSame(InviteToken::hash($originalToken), $row['invite_token']);
+    }
+
+    public function test_resend_returns_404_when_guardian_missing(): void
+    {
+        $resp = (new GuardianController())->resend(
+            $this->makeRequest('POST', '/guardians/999/resend', ['id' => 999]),
+        );
+        $this->assertWpError('not_found', $resp);
+        $this->assertResponseStatus(404, $resp);
+    }
+
+    public function test_resend_returns_422_when_not_pending(): void
+    {
+        $id = $this->seed('djair@familia.com', 'admin', 'active', 1);
+        $resp = (new GuardianController())->resend(
+            $this->makeRequest('POST', "/guardians/{$id}/resend", ['id' => $id]),
+        );
+        $this->assertWpError('not_pending', $resp);
+        $this->assertResponseStatus(422, $resp);
+    }
+
+    public function test_findByInviteTokenHash_matches_token_via_repo(): void
+    {
+        $createResp = (new GuardianController())->create($this->makeRequest('POST', '/guardians', [
+            'name'  => 'Marina',
+            'email' => 'marina@familia.com',
+        ]));
+        $created = $this->dataOf($createResp);
+        $token = (string) $created['inviteToken'];
+
+        $row = (new GuardianRepository())->findByInviteTokenHash(InviteToken::hash($token));
+        $this->assertNotNull($row);
+        $this->assertSame((int) $created['id'], (int) $row['id']);
+
+        // Token errado nao acha.
+        $bad = (new GuardianRepository())->findByInviteTokenHash(InviteToken::hash('00' . substr($token, 2)));
+        $this->assertNull($bad);
+    }
+
+    public function test_consumeInvite_clears_token_and_activates(): void
+    {
+        $created = $this->dataOf((new GuardianController())->create($this->makeRequest('POST', '/guardians', [
+            'name'  => 'Marina',
+            'email' => 'marina@familia.com',
+        ])));
+        $id = (int) $created['id'];
+
+        $repo = new GuardianRepository();
+        $this->assertTrue($repo->consumeInvite($id, 77));
+
+        $row = $repo->findById($id);
+        $this->assertSame(77, (int) $row['wp_user_id']);
+        $this->assertSame('active', $row['status']);
+        $this->assertNull($row['invite_token']);
+        $this->assertNull($row['invite_expires_at']);
     }
 }

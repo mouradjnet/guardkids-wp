@@ -329,6 +329,35 @@ if (! function_exists('wp_get_current_user')) {
     }
 }
 
+if (! function_exists('home_url')) {
+    function home_url(string $path = '/'): string
+    {
+        return 'http://test.local' . $path;
+    }
+}
+
+if (! function_exists('get_bloginfo')) {
+    function get_bloginfo(string $key = ''): string
+    {
+        return 'GuardKids Test';
+    }
+}
+
+if (! function_exists('wp_specialchars_decode')) {
+    function wp_specialchars_decode(string $text): string
+    {
+        return $text;
+    }
+}
+
+if (! function_exists('wp_mail')) {
+    function wp_mail(...$args): bool
+    {
+        $GLOBALS['gk_wp_mail_log'][] = $args;
+        return true;
+    }
+}
+
 if (! function_exists('is_email')) {
     function is_email(string $email): bool
     {

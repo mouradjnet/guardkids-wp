@@ -380,6 +380,12 @@ final class RestApi
             'callback'            => [$controller, 'activate'],
             'permission_callback' => [self::class, 'requireAdmin'],
         ]);
+
+        register_rest_route(self::NAMESPACE, '/guardians/(?P<id>\d+)/resend', [
+            'methods'             => \WP_REST_Server::CREATABLE,
+            'callback'            => [$controller, 'resend'],
+            'permission_callback' => [self::class, 'requireAdmin'],
+        ]);
     }
 
     private function registerSettingsRoutes(): void

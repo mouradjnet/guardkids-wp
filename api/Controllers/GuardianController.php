@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace GuardKids\Api\Controllers;
 
 use GuardKids\Database\GuardianRepository;
+use GuardKids\Invite\InviteToken;
 use WP_Error;
 use WP_REST_Request;
 use WP_REST_Response;
@@ -64,18 +65,86 @@ final class GuardianController
 
         $this->ensureSelfPresent();
 
+        $token = InviteToken::generate();
+        $expiresAt = gmdate('Y-m-d H:i:s', time() + InviteToken::TTL_SECONDS);
+
         $id = $this->repo->insert([
-            'wp_user_id' => null,
-            'name'       => $name,
-            'email'      => $email,
-            'role'       => $role,
-            'status'     => 'pending',
+            'wp_user_id'        => null,
+            'name'              => $name,
+            'email'             => $email,
+            'role'              => $role,
+            'status'            => 'pending',
+            'invite_token'      => InviteToken::hash($token),
+            'invite_expires_at' => $expiresAt,
         ]);
         if ($id === 0) {
             return new WP_Error('db_error', 'Não foi possível salvar.', ['status' => 500]);
         }
 
-        return new WP_REST_Response($this->toJson($this->repo->findById($id) ?? []), 201);
+        $url = $this->buildInviteUrl($token);
+        $this->sendInviteEmail($email, $name, $url);
+
+        $payload = $this->toJson($this->repo->findById($id) ?? []);
+        $payload['inviteUrl']   = $url;
+        $payload['inviteToken'] = $token;
+        return new WP_REST_Response($payload, 201);
+    }
+
+    public function resend(WP_REST_Request $req): WP_REST_Response|WP_Error
+    {
+        $id  = (int) $req['id'];
+        $row = $this->repo->findById($id);
+        if ($row === null) {
+            return new WP_Error('not_found', 'Guardião não encontrado.', ['status' => 404]);
+        }
+        if (($row['status'] ?? '') !== 'pending') {
+            return new WP_Error(
+                'not_pending',
+                'Só dá pra reenviar convite de guardião pendente.',
+                ['status' => 422],
+            );
+        }
+
+        $token = InviteToken::generate();
+        $expiresAt = gmdate('Y-m-d H:i:s', time() + InviteToken::TTL_SECONDS);
+
+        if (! $this->repo->update($id, [
+            'invite_token'      => InviteToken::hash($token),
+            'invite_expires_at' => $expiresAt,
+        ])) {
+            return new WP_Error('db_error', 'Falha ao regenerar convite.', ['status' => 500]);
+        }
+
+        $url = $this->buildInviteUrl($token);
+        $this->sendInviteEmail((string) $row['email'], (string) $row['name'], $url);
+
+        $payload = $this->toJson($this->repo->findById($id) ?? []);
+        $payload['inviteUrl']   = $url;
+        $payload['inviteToken'] = $token;
+        return rest_ensure_response($payload);
+    }
+
+    private function buildInviteUrl(string $token): string
+    {
+        return home_url('/aceitar-convite/' . $token);
+    }
+
+    private function sendInviteEmail(string $email, string $name, string $url): void
+    {
+        if (! function_exists('wp_mail')) {
+            return;
+        }
+        $subject = sprintf('[%s] Convite pra administrar a familia', wp_specialchars_decode((string) get_bloginfo('name')));
+        $body = sprintf(
+            "Ola %s,\n\n" .
+            "Voce foi convidado pra administrar a familia em %s.\n\n" .
+            "Pra aceitar, clique no link abaixo (valido por 7 dias):\n%s\n\n" .
+            "Se voce nao esperava esse convite, pode ignorar este e-mail.\n",
+            $name,
+            home_url('/'),
+            $url,
+        );
+        @wp_mail($email, $subject, $body);
     }
 
     public function updateRole(WP_REST_Request $req): WP_REST_Response|WP_Error
@@ -189,13 +258,22 @@ final class GuardianController
      */
     private function toJson(array $row): array
     {
+        $expiresAt = isset($row['invite_expires_at']) && $row['invite_expires_at']
+            ? (string) $row['invite_expires_at']
+            : null;
+        $invitePending = ($row['status'] ?? '') === 'pending'
+            && $expiresAt !== null
+            && strtotime($expiresAt . ' UTC') > time();
+
         return [
-            'id'        => (int) ($row['id'] ?? 0),
-            'wpUserId'  => isset($row['wp_user_id']) ? (int) $row['wp_user_id'] : null,
-            'name'      => (string) ($row['name'] ?? ''),
-            'email'     => (string) ($row['email'] ?? ''),
-            'role'      => (string) ($row['role'] ?? 'collaborator'),
-            'status'    => (string) ($row['status'] ?? 'pending'),
+            'id'              => (int) ($row['id'] ?? 0),
+            'wpUserId'        => isset($row['wp_user_id']) ? (int) $row['wp_user_id'] : null,
+            'name'            => (string) ($row['name'] ?? ''),
+            'email'           => (string) ($row['email'] ?? ''),
+            'role'            => (string) ($row['role'] ?? 'collaborator'),
+            'status'          => (string) ($row['status'] ?? 'pending'),
+            'invitePending'   => $invitePending,
+            'inviteExpiresAt' => $expiresAt,
             'createdAt' => $row['created_at'] ?? null,
             'updatedAt' => $row['updated_at'] ?? null,
         ];
