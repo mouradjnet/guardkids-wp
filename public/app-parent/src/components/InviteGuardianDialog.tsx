@@ -2,8 +2,9 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react';
 import { createGuardian } from '../api/guardians';
 import { ApiError } from '../api/client';
-import type { GuardianRole } from '../api/types';
+import type { GuardianRole, GuardianWithInvite } from '../api/types';
 import { Icon } from './Icon';
+import { InviteLinkPanel } from './InviteLinkPanel';
 
 type Props = {
   open: boolean;
@@ -19,20 +20,22 @@ export function InviteGuardianDialog({ open, onClose }: Props) {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [role, setRole] = useState<GuardianRole>('collaborator');
+  const [created, setCreated] = useState<GuardianWithInvite | null>(null);
 
   const mutation = useMutation({
     mutationFn: createGuardian,
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['guardians'] });
-      setName('');
-      setEmail('');
-      setRole('collaborator');
-      onClose();
+      setCreated(data);
     },
   });
 
   const handleClose = () => {
     mutation.reset();
+    setCreated(null);
+    setName('');
+    setEmail('');
+    setRole('collaborator');
     onClose();
   };
 
@@ -98,6 +101,25 @@ export function InviteGuardianDialog({ open, onClose }: Props) {
           </button>
         </div>
 
+        {created ? (
+          <div className="mt-3 space-y-4">
+            <p className="text-label-md text-on-surface">
+              Convite enviado para <strong>{created.email}</strong>. Se o e-mail não
+              chegar, compartilhe o link abaixo:
+            </p>
+            <InviteLinkPanel url={created.inviteUrl} />
+            <div className="flex justify-end">
+              <button
+                type="button"
+                onClick={handleClose}
+                className="rounded-lg bg-primary px-4 py-2 text-label-md font-semibold text-white shadow-ambient hover:bg-primary-container"
+              >
+                Fechar
+              </button>
+            </div>
+          </div>
+        ) : (
+        <>
         <p className="mt-1 text-label-sm text-on-surface-variant">
           Adicione alguém à família. O guardião fica como "pendente" até você ativar.
         </p>
@@ -174,6 +196,8 @@ export function InviteGuardianDialog({ open, onClose }: Props) {
             )}
           </button>
         </div>
+        </>
+        )}
       </form>
     </div>
   );

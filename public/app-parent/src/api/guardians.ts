@@ -1,5 +1,5 @@
 import { apiFetch } from './client';
-import type { Guardian, GuardianRole } from './types';
+import type { Guardian, GuardianRole, GuardianWithInvite } from './types';
 
 export type CreateGuardianInput = {
   name: string;
@@ -11,11 +11,15 @@ export function listGuardians(): Promise<Guardian[]> {
   return apiFetch<Guardian[]>('/guardians');
 }
 
-export function createGuardian(input: CreateGuardianInput): Promise<Guardian> {
-  return apiFetch<Guardian>('/guardians', {
+export function createGuardian(input: CreateGuardianInput): Promise<GuardianWithInvite> {
+  return apiFetch<GuardianWithInvite>('/guardians', {
     method: 'POST',
     body: JSON.stringify(input),
   });
+}
+
+export function resendInvite(id: number): Promise<GuardianWithInvite> {
+  return apiFetch<GuardianWithInvite>(`/guardians/${id}/resend`, { method: 'POST' });
 }
 
 export function updateGuardianRole(id: number, role: GuardianRole): Promise<Guardian> {

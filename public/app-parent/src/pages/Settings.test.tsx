@@ -20,12 +20,14 @@ const {
   updateGuardianRoleMock,
   activateGuardianMock,
   removeGuardianMock,
+  resendInviteMock,
 } = vi.hoisted(() => ({
   listGuardiansMock: vi.fn(),
   createGuardianMock: vi.fn(),
   updateGuardianRoleMock: vi.fn(),
   activateGuardianMock: vi.fn(),
   removeGuardianMock: vi.fn(),
+  resendInviteMock: vi.fn(),
 }));
 vi.mock('../api/guardians', () => ({
   listGuardians: listGuardiansMock,
@@ -33,6 +35,7 @@ vi.mock('../api/guardians', () => ({
   updateGuardianRole: updateGuardianRoleMock,
   activateGuardian: activateGuardianMock,
   removeGuardian: removeGuardianMock,
+  resendInvite: resendInviteMock,
 }));
 
 import { Settings } from './Settings';
@@ -44,6 +47,8 @@ const djair: Guardian = {
   email: 'djair@familia.com',
   role: 'admin',
   status: 'active',
+  invitePending: false,
+  inviteExpiresAt: null,
   createdAt: null,
   updatedAt: null,
 };
@@ -54,6 +59,8 @@ const marinaPending: Guardian = {
   email: 'marina@familia.com',
   role: 'collaborator',
   status: 'pending',
+  invitePending: true,
+  inviteExpiresAt: '2099-01-01T00:00:00Z',
   createdAt: null,
   updatedAt: null,
 };
@@ -86,6 +93,7 @@ describe('Settings page', () => {
     updateGuardianRoleMock.mockReset();
     activateGuardianMock.mockReset();
     removeGuardianMock.mockReset();
+    resendInviteMock.mockReset();
   });
   afterEach(() => vi.restoreAllMocks());
 
@@ -287,10 +295,14 @@ describe('Settings page', () => {
     expect(screen.getByRole('dialog', { name: /convidar guardião/i })).toBeInTheDocument();
   });
 
-  it('Família: submits new guardian through dialog', async () => {
+  it('Família: submits new guardian through dialog and shows invite link', async () => {
     listSettingsMock.mockResolvedValue({});
     listGuardiansMock.mockResolvedValue([djair]);
-    createGuardianMock.mockResolvedValue({ ...marinaPending });
+    createGuardianMock.mockResolvedValue({
+      ...marinaPending,
+      inviteUrl: 'http://wp.local/aceitar-convite/abc',
+      inviteToken: 'abc',
+    });
     const user = userEvent.setup();
     renderPage();
 
@@ -309,6 +321,31 @@ describe('Settings page', () => {
         role: 'collaborator',
       });
     });
+    // Dialog troca pra success view com link de convite
+    expect(await screen.findByText(/convite enviado/i)).toBeInTheDocument();
+    expect(screen.getByText('http://wp.local/aceitar-convite/abc')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /copiar link/i })).toBeInTheDocument();
+  });
+
+  it('Família: pending row has Reenviar button which calls resendInvite + shows new link', async () => {
+    listSettingsMock.mockResolvedValue({});
+    listGuardiansMock.mockResolvedValue([djair, marinaPending]);
+    resendInviteMock.mockResolvedValue({
+      ...marinaPending,
+      inviteUrl: 'http://wp.local/aceitar-convite/xyz',
+      inviteToken: 'xyz',
+    });
+    const user = userEvent.setup();
+    renderPage();
+
+    await screen.findByText('Marina');
+    await user.click(screen.getByRole('button', { name: /reenviar convite para marina/i }));
+
+    await waitFor(() => {
+      expect(resendInviteMock).toHaveBeenCalled();
+      expect(resendInviteMock.mock.calls[0]?.[0]).toBe(2);
+    });
+    expect(await screen.findByText('http://wp.local/aceitar-convite/xyz')).toBeInTheDocument();
   });
 
   it('Família: clicking activate triggers activateGuardian for pending row', async () => {
