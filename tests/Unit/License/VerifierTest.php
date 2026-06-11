@@ -56,10 +56,12 @@ final class VerifierTest extends TestCase
     {
         $key   = $this->sign($this->basePayload());
         $parts = explode('.', $key);
-        // Inverte os últimos 2 bytes da sig — mantém comprimento, quebra sig.
-        $rawSig                                = base64_decode(strtr($parts[1], '-_', '+/'));
-        $rawSig[\strlen($rawSig) - 1]          = "\x00";
-        $broken                                = $parts[0] . '.' . self::b64url($rawSig);
+        // XOR 0xFF no último byte — garante que o byte mudou (set "\x00" era
+        // no-op se o byte já fosse \x00, falhando o teste 1/256 das vezes).
+        $rawSig                       = base64_decode(strtr($parts[1], '-_', '+/'));
+        $lastIdx                      = \strlen($rawSig) - 1;
+        $rawSig[$lastIdx]             = \chr(\ord($rawSig[$lastIdx]) ^ 0xFF);
+        $broken                       = $parts[0] . '.' . self::b64url($rawSig);
 
         self::assertNull($this->verifier()->verify($broken));
     }
