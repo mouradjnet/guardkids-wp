@@ -5,12 +5,14 @@ import {
   activateGuardian,
   listGuardians,
   removeGuardian,
+  resendInvite,
   updateGuardianRole,
 } from '../api/guardians';
 import { listSettings, updateSettings, type SettingsBag } from '../api/settings';
-import type { Guardian, GuardianRole } from '../api/types';
+import type { Guardian, GuardianRole, GuardianWithInvite } from '../api/types';
 import { Icon } from '../components/Icon';
 import { InviteGuardianDialog } from '../components/InviteGuardianDialog';
+import { InviteLinkPanel } from '../components/InviteLinkPanel';
 import { PageHeader } from '../components/PageHeader';
 
 export function Settings() {
@@ -454,6 +456,7 @@ function SessionRow({
 function GuardianRow({ guardian }: { guardian: Guardian }) {
   const queryClient = useQueryClient();
   const invalidate = () => queryClient.invalidateQueries({ queryKey: ['guardians'] });
+  const [resent, setResent] = useState<GuardianWithInvite | null>(null);
 
   const roleMutation = useMutation({
     mutationFn: (role: GuardianRole) => updateGuardianRole(guardian.id, role),
@@ -467,13 +470,24 @@ function GuardianRow({ guardian }: { guardian: Guardian }) {
     mutationFn: () => removeGuardian(guardian.id),
     onSuccess: invalidate,
   });
+  const resendMutation = useMutation({
+    mutationFn: () => resendInvite(guardian.id),
+    onSuccess: (data) => {
+      setResent(data);
+      invalidate();
+    },
+  });
 
   const errorOf = (m: { error: unknown }): string | null => {
     if (m.error instanceof ApiError) return `${m.error.message} (${m.error.status})`;
     if (m.error instanceof Error) return m.error.message;
     return null;
   };
-  const error = errorOf(roleMutation) ?? errorOf(activateMutation) ?? errorOf(removeMutation);
+  const error =
+    errorOf(roleMutation) ??
+    errorOf(activateMutation) ??
+    errorOf(removeMutation) ??
+    errorOf(resendMutation);
 
   const toggleRole = () => {
     const next: GuardianRole = guardian.role === 'admin' ? 'collaborator' : 'admin';
@@ -490,7 +504,10 @@ function GuardianRow({ guardian }: { guardian: Guardian }) {
   };
 
   const busy =
-    roleMutation.isPending || activateMutation.isPending || removeMutation.isPending;
+    roleMutation.isPending ||
+    activateMutation.isPending ||
+    removeMutation.isPending ||
+    resendMutation.isPending;
   const pending = guardian.status === 'pending';
 
   return (
@@ -523,23 +540,46 @@ function GuardianRow({ guardian }: { guardian: Guardian }) {
               {error}
             </p>
           )}
+          {resent && (
+            <div className="mt-2">
+              <InviteLinkPanel
+                url={resent.inviteUrl}
+                message="Novo link gerado (o anterior expirou). Compartilhe com o guardião:"
+              />
+            </div>
+          )}
         </div>
       </div>
       <div className="flex items-center gap-1">
         {pending && (
-          <button
-            type="button"
-            onClick={() => activateMutation.mutate()}
-            disabled={busy}
-            aria-label={`Ativar ${guardian.name}`}
-            title="Ativar guardião"
-            className="rounded-full p-2 text-secondary transition-colors hover:bg-secondary-container/40 disabled:opacity-50"
-          >
-            <Icon
-              name={activateMutation.isPending ? 'progress_activity' : 'check'}
-              className={`text-base ${activateMutation.isPending ? 'animate-spin' : ''}`}
-            />
-          </button>
+          <>
+            <button
+              type="button"
+              onClick={() => resendMutation.mutate()}
+              disabled={busy}
+              aria-label={`Reenviar convite para ${guardian.name}`}
+              title="Reenviar convite"
+              className="rounded-full p-2 text-primary transition-colors hover:bg-primary-container/40 disabled:opacity-50"
+            >
+              <Icon
+                name={resendMutation.isPending ? 'progress_activity' : 'send'}
+                className={`text-base ${resendMutation.isPending ? 'animate-spin' : ''}`}
+              />
+            </button>
+            <button
+              type="button"
+              onClick={() => activateMutation.mutate()}
+              disabled={busy}
+              aria-label={`Ativar ${guardian.name}`}
+              title="Ativar guardião"
+              className="rounded-full p-2 text-secondary transition-colors hover:bg-secondary-container/40 disabled:opacity-50"
+            >
+              <Icon
+                name={activateMutation.isPending ? 'progress_activity' : 'check'}
+                className={`text-base ${activateMutation.isPending ? 'animate-spin' : ''}`}
+              />
+            </button>
+          </>
         )}
         <button
           type="button"

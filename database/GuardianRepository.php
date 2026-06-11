@@ -34,4 +34,28 @@ final class GuardianRepository extends Repository
         $rows = $this->findWhere(['role' => 'admin']);
         return count($rows);
     }
+
+    /**
+     * Lookup por hash do token de convite (plaintext nunca passa por aqui).
+     *
+     * @return array<string, mixed>|null
+     */
+    public function findByInviteTokenHash(string $hash): ?array
+    {
+        $rows = $this->findWhere(['invite_token' => $hash]);
+        return $rows[0] ?? null;
+    }
+
+    /**
+     * Marca convite consumido: status=active + zera token/expira + grava wp_user_id.
+     */
+    public function consumeInvite(int $id, int $wpUserId): bool
+    {
+        return $this->update($id, [
+            'wp_user_id'        => $wpUserId,
+            'status'            => 'active',
+            'invite_token'      => null,
+            'invite_expires_at' => null,
+        ]);
+    }
 }

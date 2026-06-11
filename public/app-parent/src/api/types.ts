@@ -67,8 +67,16 @@ export type Guardian = {
   email: string;
   role: GuardianRole;
   status: GuardianStatus;
+  invitePending: boolean;
+  inviteExpiresAt: string | null;
   createdAt: string | null;
   updatedAt: string | null;
+};
+
+/** Response do create / resend, com link gerado pra admin copiar (one-time). */
+export type GuardianWithInvite = Guardian & {
+  inviteUrl: string;
+  inviteToken: string;
 };
 
 export type SafeZone = {
