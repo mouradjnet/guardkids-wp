@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
-import { listChildren, updateChild } from '../api/children';
+import { listChildren, updateChild, type UpdateChildInput } from '../api/children';
 import { ApiError } from '../api/client';
 import type { Child } from '../api/types';
 import { Icon } from '../components/Icon';
@@ -90,9 +90,9 @@ export function TimeLimits() {
             <>
               <div className="grid grid-cols-1 gap-gutter lg:grid-cols-2">
                 <DailyTimeCard child={selected} />
-                <BedtimeCard />
+                <BedtimeCard child={selected} />
               </div>
-              <WeeklyCard />
+              <WeeklyCard child={selected} />
               <TimelineCard childName={selected.name} />
             </>
           )}
@@ -233,10 +233,19 @@ function ComingSoonBadge() {
   );
 }
 
-function BedtimeCard() {
-  const start = '21:30';
-  const end = '07:00';
-  const enabled = true;
+function BedtimeCard({ child }: { child: Child }) {
+  const queryClient = useQueryClient();
+  const [enabled, setEnabled] = useState<boolean>(child.bedtimeEnabled);
+  const [start, setStart] = useState<string>(child.bedtimeStart ?? '21:30');
+  const [end, setEnd] = useState<string>(child.bedtimeEnd ?? '07:00');
+
+  const mutation = useMutation({
+    mutationFn: (input: UpdateChildInput) => updateChild(child.id, input),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['children'] }),
+  });
+
+  const save = (patch: UpdateChildInput) => mutation.mutate(patch);
+
   return (
     <article className="glass-panel rounded-2xl p-6 shadow-ambient">
       <header className="mb-4 flex items-center justify-between gap-3">
@@ -245,27 +254,63 @@ function BedtimeCard() {
             <Icon name="bedtime" className="text-2xl" filled />
           </div>
           <div>
-            <h3 className="flex items-center gap-2 font-display text-headline-md text-on-surface">
-              Modo dormir
-              <ComingSoonBadge />
-            </h3>
+            <h3 className="font-display text-headline-md text-on-surface">Modo dormir</h3>
             <p className="text-label-sm text-on-surface-variant">
               Bloqueia tudo durante a noite
             </p>
           </div>
         </div>
-        <Toggle on={enabled} onToggle={() => undefined} disabled />
+        <Toggle
+          on={enabled}
+          onToggle={() => {
+            const next = !enabled;
+            setEnabled(next);
+            save({ bedtime_enabled: next, bedtime_start: start, bedtime_end: end });
+          }}
+        />
       </header>
 
-      <div className="grid grid-cols-2 gap-3">
-        <TimeInput label="Começa às" value={start} onChange={() => undefined} icon="dark_mode" disabled />
-        <TimeInput label="Termina às" value={end} onChange={() => undefined} icon="wb_sunny" disabled />
+      <div className={`grid grid-cols-2 gap-3 ${enabled ? '' : 'opacity-40'}`}>
+        <TimeInput
+          label="Começa às"
+          value={start}
+          onChange={(v) => {
+            setStart(v);
+            save({ bedtime_enabled: enabled, bedtime_start: v, bedtime_end: end });
+          }}
+          icon="dark_mode"
+          disabled={!enabled}
+        />
+        <TimeInput
+          label="Termina às"
+          value={end}
+          onChange={(v) => {
+            setEnd(v);
+            save({ bedtime_enabled: enabled, bedtime_start: start, bedtime_end: v });
+          }}
+          icon="wb_sunny"
+          disabled={!enabled}
+        />
       </div>
 
-      <div className="mt-4 flex items-center gap-2 rounded-xl border border-primary/20 bg-primary/5 p-3 text-label-sm text-on-surface-variant">
-        <Icon name="info" className="text-base text-primary" />
-        Configuração de horário de dormir vai vir na próxima fase. Por enquanto, o backend já honra o schedule definido em outros canais.
-      </div>
+      {mutation.isPending && (
+        <p className="mt-3 flex items-center gap-2 text-label-sm text-on-surface-variant">
+          <Icon name="progress_activity" className="animate-spin text-sm text-primary" />
+          Salvando…
+        </p>
+      )}
+
+      {mutation.error ? (
+        <p role="alert" className="mt-3 rounded-lg bg-error/10 p-2 text-label-sm text-error">
+          {mutation.error instanceof ApiError && mutation.error.status === 402
+            ? 'Rotina escolar é um recurso Premium. Faça upgrade pra ativar bedtime.'
+            : mutation.error instanceof ApiError
+              ? `${mutation.error.message} (${mutation.error.status})`
+              : mutation.error instanceof Error
+                ? mutation.error.message
+                : 'Erro desconhecido ao salvar.'}
+        </p>
+      ) : null}
     </article>
   );
 }
@@ -329,8 +374,35 @@ function Toggle({
   );
 }
 
-function WeeklyCard() {
-  const enabled = new Set<WeekDay>(['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun']);
+function decodeWeekdays(mask: string): Set<WeekDay> {
+  const safe = /^[YN]{7}$/.test(mask) ? mask : 'YYYYYYY';
+  const out = new Set<WeekDay>();
+  WEEK_DAYS.forEach((d, idx) => {
+    if (safe[idx] === 'Y') out.add(d.id);
+  });
+  return out;
+}
+
+function encodeWeekdays(set: Set<WeekDay>): string {
+  return WEEK_DAYS.map((d) => (set.has(d.id) ? 'Y' : 'N')).join('');
+}
+
+function WeeklyCard({ child }: { child: Child }) {
+  const queryClient = useQueryClient();
+  const [enabled, setEnabled] = useState<Set<WeekDay>>(decodeWeekdays(child.allowedWeekdays));
+
+  const mutation = useMutation({
+    mutationFn: (input: UpdateChildInput) => updateChild(child.id, input),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['children'] }),
+  });
+
+  const toggle = (d: WeekDay) => {
+    const next = new Set(enabled);
+    if (next.has(d)) next.delete(d);
+    else next.add(d);
+    setEnabled(next);
+    mutation.mutate({ allowed_weekdays: encodeWeekdays(next) });
+  };
 
   return (
     <article className="glass-panel rounded-2xl p-6 shadow-ambient">
@@ -339,12 +411,9 @@ function WeeklyCard() {
           <Icon name="event_repeat" className="text-2xl" filled />
         </div>
         <div>
-          <h3 className="flex items-center gap-2 font-display text-headline-md text-on-surface">
-            Dias permitidos
-            <ComingSoonBadge />
-          </h3>
+          <h3 className="font-display text-headline-md text-on-surface">Dias permitidos</h3>
           <p className="text-label-sm text-on-surface-variant">
-            Pré-visualização da configuração semanal
+            Clique pra ativar/desativar — bloqueia o filho nos dias desligados
           </p>
         </div>
       </header>
@@ -356,11 +425,12 @@ function WeeklyCard() {
             <button
               key={d.id}
               type="button"
-              disabled
+              onClick={() => toggle(d.id)}
+              disabled={mutation.isPending}
               className={
                 active
-                  ? 'flex flex-col items-center justify-center gap-1 rounded-xl bg-primary py-3 text-white shadow-sm disabled:cursor-not-allowed disabled:opacity-50'
-                  : 'flex flex-col items-center justify-center gap-1 rounded-xl border border-outline-variant bg-surface-container-low py-3 text-on-surface-variant disabled:cursor-not-allowed disabled:opacity-50'
+                  ? 'flex flex-col items-center justify-center gap-1 rounded-xl bg-primary py-3 text-white shadow-sm disabled:opacity-60'
+                  : 'flex flex-col items-center justify-center gap-1 rounded-xl border border-outline-variant bg-surface-container-low py-3 text-on-surface-variant hover:bg-surface-variant disabled:opacity-60'
               }
             >
               <span className="text-label-md font-bold">{d.label}</span>
@@ -373,6 +443,18 @@ function WeeklyCard() {
           );
         })}
       </div>
+
+      {mutation.error ? (
+        <p role="alert" className="mt-3 rounded-lg bg-error/10 p-2 text-label-sm text-error">
+          {mutation.error instanceof ApiError && mutation.error.status === 402
+            ? 'Rotina escolar é um recurso Premium. Faça upgrade pra restringir dias.'
+            : mutation.error instanceof ApiError
+              ? `${mutation.error.message} (${mutation.error.status})`
+              : mutation.error instanceof Error
+                ? mutation.error.message
+                : 'Erro desconhecido ao salvar.'}
+        </p>
+      ) : null}
     </article>
   );
 }

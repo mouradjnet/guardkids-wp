@@ -8,6 +8,10 @@ export type Child = {
   status: 'online' | 'offline' | 'paused';
   usedMinutes: number;
   limitMinutes: number;
+  bedtimeEnabled: boolean;
+  bedtimeStart: string | null;
+  bedtimeEnd: string | null;
+  allowedWeekdays: string;
   createdAt: string | null;
   updatedAt: string | null;
 };

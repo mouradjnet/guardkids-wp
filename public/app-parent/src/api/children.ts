@@ -51,6 +51,10 @@ export type UpdateChildInput = Partial<{
   avatar_url: string | null;
   device: string | null;
   limit_minutes: number;
+  bedtime_enabled: boolean;
+  bedtime_start: string;
+  bedtime_end: string;
+  allowed_weekdays: string;
 }>;
 
 export function listChildren(): Promise<Child[]> {

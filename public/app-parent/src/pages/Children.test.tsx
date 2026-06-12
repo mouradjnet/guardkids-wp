@@ -47,6 +47,10 @@ const lucas: Child = {
   status: 'online',
   usedMinutes: 30,
   limitMinutes: 60,
+  bedtimeEnabled: false,
+  bedtimeStart: null,
+  bedtimeEnd: null,
+  allowedWeekdays: 'YYYYYYY',
   createdAt: null,
   updatedAt: null,
 };
