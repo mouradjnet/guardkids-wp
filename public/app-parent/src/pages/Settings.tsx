@@ -407,48 +407,13 @@ function SessionsBlock() {
       <p className="mb-3 text-label-sm text-on-surface-variant">
         Auditoria de dispositivos entra junto com tabela de sessões na próxima migration.
       </p>
-      <div className="space-y-2">
-        <SessionRow label="MacBook Pro — Sala" detail="Você • IP 191.0.0.12 • agora" current />
-        <SessionRow label="iPhone 14 — Quarto" detail="Você • IP 192.0.0.45 • há 2h" />
+      <div className="flex flex-col items-center gap-2 rounded-lg bg-white py-6 text-center text-on-surface-variant">
+        <Icon name="devices_other" className="text-3xl" />
+        <p className="text-label-sm">
+          Sem dispositivos pra mostrar ainda. Quando a tabela de sessões existir, os
+          aparelhos logados nesta conta vão aparecer aqui.
+        </p>
       </div>
-    </div>
-  );
-}
-
-function SessionRow({
-  label,
-  detail,
-  current,
-}: {
-  label: string;
-  detail: string;
-  current?: boolean;
-}) {
-  return (
-    <div className="flex items-center gap-3 rounded-lg bg-white p-3">
-      <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-surface-container-high text-primary">
-        <Icon name={label.includes('iPhone') ? 'smartphone' : 'computer'} />
-      </div>
-      <div className="flex-1">
-        <div className="flex items-center gap-2 text-label-md font-semibold text-on-surface">
-          {label}
-          {current && (
-            <span className="rounded-full bg-secondary-container/40 px-2 py-0.5 text-label-sm font-semibold text-secondary">
-              Este dispositivo
-            </span>
-          )}
-        </div>
-        <div className="text-label-sm text-on-surface-variant">{detail}</div>
-      </div>
-      {!current && (
-        <button
-          type="button"
-          disabled
-          className="text-label-md font-semibold text-error/40"
-        >
-          Encerrar
-        </button>
-      )}
     </div>
   );
 }
