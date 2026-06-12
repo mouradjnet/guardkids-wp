@@ -101,9 +101,9 @@ describe('Settings page', () => {
     listSettingsMock.mockResolvedValue({});
     renderPage();
     expect(
-      await screen.findByRole('heading', { name: /^notificações$/i, level: 3 }),
+      await screen.findByRole('heading', { name: /^notificações/i, level: 3 }),
     ).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: /^segurança$/i, level: 3 })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /^segurança/i, level: 3 })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: /família/i, level: 3 })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: /localização/i, level: 3 })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: /premium/i, level: 3 })).toBeInTheDocument();
@@ -210,24 +210,18 @@ describe('Settings page', () => {
     expect(toggleFor('Autenticação em 2 fatores (2FA)')).toHaveAttribute('aria-checked', 'true');
   });
 
-  it('shows activeBadge when 2FA is on', async () => {
-    listSettingsMock.mockResolvedValue({ 'security.two_fa': true });
-    renderPage();
-    expect(await screen.findByText('Ativo')).toBeInTheDocument();
-  });
-
   it('calls updateSettings with toggled value when switch clicked', async () => {
     listSettingsMock.mockResolvedValue({});
-    updateSettingsMock.mockResolvedValue({ 'notifications.push': false });
+    updateSettingsMock.mockResolvedValue({ location_enabled: true });
     const user = userEvent.setup();
     renderPage();
     await waitFor(() => expect(listSettingsMock).toHaveBeenCalled());
 
-    await user.click(toggleFor('Notificações push'));
+    await user.click(toggleFor('Permitir compartilhamento de localização'));
 
     await waitFor(() => {
       expect(updateSettingsMock).toHaveBeenCalled();
-      expect(updateSettingsMock.mock.calls[0]?.[0]).toEqual({ 'notifications.push': false });
+      expect(updateSettingsMock.mock.calls[0]?.[0]).toEqual({ location_enabled: true });
     });
   });
 
@@ -244,7 +238,7 @@ describe('Settings page', () => {
     renderPage();
     await waitFor(() => expect(listSettingsMock).toHaveBeenCalled());
 
-    await user.click(toggleFor('Notificações push'));
+    await user.click(toggleFor('Permitir compartilhamento de localização'));
 
     expect(await screen.findByRole('alert')).toHaveTextContent(/falha ao salvar/i);
   });

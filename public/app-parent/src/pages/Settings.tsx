@@ -47,6 +47,7 @@ export function Settings() {
         iconTone="primary"
         title="Notificações"
         subtitle="Como você quer ser avisado sobre o que acontece"
+        comingSoon
       >
         <SettingToggleRow
           settingsKey="notifications.push"
@@ -55,6 +56,7 @@ export function Settings() {
           fallback={true}
           loading={settingsQuery.isLoading}
           saving={mutation.isPending}
+          locked
           get={get}
           set={set}
         />
@@ -65,6 +67,7 @@ export function Settings() {
           fallback={true}
           loading={settingsQuery.isLoading}
           saving={mutation.isPending}
+          locked
           get={get}
           set={set}
         />
@@ -75,6 +78,7 @@ export function Settings() {
           fallback={false}
           loading={settingsQuery.isLoading}
           saving={mutation.isPending}
+          locked
           get={get}
           set={set}
         />
@@ -85,6 +89,7 @@ export function Settings() {
           fallback={true}
           loading={settingsQuery.isLoading}
           saving={mutation.isPending}
+          locked
           get={get}
           set={set}
         />
@@ -96,15 +101,16 @@ export function Settings() {
         iconTone="secondary"
         title="Segurança"
         subtitle="Proteção da conta e do ambiente das crianças"
+        comingSoon
       >
         <SettingToggleRow
           settingsKey="security.two_fa"
           title="Autenticação em 2 fatores (2FA)"
           description="Pede código no celular além da senha ao logar."
           fallback={false}
-          activeBadge="Ativo"
           loading={settingsQuery.isLoading}
           saving={mutation.isPending}
+          locked
           get={get}
           set={set}
         />
@@ -115,6 +121,7 @@ export function Settings() {
           fallback={true}
           loading={settingsQuery.isLoading}
           saving={mutation.isPending}
+          locked
           get={get}
           set={set}
         />
@@ -125,6 +132,7 @@ export function Settings() {
           fallback={false}
           loading={settingsQuery.isLoading}
           saving={mutation.isPending}
+          locked
           get={get}
           set={set}
         />
@@ -346,6 +354,7 @@ function SettingToggleRow({
   activeBadge,
   loading,
   saving,
+  locked,
   get,
   set,
 }: {
@@ -356,11 +365,12 @@ function SettingToggleRow({
   activeBadge?: string;
   loading: boolean;
   saving: boolean;
+  locked?: boolean;
   get: (key: string, fallback: boolean) => boolean;
   set: (key: string, value: boolean) => void;
 }) {
   const value = get(settingsKey, fallback);
-  const disabled = loading || saving;
+  const disabled = loading || saving || locked === true;
   return (
     <div className="flex items-start justify-between gap-4 rounded-xl border border-outline-variant bg-surface-container-low p-4">
       <div className="flex-1">
