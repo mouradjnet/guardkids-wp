@@ -234,9 +234,9 @@ function ComingSoonBadge() {
 }
 
 function BedtimeCard() {
-  const [start, setStart] = useState('21:30');
-  const [end, setEnd] = useState('07:00');
-  const [enabled, setEnabled] = useState(true);
+  const start = '21:30';
+  const end = '07:00';
+  const enabled = true;
   return (
     <article className="glass-panel rounded-2xl p-6 shadow-ambient">
       <header className="mb-4 flex items-center justify-between gap-3">
@@ -250,21 +250,21 @@ function BedtimeCard() {
               <ComingSoonBadge />
             </h3>
             <p className="text-label-sm text-on-surface-variant">
-              Bloqueia tudo durante a noite (mudanças não persistem ainda)
+              Bloqueia tudo durante a noite
             </p>
           </div>
         </div>
-        <Toggle on={enabled} onToggle={() => setEnabled((v) => !v)} />
+        <Toggle on={enabled} onToggle={() => undefined} disabled />
       </header>
 
-      <div className={`grid grid-cols-2 gap-3 ${enabled ? '' : 'opacity-40'}`}>
-        <TimeInput label="Começa às" value={start} onChange={setStart} icon="dark_mode" />
-        <TimeInput label="Termina às" value={end} onChange={setEnd} icon="wb_sunny" />
+      <div className="grid grid-cols-2 gap-3">
+        <TimeInput label="Começa às" value={start} onChange={() => undefined} icon="dark_mode" disabled />
+        <TimeInput label="Termina às" value={end} onChange={() => undefined} icon="wb_sunny" disabled />
       </div>
 
       <div className="mt-4 flex items-center gap-2 rounded-xl border border-primary/20 bg-primary/5 p-3 text-label-sm text-on-surface-variant">
         <Icon name="info" className="text-base text-primary" />
-        Storage dedicado pra bedtime entra numa migration futura.
+        Configuração de horário de dormir vai vir na próxima fase. Por enquanto, o backend já honra o schedule definido em outros canais.
       </div>
     </article>
   );
@@ -275,14 +275,16 @@ function TimeInput({
   value,
   onChange,
   icon,
+  disabled,
 }: {
   label: string;
   value: string;
   onChange: (v: string) => void;
   icon: string;
+  disabled?: boolean;
 }) {
   return (
-    <label className="block">
+    <label className={`block ${disabled ? 'cursor-not-allowed opacity-50' : ''}`}>
       <span className="text-label-sm text-on-surface-variant">{label}</span>
       <div className="mt-1 flex items-center gap-2 rounded-xl border border-outline-variant bg-surface-container-low p-3">
         <Icon name={icon} className="text-base text-on-surface-variant" />
@@ -290,21 +292,31 @@ function TimeInput({
           type="time"
           value={value}
           onChange={(e) => onChange(e.target.value)}
-          className="flex-1 bg-transparent font-display text-headline-md font-bold text-primary outline-none"
+          disabled={disabled}
+          className="flex-1 bg-transparent font-display text-headline-md font-bold text-primary outline-none disabled:cursor-not-allowed"
         />
       </div>
     </label>
   );
 }
 
-function Toggle({ on, onToggle }: { on: boolean; onToggle: () => void }) {
+function Toggle({
+  on,
+  onToggle,
+  disabled,
+}: {
+  on: boolean;
+  onToggle: () => void;
+  disabled?: boolean;
+}) {
   return (
     <button
       type="button"
       role="switch"
       aria-checked={on}
       onClick={onToggle}
-      className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors ${
+      disabled={disabled}
+      className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${
         on ? 'bg-primary' : 'bg-outline-variant'
       }`}
     >
@@ -318,16 +330,7 @@ function Toggle({ on, onToggle }: { on: boolean; onToggle: () => void }) {
 }
 
 function WeeklyCard() {
-  const [enabled, setEnabled] = useState<Set<WeekDay>>(
-    new Set(['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun']),
-  );
-
-  const toggle = (d: WeekDay) => {
-    const next = new Set(enabled);
-    if (next.has(d)) next.delete(d);
-    else next.add(d);
-    setEnabled(next);
-  };
+  const enabled = new Set<WeekDay>(['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun']);
 
   return (
     <article className="glass-panel rounded-2xl p-6 shadow-ambient">
@@ -341,7 +344,7 @@ function WeeklyCard() {
             <ComingSoonBadge />
           </h3>
           <p className="text-label-sm text-on-surface-variant">
-            Toggles locais — schedule por dia entra junto com a migration de bedtime.
+            Pré-visualização da configuração semanal
           </p>
         </div>
       </header>
@@ -353,11 +356,11 @@ function WeeklyCard() {
             <button
               key={d.id}
               type="button"
-              onClick={() => toggle(d.id)}
+              disabled
               className={
                 active
-                  ? 'flex flex-col items-center justify-center gap-1 rounded-xl bg-primary py-3 text-white shadow-sm'
-                  : 'flex flex-col items-center justify-center gap-1 rounded-xl border border-outline-variant bg-surface-container-low py-3 text-on-surface-variant hover:bg-surface-variant'
+                  ? 'flex flex-col items-center justify-center gap-1 rounded-xl bg-primary py-3 text-white shadow-sm disabled:cursor-not-allowed disabled:opacity-50'
+                  : 'flex flex-col items-center justify-center gap-1 rounded-xl border border-outline-variant bg-surface-container-low py-3 text-on-surface-variant disabled:cursor-not-allowed disabled:opacity-50'
               }
             >
               <span className="text-label-md font-bold">{d.label}</span>
