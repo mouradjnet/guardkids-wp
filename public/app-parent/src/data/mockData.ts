@@ -32,14 +32,6 @@ export type ApprovalHistory = {
   decidedAtLabel: string;
 };
 
-export type RecentBlock = {
-  id: string;
-  site: string;
-  childName: string;
-  whenLabel: string;
-  reason: string;
-};
-
 export type SiteRule = {
   id: string;
   domain: string;
@@ -161,23 +153,6 @@ export const approvalHistory: ApprovalHistory[] = [
     detail: 'Aprovado direto pelo painel infantil',
     decision: 'approved',
     decidedAtLabel: 'há 4 dias',
-  },
-];
-
-export const recentBlocks: RecentBlock[] = [
-  {
-    id: 'b1',
-    site: 'YouTube',
-    childName: 'Lucas',
-    whenLabel: 'há 10 min',
-    reason: 'Restrição por categoria',
-  },
-  {
-    id: 'b2',
-    site: 'tiktok.com',
-    childName: 'Sofia',
-    whenLabel: 'há 2h',
-    reason: 'Blacklist manual',
   },
 ];
 
