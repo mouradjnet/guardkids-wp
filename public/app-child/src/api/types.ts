@@ -16,6 +16,10 @@ export type Child = {
   status: 'online' | 'offline';
   usedMinutes: number;
   limitMinutes: number;
+  bedtimeEnabled?: boolean;
+  bedtimeStart?: string | null;
+  bedtimeEnd?: string | null;
+  allowedWeekdays?: string;
   schedule?: ChildSchedule;
 };
 

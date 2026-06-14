@@ -76,7 +76,7 @@ describe('AddChildDialog', () => {
     const nameInput = screen.getByLabelText(/nome \*/i) as HTMLInputElement;
     const ageInput = screen.getByLabelText(/idade/i) as HTMLInputElement;
     const limitInput = screen.getByLabelText(/limite di[áa]rio/i) as HTMLInputElement;
-    const deviceInput = screen.getByLabelText(/dispositivo/i) as HTMLInputElement;
+    const deviceInput = screen.getByLabelText(/^dispositivo$/i) as HTMLInputElement;
 
     await user.type(nameInput, 'Lucas');
     await user.type(ageInput, '9');

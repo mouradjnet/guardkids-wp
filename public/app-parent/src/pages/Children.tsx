@@ -61,7 +61,7 @@ export function Children() {
             className="inline-flex items-center gap-2 rounded-full bg-primary px-5 py-3 text-label-md font-semibold text-white shadow-ambient transition-colors hover:bg-primary-container"
           >
             <Icon name="add" className="text-lg" />
-            Adicionar Novo Filho
+            Conectar Dispositivo Infantil
           </button>
         }
       />
@@ -459,7 +459,7 @@ function AddChildCard({ onClick }: { onClick: () => void }) {
       <div className="flex h-14 w-14 items-center justify-center rounded-full bg-surface-container-high text-primary transition-colors group-hover:bg-primary group-hover:text-white">
         <Icon name="add" className="text-3xl" />
       </div>
-      <div className="font-display text-headline-md">Adicionar Novo Filho</div>
+      <div className="font-display text-headline-md">Conectar Dispositivo Infantil</div>
       <p className="text-center text-label-sm">
         Crie um novo perfil com avatar e configure regras individuais.
       </p>

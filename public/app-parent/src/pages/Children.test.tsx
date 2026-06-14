@@ -120,7 +120,7 @@ describe('Children page', () => {
     listChildrenMock.mockResolvedValue([]);
     renderPage();
 
-    expect(await screen.findAllByText(/adicionar novo filho/i)).not.toHaveLength(0);
+    expect(await screen.findAllByText(/conectar dispositivo infantil/i)).not.toHaveLength(0);
   });
 
   it('opens add dialog from header button', async () => {
@@ -129,10 +129,10 @@ describe('Children page', () => {
     renderPage();
 
     await screen.findByText('Lucas');
-    const headerBtn = screen.getAllByRole('button', { name: /adicionar novo filho/i })[0];
+    const headerBtn = screen.getAllByRole('button', { name: /conectar dispositivo infantil/i })[0];
     await user.click(headerBtn);
 
-    expect(screen.getByRole('dialog', { name: /adicionar novo filho/i })).toBeInTheDocument();
+    expect(screen.getByRole('dialog', { name: /conectar dispositivo infantil/i })).toBeInTheDocument();
   });
 
   it('opens pair dialog from card icon button', async () => {

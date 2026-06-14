@@ -1,8 +1,9 @@
 import { useQuery } from '@tanstack/react-query';
 import { listChildren } from '../api/children';
+import { listRequests } from '../api/requests';
 import { ApiError } from '../api/client';
 import { ChildCard } from '../components/ChildCard';
-import { HeroWelcome } from '../components/HeroWelcome';
+import { HeroDashboard } from '../components/HeroDashboard';
 import { Icon } from '../components/Icon';
 import { PendingRequests } from '../components/PendingRequests';
 import { RecentBlocks } from '../components/RecentBlocks';
@@ -12,10 +13,18 @@ export function Dashboard() {
     queryKey: ['children'],
     queryFn: listChildren,
   });
+  const pendingQ = useQuery({
+    queryKey: ['requests', 'pending'],
+    queryFn: () => listRequests('pending'),
+  });
+  const pendingByChild = (pendingQ.data ?? []).reduce<Record<number, number>>((m, r) => {
+    m[r.childId] = (m[r.childId] ?? 0) + 1;
+    return m;
+  }, {});
 
   return (
     <main className="mx-auto flex w-full max-w-[1440px] flex-1 flex-col gap-stack-lg p-container-padding-mobile pb-24 md:ml-64 md:p-container-padding-desktop md:pb-container-padding-desktop">
-      <HeroWelcome />
+      <HeroDashboard />
 
       <div className="grid grid-cols-1 gap-gutter lg:grid-cols-3">
         <div className="space-y-6 lg:col-span-2">
@@ -36,7 +45,11 @@ export function Dashboard() {
           {data && data.length > 0 && (
             <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
               {data.map((child) => (
-                <ChildCard key={child.id} child={child} />
+                <ChildCard
+                  key={child.id}
+                  child={child}
+                  pendingCount={pendingByChild[child.id] ?? 0}
+                />
               ))}
             </div>
           )}
@@ -87,7 +100,7 @@ function ChildrenEmpty() {
       <p className="text-label-md font-semibold">Nenhuma criança cadastrada ainda</p>
       <p className="text-center text-label-sm">
         Vá em <span className="font-semibold text-primary">Filhos</span> e clique em
-        “Adicionar Novo Filho” para começar.
+        “Conectar Dispositivo Infantil” para começar.
       </p>
     </div>
   );

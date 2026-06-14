@@ -18,7 +18,7 @@ export function SafeBrowser({ onNavigate }: SafeBrowserProps) {
         <h3 className="font-display text-headline-md text-primary">Abrir Navegador Seguro</h3>
       </div>
       <p className="z-10 text-body-md text-on-surface-variant">
-        Explore a web com segurança. Apenas sites aprovados são permitidos aqui.
+        Sites aprovados pelos seus responsáveis — explore com segurança.
       </p>
       <button
         type="button"

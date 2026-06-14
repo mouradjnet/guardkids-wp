@@ -77,7 +77,7 @@ describe('SideNav', () => {
     const user = userEvent.setup();
     render(<SideNav activePage="dashboard" onNavigate={onNavigate} />);
 
-    await user.click(screen.getByRole('button', { name: /adicionar novo filho/i }));
+    await user.click(screen.getByRole('button', { name: /conectar dispositivo infantil/i }));
 
     expect(onNavigate).toHaveBeenCalledWith('children');
   });

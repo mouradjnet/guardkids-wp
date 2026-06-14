@@ -10,7 +10,7 @@ const items: {
 }[] = [
   { id: 'home', label: 'Início', icon: 'home', filled: true },
   { id: 'browser', label: 'Navegar', icon: 'travel_explore' },
-  { id: 'location', label: 'Local', icon: 'location_on' },
+  { id: 'location', label: 'Localização', icon: 'location_on' },
   { id: 'requests', label: 'Pedidos', icon: 'task_alt' },
   { id: 'alerts', label: 'Alertas', icon: 'notifications_active', badge: true },
 ];

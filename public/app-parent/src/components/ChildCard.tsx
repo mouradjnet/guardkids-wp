@@ -1,4 +1,5 @@
 import { Icon } from './Icon';
+import { formatRelative } from '../lib/requestDisplay';
 import type { Child } from '../api/types';
 
 function formatHM(min: number) {
@@ -7,14 +8,15 @@ function formatHM(min: number) {
   return `${h}h ${String(m).padStart(2, '0')}m`;
 }
 
-type ChildCardProps = { child: Child };
+type ChildCardProps = { child: Child; pendingCount?: number };
 
-export function ChildCard({ child }: ChildCardProps) {
+export function ChildCard({ child, pendingCount = 0 }: ChildCardProps) {
   const pct = child.limitMinutes > 0
     ? Math.min(100, Math.round((child.usedMinutes / child.limitMinutes) * 100))
     : 0;
   const offline = child.status === 'offline';
   const isPaused = offline;
+  const lastSync = child.updatedAt ? formatRelative(child.updatedAt) : null;
 
   return (
     <div className="glass-panel group relative overflow-hidden rounded-2xl p-6 transition-shadow hover:shadow-md">
@@ -46,26 +48,44 @@ export function ChildCard({ child }: ChildCardProps) {
           </div>
           <div>
             <h4 className="text-lg font-semibold text-on-surface">{child.name}</h4>
-            {child.status === 'online' ? (
-              <span className="mt-1 inline-flex items-center gap-1 rounded-full bg-secondary-container/30 px-2 py-0.5 text-label-sm text-secondary">
-                <span className="h-1.5 w-1.5 rounded-full bg-secondary" />
-                Online
-              </span>
-            ) : (
-              <span className="mt-1 inline-flex items-center gap-1 rounded-full bg-surface-variant/50 px-2 py-0.5 text-label-sm text-on-surface-variant">
-                <span className="h-1.5 w-1.5 rounded-full bg-outline-variant" />
-                Offline
-              </span>
-            )}
+            <div className="mt-1 flex flex-wrap items-center gap-2">
+              {child.status === 'online' ? (
+                <span className="inline-flex items-center gap-1 rounded-full bg-secondary-container/30 px-2 py-0.5 text-label-sm text-secondary">
+                  <span className="h-1.5 w-1.5 rounded-full bg-secondary" />
+                  Online
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-1 rounded-full bg-surface-variant/50 px-2 py-0.5 text-label-sm text-on-surface-variant">
+                  <span className="h-1.5 w-1.5 rounded-full bg-outline-variant" />
+                  Offline
+                </span>
+              )}
+              {lastSync && (
+                <span className="text-label-sm text-on-surface-variant" title="Última sincronização">
+                  · sync {lastSync}
+                </span>
+              )}
+            </div>
           </div>
         </div>
-        <button
-          type="button"
-          aria-label="Mais ações"
-          className="rounded-full p-1 text-on-surface-variant transition-colors hover:bg-surface-variant/50 hover:text-primary"
-        >
-          <Icon name="more_vert" />
-        </button>
+        <div className="flex items-start gap-2">
+          {pendingCount > 0 && (
+            <span
+              className="inline-flex items-center gap-1 rounded-full bg-tertiary-container/50 px-2 py-0.5 text-label-sm font-semibold text-tertiary-container"
+              title={`${pendingCount} pedido${pendingCount === 1 ? '' : 's'} pendente${pendingCount === 1 ? '' : 's'}`}
+            >
+              <Icon name="notifications_active" className="text-xs" filled />
+              {pendingCount}
+            </span>
+          )}
+          <button
+            type="button"
+            aria-label="Mais ações"
+            className="rounded-full p-1 text-on-surface-variant transition-colors hover:bg-surface-variant/50 hover:text-primary"
+          >
+            <Icon name="more_vert" />
+          </button>
+        </div>
       </div>
 
       <div className={`mb-6 flex items-center gap-6 ${offline ? 'opacity-70' : ''}`}>

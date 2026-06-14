@@ -52,11 +52,11 @@ describe('Blocked', () => {
     expect(screen.queryByRole('button', { name: /voltar/i })).toBeNull();
   });
 
-  it('chama onNavigate("requests") ao clicar em "Pedir mais tempo pros pais"', () => {
+  it('chama onNavigate("requests") ao clicar em "Solicitar acesso"', () => {
     const onNavigate = vi.fn();
     render(<Blocked onNavigate={onNavigate} reason="bedtime" unlockAt={UNLOCK_10H} />);
     fireEvent.click(
-      screen.getByRole('button', { name: /pedir mais tempo pros pais/i }),
+      screen.getByRole('button', { name: /solicitar acesso/i }),
     );
     expect(onNavigate).toHaveBeenCalledWith('requests');
   });

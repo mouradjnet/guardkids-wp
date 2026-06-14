@@ -38,6 +38,62 @@ export function Requests() {
 
   return (
     <main className="flex flex-1 flex-col gap-stack-lg px-container-padding-mobile py-stack-md">
+      <section>
+        <h3 className="mb-2 px-1 text-label-md font-semibold text-on-surface-variant">
+          Pedidos rápidos
+        </h3>
+        <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1">
+          <QuickChip
+            icon="sports_esports"
+            label="Jogar +30 min"
+            disabled={mutation.isPending}
+            onClick={() =>
+              mutation.mutate({
+                kind: 'extra_time',
+                description: 'Mais tempo de tela —',
+                highlight: '+30 min',
+              })
+            }
+          />
+          <QuickChip
+            icon="smart_display"
+            label="Assistir YouTube"
+            disabled={mutation.isPending}
+            onClick={() =>
+              mutation.mutate({
+                kind: 'unblock_site',
+                description: 'Liberar site',
+                highlight: 'youtube.com',
+              })
+            }
+          />
+          <QuickChip
+            icon="public"
+            label="Liberar um site"
+            disabled={mutation.isPending}
+            onClick={() => setOpenForm('site')}
+          />
+          <QuickChip
+            icon="task_alt"
+            label="Terminei a tarefa"
+            disabled={mutation.isPending}
+            onClick={() =>
+              mutation.mutate({
+                kind: 'other',
+                description: 'Terminei minha tarefa',
+                highlight: '✅',
+              })
+            }
+          />
+          <QuickChip
+            icon="forum"
+            label="Enviar mensagem"
+            disabled={mutation.isPending}
+            onClick={() => setOpenForm('time')}
+          />
+        </div>
+      </section>
+
       <section className="grid grid-cols-2 gap-3">
         <ActionCard
           icon="more_time"
@@ -113,6 +169,30 @@ export function Requests() {
         )}
       </section>
     </main>
+  );
+}
+
+function QuickChip({
+  icon,
+  label,
+  onClick,
+  disabled,
+}: {
+  icon: string;
+  label: string;
+  onClick: () => void;
+  disabled?: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      className="flex shrink-0 items-center gap-2 rounded-full border border-outline-variant bg-white px-3 py-2 text-label-sm font-semibold text-on-surface shadow-sm transition-colors hover:bg-primary-container/40 hover:text-primary disabled:opacity-60"
+    >
+      <Icon name={icon} className="text-base" filled />
+      {label}
+    </button>
   );
 }
 

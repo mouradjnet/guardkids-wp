@@ -5,7 +5,7 @@ import { clearStoredToken } from '../api/token';
 import { Icon } from '../components/Icon';
 import { QuickActions } from '../components/QuickActions';
 import { SafeBrowser } from '../components/SafeBrowser';
-import { Schedule } from '../components/Schedule';
+import { RegrasDoDia } from '../components/RegrasDoDia';
 import { ScreenTime } from '../components/ScreenTime';
 import { Welcome } from '../components/Welcome';
 import type { PageId } from '../data/mockData';
@@ -50,7 +50,7 @@ export function Home({ onNavigate }: HomeProps) {
       <ScreenTime child={child} />
       <QuickActions onNavigate={onNavigate} />
       <SafeBrowser onNavigate={onNavigate} />
-      <Schedule />
+      <RegrasDoDia child={child} />
 
       <button
         type="button"

@@ -89,10 +89,13 @@ export function Blocked({
         </span>
 
         <h1 className="mt-3 font-display text-headline-lg text-white">
-          Sem tempo de tela agora
+          Este conteúdo não está disponível agora
         </h1>
         <p className="mt-2 max-w-sm text-body-md text-white/85">
           {MESSAGE_BY_REASON[effectiveReason]}
+        </p>
+        <p className="mt-3 max-w-sm text-label-md text-white/70">
+          Converse com seus responsáveis caso precise de acesso.
         </p>
       </div>
 
@@ -132,11 +135,11 @@ export function Blocked({
         className="mt-8 inline-flex w-full max-w-sm items-center justify-center gap-2 rounded-xl bg-orange-warm py-3 text-label-md font-bold text-white shadow-sm transition-colors hover:bg-orange-warm/90"
       >
         <Icon name="more_time" className="text-sm" filled />
-        Pedir mais tempo pros pais
+        Solicitar acesso
       </button>
 
       <p className="mt-3 text-center text-label-sm text-white/60">
-        Eles vão receber uma notificação na hora.
+        Seus responsáveis vão receber a solicitação na hora.
       </p>
     </main>
   );

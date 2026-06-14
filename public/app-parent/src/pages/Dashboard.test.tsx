@@ -4,9 +4,12 @@ import type { ReactNode } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Child } from '../api/types';
 
-const { listChildrenMock, listRequestsMock } = vi.hoisted(() => ({
+const { listChildrenMock, listRequestsMock, listSettingsMock, getMeMock, getRecentBlocksMock } = vi.hoisted(() => ({
   listChildrenMock: vi.fn(),
   listRequestsMock: vi.fn(),
+  listSettingsMock: vi.fn(),
+  getMeMock: vi.fn(),
+  getRecentBlocksMock: vi.fn(),
 }));
 vi.mock('../api/children', () => ({
   listChildren: listChildrenMock,
@@ -18,6 +21,16 @@ vi.mock('../api/requests', () => ({
   listRequests: listRequestsMock,
   approveRequest: vi.fn(),
   denyRequest: vi.fn(),
+}));
+vi.mock('../api/settings', () => ({
+  listSettings: listSettingsMock,
+  updateSettings: vi.fn(),
+}));
+vi.mock('../api/me', () => ({
+  getMe: getMeMock,
+}));
+vi.mock('../api/reports', () => ({
+  getRecentBlocks: getRecentBlocksMock,
 }));
 
 import { Dashboard } from './Dashboard';
@@ -42,6 +55,9 @@ describe('Dashboard page', () => {
   beforeEach(() => {
     listChildrenMock.mockReset();
     listRequestsMock.mockReset().mockResolvedValue([]);
+    listSettingsMock.mockReset().mockResolvedValue({ location_enabled: false });
+    getMeMock.mockReset().mockResolvedValue({ role: 'admin', email: 'a@b', name: 'Admin User' });
+    getRecentBlocksMock.mockReset().mockResolvedValue([]);
   });
 
   it('renders Crianças Ativas skeleton while loading', () => {
