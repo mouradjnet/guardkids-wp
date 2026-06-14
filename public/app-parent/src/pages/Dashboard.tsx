@@ -6,7 +6,8 @@ import { ChildCard } from '../components/ChildCard';
 import { HeroDashboard } from '../components/HeroDashboard';
 import { Icon } from '../components/Icon';
 import { PendingRequests } from '../components/PendingRequests';
-import { RecentBlocks } from '../components/RecentBlocks';
+import { EventsTimeline } from '../components/EventsTimeline';
+import { ProximasAcoes } from '../components/ProximasAcoes';
 
 export function Dashboard() {
   const { data, isLoading, error } = useQuery({
@@ -56,8 +57,9 @@ export function Dashboard() {
         </div>
 
         <div className="space-y-6">
+          <ProximasAcoes />
           <PendingRequests />
-          <RecentBlocks />
+          <EventsTimeline />
         </div>
       </div>
     </main>

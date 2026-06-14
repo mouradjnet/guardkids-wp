@@ -12,7 +12,17 @@ function greeting(hour: number): string {
 }
 
 function firstName(full: string): string {
-  return full.trim().split(/\s+/)[0] ?? '';
+  const trimmed = full.trim();
+  if (!trimmed) return '';
+  // Email como display_name (default do WP quando user não preenche nome):
+  // pega a parte antes do @ e capitaliza o primeiro segmento.
+  if (trimmed.includes('@')) {
+    const local = trimmed.split('@')[0] ?? '';
+    const head = local.split(/[._-]/)[0] ?? '';
+    if (!head) return '';
+    return head.charAt(0).toUpperCase() + head.slice(1).toLowerCase();
+  }
+  return trimmed.split(/\s+/)[0] ?? '';
 }
 
 export function HeroDashboard() {
