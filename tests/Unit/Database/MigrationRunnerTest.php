@@ -133,6 +133,47 @@ final class MigrationRunnerTest extends TestCase
         self::assertSame(2, $GLOBALS['gk_options']['guardkids_db_version']);
     }
 
+    public function testAbortsLoopWhenWpdbLastErrorIsSet(): void
+    {
+        // Migration 2 popula last_error simulando ALTER TABLE com erro silent
+        // do wpdb->query. Migrations 1 e 3 são limpas, mas 3 NÃO deve rodar
+        // porque o loop quebra na 2.
+        $this->makeMigration(1, 'clean_one');
+        $this->makeFailingMigration(2, 'broken_two', 'ALTER TABLE failed');
+        $this->makeMigration(3, 'clean_three');
+
+        (new MigrationRunner($this->dir))->run();
+
+        self::assertSame([1, 2], $GLOBALS['gk_migration_runs']);
+        // db_version sobe só pra 1 (última clean antes da falha)
+        self::assertSame(1, $GLOBALS['gk_options']['guardkids_db_version']);
+    }
+
+    public function testDoesNotBumpVersionWhenFirstMigrationFails(): void
+    {
+        // Primeira migration já falha — option NÃO deve aparecer.
+        $this->makeFailingMigration(1, 'broken', 'syntax error');
+        $this->makeMigration(2, 'never_runs');
+
+        (new MigrationRunner($this->dir))->run();
+
+        self::assertSame([1], $GLOBALS['gk_migration_runs']);
+        self::assertArrayNotHasKey('guardkids_db_version', $GLOBALS['gk_options']);
+    }
+
+    private function makeFailingMigration(int $version, string $name, string $error): void
+    {
+        $padded = str_pad((string) $version, 3, '0', STR_PAD_LEFT);
+        file_put_contents(
+            $this->dir . $padded . '_' . $name . '.php',
+            sprintf(
+                "<?php return static function (\$wpdb, \$collate) { \$GLOBALS['gk_migration_runs'][] = %d; \$wpdb->last_error = %s; };\n",
+                $version,
+                var_export($error, true),
+            )
+        );
+    }
+
     public function testRealMigrationFilesExistOnDisk(): void
     {
         // Aponta pro diretório real do plugin pra garantir que as 3 migrations

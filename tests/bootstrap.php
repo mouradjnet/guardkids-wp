@@ -162,6 +162,7 @@ if (! class_exists('wpdb')) {
     {
         public string $prefix = 'wp_';
         public int $insert_id = 0;
+        public string $last_error = '';
 
         public function prepare($query, ...$args)
         {

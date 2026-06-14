@@ -10,6 +10,12 @@ namespace GuardKids\Database;
  * Cada migration é um arquivo `database/migrations/NNN_*.php` que devolve um
  * `callable(\wpdb $wpdb, string $charsetCollate): void`. Migrations com
  * `version <= current` são puladas.
+ *
+ * Se uma migration deixar `$wpdb->last_error` populado (ALTER TABLE falhou,
+ * dbDelta encontrou syntax error, etc), o loop aborta — `db_version` sobe só
+ * pras versões que rodaram limpo. Isso evita o cenário que pegou a migration
+ * 003 em prod (2026-06-12): o option subia pra 6 mesmo com ALTER silent fail,
+ * mascarando colunas faltantes até o usuário tentar usar a feature.
  */
 final class MigrationRunner
 {
@@ -44,7 +50,19 @@ final class MigrationRunner
                 continue;
             }
 
+            $wpdb->last_error = '';
             $factory($wpdb, $charsetCollate);
+
+            if ($wpdb->last_error !== '') {
+                error_log(sprintf(
+                    '[GuardKids] migration %d falhou (db_version segue em %d): %s',
+                    $version,
+                    $applied,
+                    $wpdb->last_error,
+                ));
+                break;
+            }
+
             $applied = $version;
         }
 
