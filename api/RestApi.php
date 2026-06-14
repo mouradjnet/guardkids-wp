@@ -7,6 +7,7 @@ namespace GuardKids\Api;
 use GuardKids\Api\Controllers\CategoryController;
 use GuardKids\Api\Controllers\ChildController;
 use GuardKids\Api\Controllers\ChildSelfController;
+use GuardKids\Api\Controllers\CompanionController;
 use GuardKids\Api\Controllers\GuardianController;
 use GuardKids\Api\Controllers\LicenseController;
 use GuardKids\Api\Controllers\LocationController;
@@ -48,6 +49,54 @@ final class RestApi
         $this->registerLicenseRoutes();
         $this->registerGuardiansRoutes();
         $this->registerMeRoute();
+        $this->registerCompanionRoutes();
+    }
+
+    private function registerCompanionRoutes(): void
+    {
+        $controller = new CompanionController();
+
+        register_rest_route(self::NAMESPACE, '/protection-mode', [
+            [
+                'methods'             => \WP_REST_Server::READABLE,
+                'callback'            => [$controller, 'getMode'],
+                'permission_callback' => [self::class, 'requireAdmin'],
+            ],
+            [
+                'methods'             => \WP_REST_Server::CREATABLE,
+                'callback'            => [$controller, 'setMode'],
+                'permission_callback' => [self::class, 'requireAdmin'],
+                'args'                => $controller->setModeArgs(),
+            ],
+        ]);
+
+        register_rest_route(self::NAMESPACE, '/companion/status', [
+            'methods'             => \WP_REST_Server::READABLE,
+            'callback'            => [$controller, 'status'],
+            'permission_callback' => [self::class, 'requireAdmin'],
+            'args'                => $controller->statusArgs(),
+        ]);
+
+        register_rest_route(self::NAMESPACE, '/companion/pair', [
+            'methods'             => \WP_REST_Server::CREATABLE,
+            'callback'            => [$controller, 'pair'],
+            'permission_callback' => [self::class, 'requireAdmin'],
+            'args'                => $controller->pairArgs(),
+        ]);
+
+        register_rest_route(self::NAMESPACE, '/companion/sync', [
+            'methods'             => \WP_REST_Server::CREATABLE,
+            'callback'            => [$controller, 'sync'],
+            // Auth via token Companion no header — não usar nonce admin.
+            'permission_callback' => '__return_true',
+            'args'                => $controller->syncArgs(),
+        ]);
+
+        register_rest_route(self::NAMESPACE, '/companion/heartbeat', [
+            'methods'             => \WP_REST_Server::CREATABLE,
+            'callback'            => [$controller, 'heartbeat'],
+            'permission_callback' => '__return_true',
+        ]);
     }
 
     /**

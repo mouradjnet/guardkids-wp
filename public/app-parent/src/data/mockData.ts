@@ -58,6 +58,7 @@ export type PageId =
   | 'time'
   | 'reports'
   | 'settings'
+  | 'protection'
   | 'license'
   | 'upgrade';
 
@@ -263,6 +264,7 @@ export const navItems = [
   { id: 'time' as PageId, label: 'Limites de Tempo', icon: 'timer' },
   { id: 'reports' as PageId, label: 'Relatórios', icon: 'monitoring' },
   { id: 'settings' as PageId, label: 'Configurações', icon: 'settings' },
+  { id: 'protection' as PageId, label: 'Modo de Proteção', icon: 'shield_lock' },
   { id: 'license' as PageId, label: 'Licença', icon: 'key' },
   { id: 'upgrade' as PageId, label: 'Upgrade Premium', icon: 'workspace_premium' },
 ] as const;

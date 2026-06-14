@@ -7,6 +7,7 @@ import { Children } from './pages/Children';
 import { Dashboard } from './pages/Dashboard';
 import { License } from './pages/License';
 import { Localizacao } from './pages/Localizacao';
+import { ProtectionMode } from './pages/ProtectionMode';
 import { Reports } from './pages/Reports';
 import { Settings } from './pages/Settings';
 import { SitesRules } from './pages/SitesRules';
@@ -46,6 +47,8 @@ function PageRenderer({ page }: { page: PageId }) {
       return <Reports />;
     case 'settings':
       return <Settings />;
+    case 'protection':
+      return <ProtectionMode />;
     case 'license':
       return <License />;
     case 'upgrade':
