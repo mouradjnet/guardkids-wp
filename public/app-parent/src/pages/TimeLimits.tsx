@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 import { listChildren, updateChild, type UpdateChildInput } from '../api/children';
+import { getUsageHourly, type UsageHourly } from '../api/reports';
 import { ApiError } from '../api/client';
 import type { Child } from '../api/types';
 import { Icon } from '../components/Icon';
@@ -19,22 +20,13 @@ const WEEK_DAYS = [
 ] as const;
 type WeekDay = (typeof WEEK_DAYS)[number]['id'];
 
-type DayBlock = { start: number; end: number; kind: 'sleep' | 'school' | 'free' | 'play'; label: string };
+type HourKind = 'bedtime' | 'used' | 'free';
+type DayBlock = { start: number; end: number; kind: HourKind; label: string };
 
-const SAMPLE_DAY_BLOCKS: DayBlock[] = [
-  { start: 0, end: 7, kind: 'sleep', label: 'Bedtime' },
-  { start: 7, end: 12, kind: 'school', label: 'School' },
-  { start: 12, end: 14, kind: 'free', label: 'Almoço' },
-  { start: 14, end: 18, kind: 'school', label: 'School' },
-  { start: 18, end: 21, kind: 'play', label: 'Play' },
-  { start: 21, end: 24, kind: 'sleep', label: 'Bedtime' },
-];
-
-const BLOCK_COLORS: Record<DayBlock['kind'], { bg: string; text: string }> = {
-  sleep: { bg: 'bg-primary', text: 'text-white' },
-  school: { bg: 'bg-primary-container', text: 'text-on-primary-container' },
-  free: { bg: 'bg-surface-container-high', text: 'text-on-surface' },
-  play: { bg: 'bg-orange-warm', text: 'text-white' },
+const BLOCK_COLORS: Record<HourKind, { bg: string; text: string; legend: string }> = {
+  bedtime: { bg: 'bg-primary', text: 'text-white', legend: 'Bloqueado' },
+  used: { bg: 'bg-orange-warm', text: 'text-white', legend: 'Em uso' },
+  free: { bg: 'bg-surface-container-high', text: 'text-on-surface', legend: 'Livre' },
 };
 
 export function TimeLimits() {
@@ -93,7 +85,7 @@ export function TimeLimits() {
                 <BedtimeCard child={selected} />
               </div>
               <WeeklyCard child={selected} />
-              <TimelineCard childName={selected.name} />
+              <TimelineCard child={selected} />
             </>
           )}
         </>
@@ -221,15 +213,6 @@ function DailyTimeCard({ child }: { child: Child }) {
         </p>
       ) : null}
     </article>
-  );
-}
-
-function ComingSoonBadge() {
-  return (
-    <span className="inline-flex items-center gap-1 rounded-full bg-tertiary-container/40 px-2 py-0.5 text-xs font-semibold text-tertiary-container">
-      <Icon name="hourglass_empty" className="text-xs" />
-      Em breve
-    </span>
   );
 }
 
@@ -459,7 +442,15 @@ function WeeklyCard({ child }: { child: Child }) {
   );
 }
 
-function TimelineCard({ childName }: { childName: string }) {
+function TimelineCard({ child }: { child: Child }) {
+  const { data, isLoading, error } = useQuery({
+    queryKey: ['usage', 'hourly', child.id],
+    queryFn: () => getUsageHourly(child.id),
+    refetchInterval: 60_000,
+  });
+
+  const blocks = data ? classifyDay(child, data) : null;
+
   return (
     <article className="glass-panel rounded-2xl p-6 shadow-ambient">
       <header className="mb-4 flex items-center gap-3">
@@ -467,37 +458,51 @@ function TimelineCard({ childName }: { childName: string }) {
           <Icon name="timeline" className="text-2xl" filled />
         </div>
         <div>
-          <h3 className="flex items-center gap-2 font-display text-headline-md text-on-surface">
-            Linha do dia — {childName}
-            <ComingSoonBadge />
+          <h3 className="font-display text-headline-md text-on-surface">
+            Linha do dia — {child.name}
           </h3>
           <p className="text-label-sm text-on-surface-variant">
-            Mockup visual de 24h — vai vir do tracking real quando houver tabela de uso.
+            {data ? `Visão das 24h de hoje (${data.date})` : 'Carregando uso de hoje…'}
           </p>
         </div>
       </header>
 
-      <div className="flex h-12 w-full overflow-hidden rounded-xl border border-outline-variant">
-        {SAMPLE_DAY_BLOCKS.map((b, idx) => {
-          const c = BLOCK_COLORS[b.kind];
-          const width = ((b.end - b.start) / 24) * 100;
-          return (
-            <div
-              key={idx}
-              title={`${b.label} • ${b.start}h–${b.end}h`}
-              style={{ width: `${width}%` }}
-              className={`flex items-center justify-center text-[10px] font-bold ${c.bg} ${c.text}`}
-            >
-              <span className="hidden truncate px-1 md:inline">{b.label}</span>
-            </div>
-          );
-        })}
-      </div>
+      {error ? (
+        <p role="alert" className="rounded-lg bg-error/10 p-3 text-label-sm text-error">
+          {error instanceof ApiError
+            ? `${error.message} (${error.status})`
+            : error instanceof Error
+              ? error.message
+              : 'Erro desconhecido.'}
+        </p>
+      ) : null}
+
+      {isLoading && !error ? (
+        <div className="h-12 animate-pulse rounded-xl bg-surface-container-low" />
+      ) : null}
+
+      {blocks ? (
+        <div className="flex h-12 w-full overflow-hidden rounded-xl border border-outline-variant">
+          {blocks.map((b, idx) => {
+            const c = BLOCK_COLORS[b.kind];
+            const width = ((b.end - b.start) / 24) * 100;
+            return (
+              <div
+                key={idx}
+                title={`${b.label} · ${b.start}h–${b.end}h`}
+                style={{ width: `${width}%` }}
+                className={`flex items-center justify-center text-[10px] font-bold ${c.bg} ${c.text}`}
+              >
+                <span className="hidden truncate px-1 md:inline">{b.label}</span>
+              </div>
+            );
+          })}
+        </div>
+      ) : null}
 
       <div className="mt-3 flex flex-wrap gap-4 text-label-sm text-on-surface-variant">
-        <LegendItem color="bg-primary" label="Bedtime" />
-        <LegendItem color="bg-primary-container" label="School Time" />
-        <LegendItem color="bg-orange-warm" label="Play Time" />
+        <LegendItem color="bg-primary" label="Bloqueado" />
+        <LegendItem color="bg-orange-warm" label="Em uso" />
         <LegendItem color="bg-surface-container-high" label="Livre" />
       </div>
 
@@ -508,6 +513,59 @@ function TimelineCard({ childName }: { childName: string }) {
       </div>
     </article>
   );
+}
+
+/** Hora local 0..23 dentro do range bedtime do filho (cross-midnight ok). */
+function bedtimeContainsHour(child: Child, hour: number): boolean {
+  if (!child.bedtimeEnabled) return false;
+  if (!child.bedtimeStart || !child.bedtimeEnd) return false;
+  const startH = parseHour(child.bedtimeStart);
+  const endH = parseHour(child.bedtimeEnd);
+  if (startH === null || endH === null) return false;
+  if (startH === endH) return false;
+  if (startH < endH) return hour >= startH && hour < endH;
+  // cross-midnight (ex: 21 → 7): pega [21..23] ∪ [0..7)
+  return hour >= startH || hour < endH;
+}
+
+function parseHour(hhmm: string): number | null {
+  const m = /^(\d{2}):(\d{2})$/.exec(hhmm);
+  if (!m) return null;
+  return Math.min(23, Math.max(0, Number(m[1])));
+}
+
+function todayIsBlockedWeekday(child: Child): boolean {
+  const allowed = child.allowedWeekdays ?? 'YYYYYYY';
+  // JS getDay: 0=Sun..6=Sat. Backend usa Mon=0..Sun=6.
+  const todayIdx = (new Date().getDay() + 6) % 7;
+  return allowed[todayIdx] === 'N';
+}
+
+export function classifyDay(child: Child, data: UsageHourly): DayBlock[] {
+  const allDayBlocked = todayIsBlockedWeekday(child);
+  const kinds: HourKind[] = data.hours.map(({ hour, minutes }) => {
+    if (allDayBlocked) return 'bedtime';
+    if (bedtimeContainsHour(child, hour)) return 'bedtime';
+    if (minutes > 0) return 'used';
+    return 'free';
+  });
+
+  // Mescla horas contíguas com mesmo kind em blocos
+  const blocks: DayBlock[] = [];
+  let i = 0;
+  while (i < 24) {
+    const kind = kinds[i];
+    let j = i + 1;
+    while (j < 24 && kinds[j] === kind) j++;
+    blocks.push({
+      start: i,
+      end: j,
+      kind,
+      label: BLOCK_COLORS[kind].legend,
+    });
+    i = j;
+  }
+  return blocks;
 }
 
 function LegendItem({ color, label }: { color: string; label: string }) {

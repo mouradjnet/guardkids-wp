@@ -123,6 +123,33 @@ final class ReportsController
     }
 
     /**
+     * GET /usage/hourly?child_id=N&date=YYYY-MM-DD — minutos por hora do dia
+     * (24 buckets) pro TimelineCard do TimeLimits. Sem date → hoje no TZ do site.
+     */
+    public function usageHourly(WP_REST_Request $req): WP_REST_Response|WP_Error
+    {
+        $childId = (int) $req->get_param('child_id');
+        if ($childId <= 0) {
+            return new WP_Error('invalid_payload', 'child_id obrigatório.', ['status' => 422]);
+        }
+
+        $dateParam = $req->get_param('date');
+        $date = is_string($dateParam) && preg_match('/^\d{4}-\d{2}-\d{2}$/', $dateParam) === 1
+            ? $dateParam
+            : (function_exists('wp_date') ? wp_date('Y-m-d') : gmdate('Y-m-d'));
+
+        $rows = $this->events->minutesByHourOfDay($childId, $date);
+
+        return rest_ensure_response([
+            'date'  => $date,
+            'hours' => array_map(static fn ($r) => [
+                'hour'    => $r['hour'],
+                'minutes' => $r['minutes'],
+            ], $rows),
+        ]);
+    }
+
+    /**
      * GET /blocks/recent?limit=10 — últimos bloqueios de schedule (bedtime/weekly/limit).
      */
     public function recentBlocks(WP_REST_Request $req): WP_REST_Response|WP_Error

@@ -55,3 +55,13 @@ export type RecentBlock = {
 export function getRecentBlocks(limit = 10): Promise<RecentBlock[]> {
   return apiFetch<RecentBlock[]>(`/blocks/recent?limit=${limit}`);
 }
+
+export type UsageHourly = {
+  date: string;
+  hours: { hour: number; minutes: number }[];
+};
+
+export function getUsageHourly(childId: number, date?: string): Promise<UsageHourly> {
+  const dateParam = date ? `&date=${date}` : '';
+  return apiFetch<UsageHourly>(`/usage/hourly?child_id=${childId}${dateParam}`);
+}

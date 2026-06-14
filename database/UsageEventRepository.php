@@ -134,6 +134,50 @@ final class UsageEventRepository extends Repository
     }
 
     /**
+     * Soma minutos de heartbeat/site_open por hora do dia (0..23) num dia
+     * específico. Filtra pelo timezone do site (wp_timezone_string).
+     * Ignora schedule_block (não consome tempo). Retorna sempre 24 buckets,
+     * mesmo que minutos=0, pra simplificar o consumo no frontend.
+     *
+     * @return array<int, array{hour: int, minutes: int}>
+     */
+    public function minutesByHourOfDay(int $childId, string $dateIso): array
+    {
+        $tzString = function_exists('wp_timezone_string') ? wp_timezone_string() : 'UTC';
+        $fromLocal = "{$dateIso} 00:00:00";
+        $toLocal   = "{$dateIso} 23:59:59";
+
+        $sql = $this->db->prepare(
+            'SELECT HOUR(CONVERT_TZ(created_at, "+00:00", %s)) AS h,'
+            . ' SUM(duration_seconds) AS total_seconds'
+            . ' FROM ' . $this->table()
+            . ' WHERE child_id = %d AND type IN ("heartbeat", "site_open")'
+            . ' AND CONVERT_TZ(created_at, "+00:00", %s) BETWEEN %s AND %s'
+            . ' GROUP BY h',
+            $tzString,
+            $childId,
+            $tzString,
+            $fromLocal,
+            $toLocal,
+        );
+
+        $rows = $this->db->get_results($sql, ARRAY_A);
+        $byHour = [];
+        if (is_array($rows)) {
+            foreach ($rows as $r) {
+                $hour = (int) $r['h'];
+                $byHour[$hour] = (int) floor(((int) $r['total_seconds']) / 60);
+            }
+        }
+
+        $out = [];
+        for ($h = 0; $h < 24; $h++) {
+            $out[] = ['hour' => $h, 'minutes' => $byHour[$h] ?? 0];
+        }
+        return $out;
+    }
+
+    /**
      * Últimos eventos type='schedule_block' com nome do filho via JOIN.
      * Ordenado por created_at DESC. Limit clamped pra evitar payload absurdo.
      *

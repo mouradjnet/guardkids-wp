@@ -321,6 +321,23 @@ final class RestApi
                 ],
             ],
         ]);
+
+        register_rest_route(self::NAMESPACE, '/usage/hourly', [
+            'methods'             => \WP_REST_Server::READABLE,
+            'callback'            => [$controller, 'usageHourly'],
+            'permission_callback' => [self::class, 'requireAdmin'],
+            'args'                => [
+                'child_id' => [
+                    'type'     => 'integer',
+                    'required' => true,
+                    'minimum'  => 1,
+                ],
+                'date' => [
+                    'type'    => 'string',
+                    'pattern' => '^\\d{4}-\\d{2}-\\d{2}$',
+                ],
+            ],
+        ]);
     }
 
     private function registerLicenseRoutes(): void

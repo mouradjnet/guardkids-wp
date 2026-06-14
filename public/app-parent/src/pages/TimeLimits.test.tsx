@@ -5,15 +5,21 @@ import type { ReactNode } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Child } from '../api/types';
 
-const { listChildrenMock, updateChildMock } = vi.hoisted(() => ({
+const { listChildrenMock, updateChildMock, getUsageHourlyMock } = vi.hoisted(() => ({
   listChildrenMock: vi.fn(),
   updateChildMock: vi.fn(),
+  getUsageHourlyMock: vi.fn(),
 }));
 vi.mock('../api/children', () => ({
   listChildren: listChildrenMock,
   createChild: vi.fn(),
   updateChild: updateChildMock,
   pairChildDevice: vi.fn(),
+}));
+vi.mock('../api/reports', () => ({
+  getUsageHourly: getUsageHourlyMock,
+  getReport: vi.fn(),
+  getRecentBlocks: vi.fn(),
 }));
 
 import { TimeLimits } from './TimeLimits';
@@ -41,6 +47,11 @@ describe('TimeLimits page', () => {
   beforeEach(() => {
     listChildrenMock.mockReset();
     updateChildMock.mockReset();
+    // TimelineCard chama getUsageHourly. Default: dia vazio (24 buckets 0min).
+    getUsageHourlyMock.mockReset().mockResolvedValue({
+      date: '2026-06-14',
+      hours: Array.from({ length: 24 }, (_, h) => ({ hour: h, minutes: 0 })),
+    });
   });
 
   it('renders page header', () => {
