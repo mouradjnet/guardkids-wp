@@ -1,6 +1,6 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { getMe, reportScheduleBlock, type BlockDetail } from './api/child';
+import { getMe, reportScheduleBlock } from './api/child';
 import { getStoredToken, setStoredToken } from './api/token';
 import { BottomNav } from './components/BottomNav';
 import { Header } from './components/Header';
@@ -33,7 +33,7 @@ export default function App() {
   });
   const realIsBlocked = meQuery.data?.schedule?.isBlocked === true;
   const blockReason = meQuery.data?.schedule?.reason ?? null;
-  const lastReportedReason = useRef<BlockDetail | null>(null);
+  const unlockAt = meQuery.data?.schedule?.unlockAt ?? null;
 
   useEffect(() => {
     if (!token) return;
@@ -57,18 +57,24 @@ export default function App() {
     }
   }, [realIsBlocked, activePage]);
 
+  // Dedupe robusto: a "sessão de bloqueio" é identificada por reason+unlockAt.
+  // Guardamos a última chave reportada em localStorage pra sobreviver a hard
+  // refresh, refetch interval e re-renders. O useRef original quebrava porque
+  // qualquer remount do componente (refresh, error boundary, etc) resetava
+  // o ref e o app postava de novo. Visto em prod: 4 schedule_block events na
+  // mesma sessão de bedtime (refetchInterval=60s gerava posts duplicados).
   useEffect(() => {
-    if (!realIsBlocked) {
-      lastReportedReason.current = null;
-      return;
-    }
+    if (!realIsBlocked || !unlockAt) return;
     if (blockReason !== 'bedtime' && blockReason !== 'weekday') return;
-    if (lastReportedReason.current === blockReason) return;
-    lastReportedReason.current = blockReason;
+
+    const key = `${blockReason}:${unlockAt}`;
+    if (window.localStorage.getItem('gk:lastReportedBlock') === key) return;
+
+    window.localStorage.setItem('gk:lastReportedBlock', key);
     reportScheduleBlock(blockReason).catch(() => {
       /* silent — não trava UI por erro de telemetria */
     });
-  }, [realIsBlocked, blockReason]);
+  }, [realIsBlocked, blockReason, unlockAt]);
 
   if (!token) {
     return (
