@@ -202,4 +202,64 @@ final class ReportsControllerTest extends ControllerIntegrationTestCase
         $this->assertSame('Alice', $data['perChild'][0]['name']);
         $this->assertSame(10, $data['perChild'][0]['totalMinutes']);
     }
+
+    private function seedBlock(int $childId, string $createdAt, string $detail): void
+    {
+        $this->db->query(sprintf(
+            "INSERT INTO `%sguardkids_usage_events` (child_id, type, domain, detail, duration_seconds, created_at) VALUES (%d, 'schedule_block', NULL, '%s', 0, '%s')",
+            $this->db->prefix,
+            $childId,
+            $detail,
+            $createdAt,
+        ));
+    }
+
+    public function test_recentBlocks_returns_empty_when_no_events(): void
+    {
+        $data = $this->dataOf($this->freeController()->recentBlocks($this->makeRequest('GET', '/blocks/recent')));
+        $this->assertSame([], $data);
+    }
+
+    public function test_recentBlocks_orders_desc_and_resolves_child_name(): void
+    {
+        $alice = $this->seedChild('Alice');
+        $bob   = $this->seedChild('Bob');
+        $this->seedBlock($alice, '2026-06-13 21:00:00', 'bedtime');
+        $this->seedBlock($bob,   '2026-06-14 08:00:00', 'weekday');
+
+        $data = $this->dataOf($this->freeController()->recentBlocks($this->makeRequest('GET', '/blocks/recent')));
+
+        $this->assertCount(2, $data);
+        $this->assertSame('Bob', $data[0]['childName']);
+        $this->assertSame('weekday', $data[0]['detail']);
+        $this->assertSame('Alice', $data[1]['childName']);
+        $this->assertSame('bedtime', $data[1]['detail']);
+    }
+
+    public function test_recentBlocks_ignores_non_block_events(): void
+    {
+        $alice = $this->seedChild('Alice');
+        $this->seedHeartbeat($alice, '2026-06-14 12:00:00', 600);
+        $this->seedSiteOpen($alice,  '2026-06-14 12:01:00', 'youtube.com');
+        $this->seedBlock($alice,     '2026-06-14 12:02:00', 'bedtime');
+
+        $data = $this->dataOf($this->freeController()->recentBlocks($this->makeRequest('GET', '/blocks/recent')));
+
+        $this->assertCount(1, $data);
+        $this->assertSame('bedtime', $data[0]['detail']);
+    }
+
+    public function test_recentBlocks_respects_limit_param(): void
+    {
+        $alice = $this->seedChild('Alice');
+        for ($i = 0; $i < 5; $i++) {
+            $ts = gmdate('Y-m-d H:i:s', strtotime('2026-06-14 10:00:00') + $i);
+            $this->seedBlock($alice, $ts, 'bedtime');
+        }
+
+        $data = $this->dataOf($this->freeController()->recentBlocks(
+            $this->makeRequest('GET', '/blocks/recent', ['limit' => 2])
+        ));
+        $this->assertCount(2, $data);
+    }
 }

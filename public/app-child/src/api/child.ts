@@ -20,3 +20,12 @@ export function createRequest(input: CreateRequestInput): Promise<MyRequest> {
     body: JSON.stringify(input),
   });
 }
+
+export type BlockDetail = 'bedtime' | 'weekday' | 'limit';
+
+export function reportScheduleBlock(detail: BlockDetail): Promise<unknown> {
+  return apiFetch('/child/events', {
+    method: 'POST',
+    body: JSON.stringify({ type: 'schedule_block', detail, duration_seconds: 0 }),
+  });
+}

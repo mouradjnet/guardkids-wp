@@ -41,3 +41,17 @@ export function getReport(range: ReportRange = 'week', childId = 0): Promise<Rep
   const childFilter = childId > 0 ? `&child_id=${childId}` : '';
   return apiFetch<Report>(`/reports?range=${range}${childFilter}`);
 }
+
+export type BlockDetail = 'bedtime' | 'weekday' | 'limit';
+
+export type RecentBlock = {
+  id: number;
+  childId: number;
+  childName: string;
+  detail: BlockDetail;
+  createdAt: string;
+};
+
+export function getRecentBlocks(limit = 10): Promise<RecentBlock[]> {
+  return apiFetch<RecentBlock[]>(`/blocks/recent?limit=${limit}`);
+}

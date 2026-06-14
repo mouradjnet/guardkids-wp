@@ -219,6 +219,35 @@ final class ChildSelfControllerTest extends ControllerIntegrationTestCase
         $this->assertSame('youtube.com', $stored);
     }
 
+    public function test_eventsCreate_schedule_block_requires_valid_detail(): void
+    {
+        $child = $this->pairedChild();
+        $resp  = (new ChildSelfController())->eventsCreate(
+            $this->authedRequest('POST', '/child/events', $child['token'], [
+                'type'   => 'schedule_block',
+                'detail' => 'qualquer_coisa',
+            ])
+        );
+        $this->assertWpError('invalid_payload', $resp);
+    }
+
+    public function test_eventsCreate_schedule_block_persists_detail(): void
+    {
+        $child = $this->pairedChild();
+        $resp  = (new ChildSelfController())->eventsCreate(
+            $this->authedRequest('POST', '/child/events', $child['token'], [
+                'type'   => 'schedule_block',
+                'detail' => 'bedtime',
+            ])
+        );
+        $this->assertResponseStatus(201, $resp);
+
+        $stored = (string) $this->db->get_var(
+            "SELECT detail FROM `{$this->db->prefix}guardkids_usage_events` WHERE child_id = {$child['id']} AND type = 'schedule_block'"
+        );
+        $this->assertSame('bedtime', $stored);
+    }
+
     public function test_reportLocation_returns_403_when_feature_disabled(): void
     {
         $child = $this->pairedChild();

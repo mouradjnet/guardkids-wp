@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { getMe } from './api/child';
+import { getMe, reportScheduleBlock, type BlockDetail } from './api/child';
 import { getStoredToken, setStoredToken } from './api/token';
 import { BottomNav } from './components/BottomNav';
 import { Header } from './components/Header';
@@ -32,6 +32,8 @@ export default function App() {
     refetchInterval: 60_000,
   });
   const realIsBlocked = meQuery.data?.schedule?.isBlocked === true;
+  const blockReason = meQuery.data?.schedule?.reason ?? null;
+  const lastReportedReason = useRef<BlockDetail | null>(null);
 
   useEffect(() => {
     if (!token) return;
@@ -54,6 +56,19 @@ export default function App() {
       setActivePage('blocked');
     }
   }, [realIsBlocked, activePage]);
+
+  useEffect(() => {
+    if (!realIsBlocked) {
+      lastReportedReason.current = null;
+      return;
+    }
+    if (blockReason !== 'bedtime' && blockReason !== 'weekday') return;
+    if (lastReportedReason.current === blockReason) return;
+    lastReportedReason.current = blockReason;
+    reportScheduleBlock(blockReason).catch(() => {
+      /* silent — não trava UI por erro de telemetria */
+    });
+  }, [realIsBlocked, blockReason]);
 
   if (!token) {
     return (

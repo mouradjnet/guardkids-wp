@@ -307,6 +307,20 @@ final class RestApi
                 ],
             ],
         ]);
+
+        register_rest_route(self::NAMESPACE, '/blocks/recent', [
+            'methods'             => \WP_REST_Server::READABLE,
+            'callback'            => [$controller, 'recentBlocks'],
+            'permission_callback' => [self::class, 'requireAdmin'],
+            'args'                => [
+                'limit' => [
+                    'type'    => 'integer',
+                    'minimum' => 1,
+                    'maximum' => 50,
+                    'default' => 10,
+                ],
+            ],
+        ]);
     }
 
     private function registerLicenseRoutes(): void

@@ -110,7 +110,7 @@ final class ChildSelfController
         }
 
         $type = (string) $req->get_param('type');
-        if (! in_array($type, ['heartbeat', 'site_open'], true)) {
+        if (! in_array($type, ['heartbeat', 'site_open', 'schedule_block'], true)) {
             return new WP_Error('invalid_payload', 'type inválido.', ['status' => 422]);
         }
 
@@ -128,10 +128,20 @@ final class ChildSelfController
             $domain = strtolower($raw);
         }
 
+        $detail = null;
+        if ($type === 'schedule_block') {
+            $rawDetail = (string) $req->get_param('detail');
+            if (! in_array($rawDetail, ['bedtime', 'weekday', 'limit'], true)) {
+                return new WP_Error('invalid_payload', 'detail inválido.', ['status' => 422]);
+            }
+            $detail = $rawDetail;
+        }
+
         $id = $this->events->insert([
             'child_id'         => $childId,
             'type'             => $type,
             'domain'           => $domain,
+            'detail'           => $detail,
             'duration_seconds' => $duration,
         ]);
         if ($id === 0) {
@@ -240,11 +250,16 @@ final class ChildSelfController
             'type' => [
                 'type'              => 'string',
                 'required'          => true,
-                'enum'              => ['heartbeat', 'site_open'],
+                'enum'              => ['heartbeat', 'site_open', 'schedule_block'],
                 'sanitize_callback' => 'sanitize_text_field',
             ],
             'domain' => [
                 'type'              => 'string',
+                'sanitize_callback' => 'sanitize_text_field',
+            ],
+            'detail' => [
+                'type'              => 'string',
+                'enum'              => ['bedtime', 'weekday', 'limit'],
                 'sanitize_callback' => 'sanitize_text_field',
             ],
             'duration_seconds' => [

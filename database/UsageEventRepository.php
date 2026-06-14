@@ -133,6 +133,50 @@ final class UsageEventRepository extends Repository
         ];
     }
 
+    /**
+     * Últimos eventos type='schedule_block' com nome do filho via JOIN.
+     * Ordenado por created_at DESC. Limit clamped pra evitar payload absurdo.
+     *
+     * @return array<int, array{
+     *     id: int,
+     *     child_id: int,
+     *     child_name: string,
+     *     detail: string,
+     *     created_at: string,
+     * }>
+     */
+    public function recentBlocks(int $limit = 10): array
+    {
+        $limit = max(1, min(50, $limit));
+        $children = $this->db->prefix . 'guardkids_children';
+
+        $sql = $this->db->prepare(
+            'SELECT e.id, e.child_id, COALESCE(c.name, %s) AS child_name,'
+            . ' COALESCE(e.detail, %s) AS detail, e.created_at'
+            . ' FROM ' . $this->table() . ' e'
+            . ' LEFT JOIN ' . $children . ' c ON c.id = e.child_id'
+            . ' WHERE e.type = %s'
+            . ' ORDER BY e.created_at DESC, e.id DESC'
+            . ' LIMIT ' . $limit,
+            '',
+            '',
+            'schedule_block',
+        );
+
+        $rows = $this->db->get_results($sql, ARRAY_A);
+        if (! is_array($rows)) {
+            return [];
+        }
+
+        return array_map(static fn (array $r): array => [
+            'id'         => (int) $r['id'],
+            'child_id'   => (int) $r['child_id'],
+            'child_name' => (string) $r['child_name'],
+            'detail'     => (string) $r['detail'],
+            'created_at' => (string) $r['created_at'],
+        ], $rows);
+    }
+
     private function sumDurationSeconds(int $childId, string $fromIso, string $toIso): int
     {
         $base = 'SELECT COALESCE(SUM(duration_seconds), 0) FROM ' . $this->table()

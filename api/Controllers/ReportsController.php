@@ -123,6 +123,25 @@ final class ReportsController
     }
 
     /**
+     * GET /blocks/recent?limit=10 — últimos bloqueios de schedule (bedtime/weekly/limit).
+     */
+    public function recentBlocks(WP_REST_Request $req): WP_REST_Response|WP_Error
+    {
+        $limitParam = $req->get_param('limit');
+        $limit = is_numeric($limitParam) ? (int) $limitParam : 10;
+
+        $rows = $this->events->recentBlocks($limit);
+
+        return rest_ensure_response(array_map(static fn ($r) => [
+            'id'        => $r['id'],
+            'childId'   => $r['child_id'],
+            'childName' => $r['child_name'],
+            'detail'    => $r['detail'],
+            'createdAt' => $r['created_at'],
+        ], $rows));
+    }
+
+    /**
      * @param array<int, array{day:string,child_id:int,minutes:int}> $daily
      * @param array<int, array<string, mixed>> $children
      * @return array<int, array{childId:int,name:string,totalMinutes:int,avgMinutesPerDay:int}>
