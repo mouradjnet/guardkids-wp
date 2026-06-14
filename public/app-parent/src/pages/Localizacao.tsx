@@ -4,7 +4,9 @@ import { MapContainer, Marker, Popup, TileLayer } from 'react-leaflet';
 import { listChildren } from '../api/children';
 import { ApiError } from '../api/client';
 import { listLocations } from '../api/locations';
-import type { LocationFix } from '../api/types';
+import { listSettings } from '../api/settings';
+import type { Child, LocationFix } from '../api/types';
+import { formatRelative } from '../lib/requestDisplay';
 import { Icon } from '../components/Icon';
 import { PageHeader } from '../components/PageHeader';
 import { PremiumLock } from '../components/PremiumLock';
@@ -38,6 +40,7 @@ function LocalizacaoContent() {
     queryKey: ['children'],
     queryFn: listChildren,
   });
+  const settingsQuery = useQuery({ queryKey: ['settings'], queryFn: listSettings });
 
   const [selectedId, setSelectedId] = useState<number | null>(null);
 
@@ -58,6 +61,7 @@ function LocalizacaoContent() {
 
   const lastFix = locationQuery.data?.[0] ?? null;
   const child = childrenQuery.data?.find((c) => c.id === selectedId) ?? null;
+  const locationEnabled = settingsQuery.data?.location_enabled === true;
 
   return (
     <main className="mx-auto flex w-full max-w-[1440px] flex-1 flex-col gap-stack-lg p-container-padding-mobile pb-24 md:ml-64 md:p-container-padding-desktop md:pb-container-padding-desktop">
@@ -78,12 +82,132 @@ function LocalizacaoContent() {
             onChange={setSelectedId}
           />
 
+          {child !== null && (
+            <DeviceStatus child={child} locationEnabled={locationEnabled} />
+          )}
+
           {selectedId !== null && locationQuery.isFetching && lastFix === null && <LoadingState />}
-          {selectedId !== null && !locationQuery.isFetching && lastFix === null && <EmptyLocationState />}
-          {lastFix !== null && child !== null && <LocationMap fix={lastFix} childName={child.name} />}
+          {selectedId !== null && !locationQuery.isFetching && lastFix === null && child !== null && (
+            <ActivationChecklist child={child} locationEnabled={locationEnabled} />
+          )}
+          {lastFix !== null && child !== null && (
+            <LocationMap fix={lastFix} childName={child.name} childOnline={child.status === 'online'} />
+          )}
         </>
       )}
     </main>
+  );
+}
+
+function DeviceStatus({ child, locationEnabled }: { child: Child; locationEnabled: boolean }) {
+  const isOnline = child.status === 'online';
+  const lastSync = child.updatedAt ? formatRelative(child.updatedAt) : 'desconhecido';
+  return (
+    <div className="glass-panel grid grid-cols-1 gap-3 rounded-2xl p-4 sm:grid-cols-3">
+      <StatusPill
+        icon={isOnline ? 'wifi' : 'wifi_off'}
+        label="Estado do dispositivo"
+        value={isOnline ? 'Online' : 'Offline'}
+        tone={isOnline ? 'good' : 'neutral'}
+      />
+      <StatusPill
+        icon="schedule"
+        label="Última sincronização"
+        value={lastSync}
+        tone="neutral"
+      />
+      <StatusPill
+        icon={locationEnabled ? 'location_on' : 'location_off'}
+        label="Permissão de localização"
+        value={locationEnabled ? 'Liberada' : 'Bloqueada'}
+        tone={locationEnabled ? 'good' : 'warn'}
+      />
+    </div>
+  );
+}
+
+function StatusPill({
+  icon,
+  label,
+  value,
+  tone,
+}: {
+  icon: string;
+  label: string;
+  value: string;
+  tone: 'good' | 'neutral' | 'warn';
+}) {
+  const toneClass =
+    tone === 'good'
+      ? 'text-secondary'
+      : tone === 'warn'
+        ? 'text-tertiary-container'
+        : 'text-on-surface';
+  return (
+    <div className="flex items-center gap-3">
+      <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-surface-container-high ${toneClass}`}>
+        <Icon name={icon} className="text-lg" filled />
+      </div>
+      <div className="min-w-0">
+        <div className="truncate text-label-sm text-on-surface-variant">{label}</div>
+        <div className={`truncate font-display text-label-md font-bold ${toneClass}`}>{value}</div>
+      </div>
+    </div>
+  );
+}
+
+function ActivationChecklist({
+  child,
+  locationEnabled,
+}: {
+  child: Child;
+  locationEnabled: boolean;
+}) {
+  const items = [
+    { id: 'install', label: 'Instalar o GuardKids no dispositivo da criança', done: true },
+    { id: 'pair', label: 'Fazer pareamento com token do painel', done: true },
+    { id: 'permission', label: 'Autorizar permissão de localização', done: locationEnabled },
+    { id: 'open', label: 'Abrir o aplicativo e mantê-lo ativo', done: child.status === 'online' },
+  ];
+  const pending = items.filter((i) => !i.done).length;
+
+  return (
+    <div className="glass-panel flex flex-col gap-4 rounded-2xl p-6">
+      <header>
+        <h3 className="font-display text-headline-md text-on-surface">
+          Vamos ativar a localização?
+        </h3>
+        <p className="mt-1 text-label-md text-on-surface-variant">
+          {pending === 0
+            ? 'Tudo pronto — a localização vai aparecer assim que o app reportar uma posição.'
+            : `Faltam ${pending} ${pending === 1 ? 'passo' : 'passos'} pra começar a ver a posição em tempo real.`}
+        </p>
+      </header>
+      <ul className="space-y-2">
+        {items.map((item) => (
+          <li
+            key={item.id}
+            className="flex items-center gap-3 rounded-lg bg-surface-container-low p-3"
+          >
+            <span
+              className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full ${
+                item.done ? 'bg-secondary-container text-secondary' : 'border-2 border-outline-variant text-on-surface-variant'
+              }`}
+              aria-hidden
+            >
+              {item.done ? <Icon name="check" className="text-base" filled /> : null}
+            </span>
+            <span
+              className={`flex-1 text-label-md ${
+                item.done ? 'text-on-surface-variant line-through' : 'text-on-surface'
+              }`}
+            >
+              {item.label}
+            </span>
+          </li>
+        ))}
+      </ul>
+    </div>
   );
 }
 
@@ -115,15 +239,25 @@ function ChildSelector({
   );
 }
 
-function LocationMap({ fix, childName }: { fix: LocationFix; childName: string }) {
+function LocationMap({
+  fix,
+  childName,
+  childOnline,
+}: {
+  fix: LocationFix;
+  childName: string;
+  childOnline: boolean;
+}) {
   const position: [number, number] = [fix.latitude, fix.longitude];
   const recordedAtMs = Date.parse(fix.recordedAt);
-  const online = Date.now() - recordedAtMs < ONLINE_THRESHOLD_MS;
+  const online = childOnline && Date.now() - recordedAtMs < ONLINE_THRESHOLD_MS;
   const ageMin = Math.max(1, Math.floor((Date.now() - recordedAtMs) / 60_000));
+  const ageLabel =
+    ageMin < 60 ? `${ageMin} min atrás` : `${Math.floor(ageMin / 60)} h atrás`;
 
   return (
     <>
-      <div className="glass-panel overflow-hidden rounded-2xl" style={{ height: '60vh', minHeight: 360 }}>
+      <div className="relative glass-panel overflow-hidden rounded-2xl" style={{ height: '60vh', minHeight: 360 }}>
         <MapContainer
           center={position}
           zoom={16}
@@ -140,10 +274,21 @@ function LocationMap({ fix, childName }: { fix: LocationFix; childName: string }
               <br />
               {fix.battery !== null ? `Bateria: ${fix.battery}%` : 'Bateria: —'}
               <br />
-              Atualizado {ageMin}min atrás
+              Atualizado {ageLabel}
             </Popup>
           </Marker>
         </MapContainer>
+        {!online && (
+          <div
+            role="status"
+            className="pointer-events-none absolute left-3 top-3 z-[1000] flex items-center gap-2 rounded-full border border-outline-variant bg-surface/95 px-3 py-1.5 shadow-sm"
+          >
+            <Icon name="cloud_off" className="text-base text-tertiary-container" filled />
+            <span className="text-label-sm font-semibold text-on-surface">
+              Última posição conhecida — {ageLabel}
+            </span>
+          </div>
+        )}
       </div>
 
       <div className="grid grid-cols-1 gap-gutter md:grid-cols-3">
@@ -235,14 +380,3 @@ function NoChildrenState() {
   );
 }
 
-function EmptyLocationState() {
-  return (
-    <div className="glass-panel flex flex-col items-center justify-center gap-2 rounded-2xl p-8 text-on-surface-variant">
-      <Icon name="location_off" className="text-3xl" />
-      <p className="text-label-md font-semibold">Sem localização registrada</p>
-      <p className="text-center text-label-sm">
-        A criança precisa autorizar localização no app dela e mantê-lo aberto.
-      </p>
-    </div>
-  );
-}

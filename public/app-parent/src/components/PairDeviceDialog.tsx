@@ -3,6 +3,7 @@ import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { pairChildDevice } from '../api/children';
 import { ApiError } from '../api/client';
 import { Icon } from './Icon';
+import { PairQrCode } from './PairQrCode';
 
 type Props = {
   childId: number;
@@ -161,6 +162,16 @@ export function PairDeviceDialog({ childId, childName, open, onClose }: Props) {
               </div>
             </div>
 
+            <div className="flex flex-col items-center gap-3 rounded-xl border border-outline-variant bg-surface-container-low p-4">
+              <span className="text-label-sm font-semibold text-on-surface-variant">
+                Aponte a câmera do dispositivo infantil pra cá
+              </span>
+              <PairQrCode value={mutation.data.token} />
+              <p className="text-center text-label-sm text-on-surface-variant">
+                Ou cole o token manualmente abaixo.
+              </p>
+            </div>
+
             <div>
               <span className="block text-label-sm font-semibold text-on-surface-variant">
                 Token
@@ -179,10 +190,6 @@ export function PairDeviceDialog({ childId, childName, open, onClose }: Props) {
                 </button>
               </div>
             </div>
-
-            <p className="text-label-sm text-on-surface-variant">
-              No dispositivo da criança, abra o app-child e cole esse token na tela de pareamento.
-            </p>
 
             <div className="flex justify-end">
               <button

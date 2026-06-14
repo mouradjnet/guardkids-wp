@@ -5,9 +5,10 @@ import type { ReactNode } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Child, LocationFix } from '../api/types';
 
-const { listChildrenMock, listLocationsMock, getLicenseMock } = vi.hoisted(() => ({
+const { listChildrenMock, listLocationsMock, listSettingsMock, getLicenseMock } = vi.hoisted(() => ({
   listChildrenMock: vi.fn(),
   listLocationsMock: vi.fn(),
+  listSettingsMock: vi.fn(),
   getLicenseMock: vi.fn(),
 }));
 vi.mock('../api/children', () => ({
@@ -18,6 +19,10 @@ vi.mock('../api/children', () => ({
 }));
 vi.mock('../api/locations', () => ({
   listLocations: listLocationsMock,
+}));
+vi.mock('../api/settings', () => ({
+  listSettings: listSettingsMock,
+  updateSettings: vi.fn(),
 }));
 vi.mock('../api/license', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../api/license')>();
@@ -87,6 +92,7 @@ describe('Localizacao page', () => {
   beforeEach(() => {
     listChildrenMock.mockReset();
     listLocationsMock.mockReset();
+    listSettingsMock.mockReset().mockResolvedValue({ location_enabled: true });
     // Default: licença premium ativa (libera o conteúdo da página).
     // Tests específicos de bloqueio sobrescrevem com FREE_NONE_SNAPSHOT.
     getLicenseMock.mockReset().mockResolvedValue(ACTIVE_PREMIUM_SNAPSHOT);
@@ -120,7 +126,7 @@ describe('Localizacao page', () => {
     listLocationsMock.mockResolvedValue([]);
     renderPage();
 
-    expect(await screen.findByText(/sem localização registrada/i)).toBeInTheDocument();
+    expect(await screen.findByText(/vamos ativar a localização/i)).toBeInTheDocument();
   });
 
   it('renders map + marker when fix available', async () => {

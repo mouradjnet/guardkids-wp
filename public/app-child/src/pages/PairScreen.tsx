@@ -3,6 +3,7 @@ import { useState, type FormEvent } from 'react';
 import { validateToken } from '../api/child';
 import { ApiError } from '../api/client';
 import { Icon } from '../components/Icon';
+import { QrScannerOverlay } from '../components/QrScannerOverlay';
 
 type Props = {
   onPaired: (token: string) => void;
@@ -12,11 +13,21 @@ const TOKEN_LENGTH = 64;
 
 export function PairScreen({ onPaired }: Props) {
   const [raw, setRaw] = useState('');
+  const [scannerOpen, setScannerOpen] = useState(false);
 
   const mutation = useMutation({
     mutationFn: (token: string) => validateToken(token),
     onSuccess: (_data, token) => onPaired(token),
   });
+
+  function handleScanned(text: string) {
+    const cleaned = text.trim().replace(/\s+/g, '').toLowerCase();
+    setRaw(cleaned);
+    setScannerOpen(false);
+    if (cleaned.length === TOKEN_LENGTH && /^[a-f0-9]+$/.test(cleaned)) {
+      mutation.mutate(cleaned);
+    }
+  }
 
   function submit(e: FormEvent) {
     e.preventDefault();
@@ -94,8 +105,24 @@ export function PairScreen({ onPaired }: Props) {
               </>
             )}
           </button>
+
+          <button
+            type="button"
+            onClick={() => setScannerOpen(true)}
+            className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-outline-variant bg-surface-container-low px-5 py-3 text-label-md font-semibold text-on-surface transition-colors hover:bg-surface-variant"
+          >
+            <Icon name="qr_code_scanner" />
+            Escanear QR Code
+          </button>
         </form>
       </div>
+
+      {scannerOpen && (
+        <QrScannerOverlay
+          onDetected={handleScanned}
+          onClose={() => setScannerOpen(false)}
+        />
+      )}
     </main>
   );
 }
