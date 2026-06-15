@@ -134,6 +134,74 @@ if (! function_exists('delete_option')) {
     }
 }
 
+// Storage in-memory pra transients (TTL ignorado nos testes — RateLimiter
+// não depende de tempo real; é resetado entre testes via setUp).
+$GLOBALS['gk_transients'] = [];
+
+if (! function_exists('get_transient')) {
+    /**
+     * @return mixed
+     */
+    function get_transient(string $key)
+    {
+        return $GLOBALS['gk_transients'][$key] ?? false;
+    }
+}
+
+if (! function_exists('set_transient')) {
+    /**
+     * @param mixed $value
+     */
+    function set_transient(string $key, $value, int $ttl = 0): bool
+    {
+        $GLOBALS['gk_transients'][$key] = $value;
+        return true;
+    }
+}
+
+if (! function_exists('delete_transient')) {
+    function delete_transient(string $key): bool
+    {
+        if (! array_key_exists($key, $GLOBALS['gk_transients'])) {
+            return false;
+        }
+        unset($GLOBALS['gk_transients'][$key]);
+        return true;
+    }
+}
+
+// Storage in-memory pra WP-Cron events usado pelos testes do Plugin/Purger.
+$GLOBALS['gk_cron_events'] = [];
+
+if (! function_exists('wp_next_scheduled')) {
+    /**
+     * @return int|false timestamp do próximo run, ou false se não agendado.
+     */
+    function wp_next_scheduled(string $hook)
+    {
+        return $GLOBALS['gk_cron_events'][$hook] ?? false;
+    }
+}
+
+if (! function_exists('wp_schedule_event')) {
+    function wp_schedule_event(int $timestamp, string $recurrence, string $hook): bool
+    {
+        $GLOBALS['gk_cron_events'][$hook] = $timestamp;
+        return true;
+    }
+}
+
+if (! function_exists('wp_clear_scheduled_hook')) {
+    function wp_clear_scheduled_hook(string $hook): int
+    {
+        if (! isset($GLOBALS['gk_cron_events'][$hook])) {
+            return 0;
+        }
+        unset($GLOBALS['gk_cron_events'][$hook]);
+        return 1;
+    }
+}
+
 // Setup mínimo de ABSPATH + stub do wp-admin/includes/upgrade.php que o
 // MigrationRunner faz require_once. dbDelta vira no-op nos testes.
 if (! defined('ABSPATH')) {

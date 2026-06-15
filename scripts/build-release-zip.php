@@ -16,7 +16,7 @@ declare(strict_types=1);
  */
 
 $root    = dirname(__DIR__);
-$version = '1.5.1';
+$version = '1.5.2';
 
 $argvOut = $argv[1] ?? null;
 $home    = getenv('USERPROFILE') ?: getenv('HOME') ?: $root;

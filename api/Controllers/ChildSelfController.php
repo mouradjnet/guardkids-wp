@@ -11,6 +11,7 @@ use GuardKids\Database\RequestRepository;
 use GuardKids\Database\SettingsRepository;
 use GuardKids\Database\UsageEventRepository;
 use GuardKids\Schedule\ScheduleEvaluator;
+use GuardKids\Security\RateLimiter;
 use WP_Error;
 use WP_REST_Request;
 use WP_REST_Response;
@@ -28,8 +29,9 @@ final class ChildSelfController
     private readonly LocationRepository $locations;
     private readonly SettingsRepository $settings;
     private readonly ScheduleEvaluator $evaluator;
+    private readonly RateLimiter $limiter;
 
-    public function __construct()
+    public function __construct(?RateLimiter $limiter = null)
     {
         $this->auth      = new ChildAuth();
         $this->children  = new ChildRepository();
@@ -38,6 +40,7 @@ final class ChildSelfController
         $this->locations = new LocationRepository();
         $this->settings  = new SettingsRepository();
         $this->evaluator = new ScheduleEvaluator();
+        $this->limiter   = $limiter ?? new RateLimiter();
     }
 
     public function me(WP_REST_Request $req): WP_REST_Response|WP_Error
@@ -109,6 +112,14 @@ final class ChildSelfController
             return new WP_Error('child_auth_required', 'Token inválido.', ['status' => 401]);
         }
 
+        if (! $this->limiter->allow('events', $childId)) {
+            return new WP_Error(
+                'rate_limited',
+                'Muitos eventos em pouco tempo. Tente de novo em instantes.',
+                ['status' => 429, 'retryAfter' => $this->limiter->retryAfter()],
+            );
+        }
+
         $type = (string) $req->get_param('type');
         if (! in_array($type, ['heartbeat', 'site_open', 'schedule_block'], true)) {
             return new WP_Error('invalid_payload', 'type inválido.', ['status' => 422]);
@@ -156,6 +167,13 @@ final class ChildSelfController
 
     public function reportLocation(WP_REST_Request $req): WP_REST_Response|WP_Error
     {
+        $childId = $this->auth->resolveChildId($req);
+        if ($childId === null) {
+            return new WP_Error('child_auth_required', 'Token inválido.', ['status' => 401]);
+        }
+
+        // Checa auth ANTES da feature gate pra não vazar estado do toggle
+        // pra quem manda request sem token (B2 da auditoria).
         if (! $this->settings->isLocationEnabled()) {
             return new WP_Error(
                 'location_disabled',
@@ -164,9 +182,12 @@ final class ChildSelfController
             );
         }
 
-        $childId = $this->auth->resolveChildId($req);
-        if ($childId === null) {
-            return new WP_Error('child_auth_required', 'Token inválido.', ['status' => 401]);
+        if (! $this->limiter->allow('location', $childId)) {
+            return new WP_Error(
+                'rate_limited',
+                'Muitos reports em pouco tempo. Tente de novo em instantes.',
+                ['status' => 429, 'retryAfter' => $this->limiter->retryAfter()],
+            );
         }
 
         $now = current_time('mysql', true);

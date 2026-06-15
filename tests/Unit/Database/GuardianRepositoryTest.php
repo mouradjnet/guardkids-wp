@@ -75,13 +75,61 @@ final class GuardianRepositoryTest extends TestCase
     public function testCountAdminsReturnsRowCount(): void
     {
         $this->wpdb->rows = [
-            ['id' => 1, 'role' => 'admin'],
-            ['id' => 2, 'role' => 'admin'],
+            ['id' => 1, 'role' => 'admin', 'status' => 'active'],
+            ['id' => 2, 'role' => 'admin', 'status' => 'active'],
         ];
         self::assertSame(2, (new GuardianRepository())->countAdmins());
 
         $sql = (string) $this->wpdb->log[0]['sql'];
         self::assertStringContainsString("role = 'admin'", $sql);
+        self::assertStringContainsString("status = 'active'", $sql);
+    }
+
+    /**
+     * Sem o filtro status='active', um admin com convite pendente seria
+     * contado e o guarda de last-admin ficaria furável: dava pra deletar
+     * o único admin que pode efetivamente administrar.
+     */
+    public function testCountAdminsExcludesPendingAdmins(): void
+    {
+        // Stub focal: filtra por status no SQL pra simular MySQL real.
+        $this->wpdb = new class () extends \wpdb {
+            public string $prefix = 'wp_';
+            /** @var array<int, array<string, mixed>> */
+            public array $store = [];
+
+            public function __construct()
+            {
+            }
+
+            public function prepare($query, ...$args)
+            {
+                $flat = $args[0] ?? null;
+                if (is_array($flat)) {
+                    $args = $flat;
+                }
+                return vsprintf(str_replace(['%d', '%s', '%f'], ['%d', "'%s'", '%F'], (string) $query), $args);
+            }
+
+            public function get_results($sql, $output = OBJECT)
+            {
+                $needsActive = str_contains((string) $sql, "status = 'active'");
+                return array_values(array_filter($this->store, static function (array $row) use ($needsActive): bool {
+                    if (($row['role'] ?? '') !== 'admin') {
+                        return false;
+                    }
+                    return ! $needsActive || ($row['status'] ?? '') === 'active';
+                }));
+            }
+        };
+        $GLOBALS['wpdb'] = $this->wpdb;
+        $this->wpdb->store = [
+            ['id' => 1, 'role' => 'admin', 'status' => 'active'],
+            ['id' => 2, 'role' => 'admin', 'status' => 'pending'],
+            ['id' => 3, 'role' => 'collaborator', 'status' => 'active'],
+        ];
+
+        self::assertSame(1, (new GuardianRepository())->countAdmins());
     }
 
     public function testFindByInviteTokenHashFiltersByInviteTokenColumn(): void

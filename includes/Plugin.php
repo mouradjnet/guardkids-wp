@@ -7,6 +7,7 @@ namespace GuardKids;
 use GuardKids\Api\RestApi;
 use GuardKids\Database\CategoryRepository;
 use GuardKids\Database\MigrationRunner;
+use GuardKids\Maintenance\Purger;
 use GuardKids\Security\RestHeaders;
 use GuardKids\Ui\AcceptInviteApp;
 use GuardKids\Ui\ChildApp;
@@ -20,6 +21,8 @@ use GuardKids\Ui\ParentApp;
  */
 final class Plugin
 {
+    public const PURGE_HOOK = 'guardkids_daily_purge';
+
     private static ?Plugin $instance = null;
 
     /**
@@ -47,7 +50,9 @@ final class Plugin
         register_deactivation_hook(GUARDKIDS_FILE, [$this, 'onDeactivate']);
 
         add_action('plugins_loaded', [$this, 'maybeRunMigrations']);
+        add_action('plugins_loaded', [$this, 'maybeScheduleCron']);
         add_action('init', [$this, 'loadTextdomain']);
+        add_action(self::PURGE_HOOK, [$this, 'runPurger']);
 
         (new RestApi())->register();
         (new RestHeaders())->register();
@@ -92,15 +97,42 @@ final class Plugin
         (new ParentApp())->addRewriteRule();
         (new ChildApp())->addRewriteRule();
         (new AcceptInviteApp())->addRewriteRule();
+        $this->maybeScheduleCron();
         flush_rewrite_rules();
     }
 
     /**
-     * Executado na desativação do plugin (preserva dados; limpa rewrite).
+     * Executado na desativação do plugin (preserva dados; limpa rewrite + cron).
      */
     public function onDeactivate(): void
     {
+        wp_clear_scheduled_hook(self::PURGE_HOOK);
         flush_rewrite_rules();
+    }
+
+    /**
+     * Agenda o cron diário se ainda não tiver. Idempotente — chamado tanto
+     * no activation hook quanto no boot (cobre o cenário "substituir plugin"
+     * via WP Admin, que não dispara register_activation_hook —
+     * ver [[feedback-wp-plugin-lifecycle-install-fallback]]).
+     */
+    public function maybeScheduleCron(): void
+    {
+        if (! function_exists('wp_next_scheduled') || ! function_exists('wp_schedule_event')) {
+            return;
+        }
+        if (wp_next_scheduled(self::PURGE_HOOK) === false) {
+            wp_schedule_event(time() + 3600, 'daily', self::PURGE_HOOK);
+        }
+    }
+
+    /**
+     * Callback do hook `guardkids_daily_purge` — descarta usage_events > 90d
+     * e locations > 30d. Isolado em método pra ser fácil mockar nos testes.
+     */
+    public function runPurger(): void
+    {
+        (new Purger())->run();
     }
 
     /**

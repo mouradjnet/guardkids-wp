@@ -29,9 +29,14 @@ final class GuardianRepository extends Repository
         return $rows[0] ?? null;
     }
 
+    /**
+     * Conta admins **ativos** (não pending). Sem o filtro de status, um admin
+     * com convite pendente "preencheria" a quota de last-admin e deixaria
+     * o sistema remover o único admin que pode realmente administrar.
+     */
     public function countAdmins(): int
     {
-        $rows = $this->findWhere(['role' => 'admin']);
+        $rows = $this->findWhere(['role' => 'admin', 'status' => 'active']);
         return count($rows);
     }
 
