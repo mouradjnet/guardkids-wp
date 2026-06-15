@@ -125,7 +125,8 @@ nano security.txt
 curl -s https://guardiaokids.site/.well-known/security.txt
 ```
 
-Esperado: 5 linhas (Contact, Expires, Preferred-Languages, Canonical, Policy).
+Esperado: 4 linhas (Contact, Expires, Preferred-Languages, Canonical). A linha
+`Policy` foi removida até existir uma página de política de privacidade pública.
 
 ## 3) Cleanup WP content (Onda 4 — itens 6, 10, 14)
 
