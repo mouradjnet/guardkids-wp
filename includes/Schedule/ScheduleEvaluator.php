@@ -13,26 +13,30 @@ use DateTimeZone;
  * Função pura — recebe a config (linha de wp_guardkids_children) e o
  * instante atual já no timezone local do site, devolve estado.
  *
- * Ordem de precedência: weekday > bedtime (dia inteiro bloqueado
- * não vira false-positive de "bedtime curto às 14h").
+ * Ordem de precedência: weekday > bedtime > limit (dia inteiro bloqueado
+ * não vira false-positive de "bedtime curto às 14h"; e bedtime ativo não
+ * vira "limit"). O limite diário é o bloqueio mais leve e fica por último.
  */
 final class ScheduleEvaluator
 {
     /**
      * @param array{
-     *   bedtime_enabled?: int|bool|null,
-     *   bedtime_start?:   ?string,
-     *   bedtime_end?:     ?string,
-     *   allowed_weekdays?: ?string,
+     *   bedtime_enabled?:     int|bool|null,
+     *   bedtime_start?:       ?string,
+     *   bedtime_end?:         ?string,
+     *   allowed_weekdays?:    ?string,
+     *   daily_limit_enabled?: int|bool|null,
+     *   limit_minutes?:       int|null,
      * } $config
+     * @param int $minutesUsedToday Minutos de uso já acumulados hoje (dia local).
      *
      * @return array{
      *   isBlocked: bool,
-     *   reason:    'bedtime'|'weekday'|null,
+     *   reason:    'bedtime'|'weekday'|'limit'|null,
      *   unlockAt:  ?string,
      * }
      */
-    public function evaluate(array $config, DateTimeImmutable $now): array
+    public function evaluate(array $config, DateTimeImmutable $now, int $minutesUsedToday = 0): array
     {
         $weekdays = (string) ($config['allowed_weekdays'] ?? 'YYYYYYY');
         if (! preg_match('/^[YN]{7}$/', $weekdays)) {
@@ -98,6 +102,19 @@ final class ScheduleEvaluator
                     ];
                 }
             }
+        }
+
+        $dailyEnabled = (int) ($config['daily_limit_enabled'] ?? 0) === 1;
+        $limit        = (int) ($config['limit_minutes'] ?? 0);
+
+        if ($dailyEnabled && $limit > 0 && $minutesUsedToday >= $limit) {
+            // Reseta na virada do dia local: unlockAt = próxima meia-noite local.
+            $midnight = $now->modify('+1 day')->setTime(0, 0, 0);
+            return [
+                'isBlocked' => true,
+                'reason'    => 'limit',
+                'unlockAt'  => $this->toUtcIso($midnight),
+            ];
         }
 
         return [
