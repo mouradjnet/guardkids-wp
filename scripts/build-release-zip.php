@@ -15,8 +15,15 @@ declare(strict_types=1);
  * Sem argumento: output em $HOME/OneDrive/Documentos/guardkids-wp/.
  */
 
-$root    = dirname(__DIR__);
-$version = '1.5.3';
+$root = dirname(__DIR__);
+
+// Versão derivada do header do plugin (fonte da verdade) pra nunca defasar.
+$mainFile = file_get_contents($root . '/guardkids.php');
+if ($mainFile === false || preg_match('/^\s*\*\s*Version:\s*(.+)$/m', $mainFile, $m) !== 1) {
+    fwrite(STDERR, "Não foi possível ler a versão de guardkids.php\n");
+    exit(1);
+}
+$version = trim($m[1]);
 
 $argvOut = $argv[1] ?? null;
 $home    = getenv('USERPROFILE') ?: getenv('HOME') ?: $root;
