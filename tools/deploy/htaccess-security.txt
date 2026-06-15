@@ -14,8 +14,10 @@
     # CSP — restritivo o suficiente pra bloquear XSS, permissivo pro WP funcionar
     #  - Google Fonts (CSS + arquivos) liberado pra UI do plugin
     #  - 'unsafe-inline' em styles é exigência do WP block editor e do plugin atual
-    #  - 'unsafe-inline' em scripts mantido por hora; remover quando block editor sair
-    Header always set Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self'; frame-ancestors 'self'; base-uri 'self'; form-action 'self'; upgrade-insecure-requests"
+    #  - 'unsafe-inline' + 'unsafe-eval' em scripts: exigência do block editor
+    #    (Gutenberg). Trade-off aceito: o XSS surface vem mais dos inline scripts
+    #    do WP do que do eval; revisar quando/se o block editor sair.
+    Header always set Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self'; frame-ancestors 'self'; base-uri 'self'; form-action 'self'; upgrade-insecure-requests"
 
     # MIME sniffing protection
     Header always set X-Content-Type-Options "nosniff"
