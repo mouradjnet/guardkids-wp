@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { ReactNode } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -27,6 +27,7 @@ import { TimeLimits } from './TimeLimits';
 const lucas: Child = {
   id: 1, slug: 'lucas', name: 'Lucas', age: 9, avatarUrl: null,
   device: null, status: 'online', usedMinutes: 0, limitMinutes: 60,
+  dailyLimitEnabled: false,
   bedtimeEnabled: false, bedtimeStart: null, bedtimeEnd: null,
   allowedWeekdays: 'YYYYYYY',
   createdAt: null, updatedAt: null,
@@ -111,6 +112,23 @@ describe('TimeLimits page', () => {
       expect(updateChildMock).toHaveBeenCalled();
       expect(updateChildMock.mock.calls[0]?.[0]).toBe(1);
       expect(updateChildMock.mock.calls[0]?.[1]).toEqual({ limit_minutes: 90 });
+    });
+  });
+
+  it('toggles daily_limit_enabled from the DailyTimeCard', async () => {
+    listChildrenMock.mockResolvedValue([lucas]);
+    updateChildMock.mockResolvedValue({ ...lucas, dailyLimitEnabled: true });
+    const user = userEvent.setup();
+    renderPage();
+
+    // Escopa o toggle ao card "Tempo diário" (há outro switch no Modo dormir).
+    const dailyCard = (await screen.findByRole('heading', { name: /tempo diário/i }))
+      .closest('article') as HTMLElement;
+    await user.click(within(dailyCard).getByRole('switch'));
+
+    await waitFor(() => {
+      expect(updateChildMock.mock.calls[0]?.[0]).toBe(1);
+      expect(updateChildMock.mock.calls[0]?.[1]).toEqual({ daily_limit_enabled: true });
     });
   });
 

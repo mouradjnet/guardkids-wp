@@ -136,11 +136,11 @@ function ChildChip({
 function DailyTimeCard({ child }: { child: Child }) {
   const queryClient = useQueryClient();
   const [optimistic, setOptimistic] = useState<number | null>(null);
+  const [enabled, setEnabled] = useState<boolean>(child.dailyLimitEnabled);
   const value = optimistic ?? child.limitMinutes;
 
   const mutation = useMutation({
-    mutationFn: (limit_minutes: number) =>
-      updateChild(child.id, { limit_minutes }),
+    mutationFn: (input: UpdateChildInput) => updateChild(child.id, input),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['children'] });
       setOptimistic(null);
@@ -152,7 +152,7 @@ function DailyTimeCard({ child }: { child: Child }) {
 
   function pick(m: number) {
     setOptimistic(m);
-    mutation.mutate(m);
+    mutation.mutate({ limit_minutes: m });
   }
 
   return (
@@ -169,13 +169,26 @@ function DailyTimeCard({ child }: { child: Child }) {
             </p>
           </div>
         </div>
-        {mutation.isPending && (
-          <Icon
-            name="progress_activity"
-            className="animate-spin text-lg text-primary"
-            aria-label="Salvando"
+        <div className="flex items-center gap-2">
+          {mutation.isPending && (
+            <Icon
+              name="progress_activity"
+              className="animate-spin text-lg text-primary"
+              aria-label="Salvando"
+            />
+          )}
+          <span className="text-label-sm text-on-surface-variant">
+            Bloquear no limite
+          </span>
+          <Toggle
+            on={enabled}
+            onToggle={() => {
+              const next = !enabled;
+              setEnabled(next);
+              mutation.mutate({ daily_limit_enabled: next });
+            }}
           />
-        )}
+        </div>
       </header>
 
       <div className="text-center">
