@@ -42,9 +42,19 @@ final class SecurityHeaders
     /**
      * Callback do hook `send_headers`. Idempotente; não escreve nada se os
      * headers já tiverem sido enviados.
+     *
+     * Respostas REST são ignoradas: o namespace `guardkids/v1` tem dono próprio
+     * ([[RestHeaders]], que aplica X-Frame-Options: DENY mais restrito). Em
+     * runtime `send_headers` nem dispara pra REST (rest_api_loaded() faz die()
+     * em parse_request, antes de WP::send_headers()), mas o guard deixa a
+     * fronteira de ownership explícita e blinda caminhos futuros.
      */
     public function send(): void
     {
+        if (defined('REST_REQUEST') && REST_REQUEST) {
+            return;
+        }
+
         if (headers_sent()) {
             return;
         }
