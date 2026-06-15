@@ -222,4 +222,122 @@ final class ScheduleEvaluatorTest extends TestCase
 
         self::assertFalse($res['isBlocked']);
     }
+
+    public function testDailyLimitDisabledDoesNotBlockEvenAboveLimit(): void
+    {
+        // Segunda 14:00 local, 120 min usados mas toggle off → não bloqueia.
+        $now = new DateTimeImmutable('2026-06-08 14:00:00', $this->tz);
+        $res = $this->svc->evaluate(
+            $this->config(['daily_limit_enabled' => 0, 'limit_minutes' => 60]),
+            $now,
+            120,
+        );
+
+        self::assertFalse($res['isBlocked']);
+        self::assertNull($res['reason']);
+    }
+
+    public function testDailyLimitUnderLimitDoesNotBlock(): void
+    {
+        $now = new DateTimeImmutable('2026-06-08 14:00:00', $this->tz);
+        $res = $this->svc->evaluate(
+            $this->config(['daily_limit_enabled' => 1, 'limit_minutes' => 60]),
+            $now,
+            30,
+        );
+
+        self::assertFalse($res['isBlocked']);
+    }
+
+    public function testDailyLimitReachedBlocksWithUnlockAtNextLocalMidnight(): void
+    {
+        // Segunda 2026-06-08 14:00 local; meia-noite seguinte = 2026-06-09 00:00
+        // local = 03:00 UTC (Sao_Paulo é -03).
+        $now = new DateTimeImmutable('2026-06-08 14:00:00', $this->tz);
+        $res = $this->svc->evaluate(
+            $this->config(['daily_limit_enabled' => 1, 'limit_minutes' => 60]),
+            $now,
+            60,
+        );
+
+        self::assertTrue($res['isBlocked']);
+        self::assertSame('limit', $res['reason']);
+        self::assertSame('2026-06-09T03:00:00Z', $res['unlockAt']);
+    }
+
+    public function testDailyLimitOverLimitBlocks(): void
+    {
+        $now = new DateTimeImmutable('2026-06-08 14:00:00', $this->tz);
+        $res = $this->svc->evaluate(
+            $this->config(['daily_limit_enabled' => 1, 'limit_minutes' => 60]),
+            $now,
+            120,
+        );
+
+        self::assertTrue($res['isBlocked']);
+        self::assertSame('limit', $res['reason']);
+    }
+
+    public function testDailyLimitZeroMinutesNeverBlocks(): void
+    {
+        // limit_minutes=0 = "sem limite" mesmo com toggle on.
+        $now = new DateTimeImmutable('2026-06-08 14:00:00', $this->tz);
+        $res = $this->svc->evaluate(
+            $this->config(['daily_limit_enabled' => 1, 'limit_minutes' => 0]),
+            $now,
+            500,
+        );
+
+        self::assertFalse($res['isBlocked']);
+    }
+
+    public function testWeekdayTakesPrecedenceOverLimit(): void
+    {
+        // Domingo (idx 6 = N) e limite estourado → weekday vence.
+        $now = new DateTimeImmutable('2026-06-14 14:00:00', $this->tz);
+        $res = $this->svc->evaluate(
+            $this->config([
+                'allowed_weekdays'    => 'YYYYYYN',
+                'daily_limit_enabled' => 1,
+                'limit_minutes'       => 60,
+            ]),
+            $now,
+            120,
+        );
+
+        self::assertTrue($res['isBlocked']);
+        self::assertSame('weekday', $res['reason']);
+    }
+
+    public function testBedtimeTakesPrecedenceOverLimit(): void
+    {
+        // Dentro da janela de bedtime e limite estourado → bedtime vence.
+        $now = new DateTimeImmutable('2026-06-08 14:00:00', $this->tz);
+        $res = $this->svc->evaluate(
+            $this->config([
+                'bedtime_enabled'     => 1,
+                'bedtime_start'       => '13:00:00',
+                'bedtime_end'         => '15:00:00',
+                'daily_limit_enabled' => 1,
+                'limit_minutes'       => 60,
+            ]),
+            $now,
+            120,
+        );
+
+        self::assertTrue($res['isBlocked']);
+        self::assertSame('bedtime', $res['reason']);
+    }
+
+    public function testDailyLimitDefaultsToUnblockedWhenUsedParamOmitted(): void
+    {
+        // 3º parâmetro omitido → minutesUsedToday=0 → nunca bloqueia por limite.
+        $now = new DateTimeImmutable('2026-06-08 14:00:00', $this->tz);
+        $res = $this->svc->evaluate(
+            $this->config(['daily_limit_enabled' => 1, 'limit_minutes' => 60]),
+            $now,
+        );
+
+        self::assertFalse($res['isBlocked']);
+    }
 }

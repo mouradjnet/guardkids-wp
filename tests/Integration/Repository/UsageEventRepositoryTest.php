@@ -160,6 +160,63 @@ final class UsageEventRepositoryTest extends IntegrationTestCase
         $this->assertSame(7, $kpis['range_days']);
     }
 
+    public function test_minutesUsedInWindow_sums_heartbeat_and_site_open(): void
+    {
+        $repo = new UsageEventRepository();
+        $this->seedHeartbeat(1, '2026-06-15 10:00:00', 600);  // 10 min
+        $this->seedSiteOpenWithDuration(1, '2026-06-15 11:00:00', 'youtube.com', 300); // 5 min
+
+        $minutes = $repo->minutesUsedInWindow(1, '2026-06-15 00:00:00', '2026-06-16 00:00:00');
+        $this->assertSame(15, $minutes);
+    }
+
+    public function test_minutesUsedInWindow_excludes_schedule_block(): void
+    {
+        $repo = new UsageEventRepository();
+        $this->seedHeartbeat(1, '2026-06-15 10:00:00', 600); // 10 min conta
+        // schedule_block com duration alto — não pode entrar na soma (filtro por type).
+        $this->db->query(sprintf(
+            "INSERT INTO `%sguardkids_usage_events` (child_id, type, domain, detail, duration_seconds, created_at) VALUES (1, 'schedule_block', NULL, 'limit', 9999, '2026-06-15 12:00:00')",
+            $this->db->prefix,
+        ));
+
+        $minutes = $repo->minutesUsedInWindow(1, '2026-06-15 00:00:00', '2026-06-16 00:00:00');
+        $this->assertSame(10, $minutes);
+    }
+
+    public function test_minutesUsedInWindow_respects_half_open_window(): void
+    {
+        $repo = new UsageEventRepository();
+        $this->seedHeartbeat(1, '2026-06-15 00:00:00', 600); // dentro (>= from)
+        $this->seedHeartbeat(1, '2026-06-15 23:59:59', 600); // dentro (< to)
+        $this->seedHeartbeat(1, '2026-06-16 00:00:00', 600); // fora (== to, exclusivo)
+
+        $minutes = $repo->minutesUsedInWindow(1, '2026-06-15 00:00:00', '2026-06-16 00:00:00');
+        $this->assertSame(20, $minutes); // 600 + 600 = 1200s = 20min
+    }
+
+    public function test_minutesUsedInWindow_filters_by_child(): void
+    {
+        $repo = new UsageEventRepository();
+        $this->seedHeartbeat(1, '2026-06-15 10:00:00', 600);
+        $this->seedHeartbeat(2, '2026-06-15 10:00:00', 1800);
+
+        $this->assertSame(10, $repo->minutesUsedInWindow(1, '2026-06-15 00:00:00', '2026-06-16 00:00:00'));
+        $this->assertSame(0, $repo->minutesUsedInWindow(99, '2026-06-15 00:00:00', '2026-06-16 00:00:00'));
+    }
+
+    private function seedSiteOpenWithDuration(int $childId, string $createdAt, string $domain, int $durationSeconds): void
+    {
+        $this->db->query(sprintf(
+            "INSERT INTO `%sguardkids_usage_events` (child_id, type, domain, duration_seconds, created_at) VALUES (%d, 'site_open', '%s', %d, '%s')",
+            $this->db->prefix,
+            $childId,
+            $domain,
+            $durationSeconds,
+            $createdAt,
+        ));
+    }
+
     private function seedHeartbeat(int $childId, string $createdAt, int $durationSeconds): void
     {
         $this->db->query(sprintf(

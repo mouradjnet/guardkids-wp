@@ -33,6 +33,9 @@ final class ChildController
             'avatar_url'    => ['type' => 'string', 'sanitize_callback' => 'esc_url_raw'],
             'device'        => ['type' => 'string', 'sanitize_callback' => 'sanitize_text_field'],
             'limit_minutes' => ['type' => 'integer', 'minimum' => 0, 'maximum' => 1440],
+            'daily_limit_enabled' => [
+                'type' => 'boolean',
+            ],
             'bedtime_enabled' => [
                 'type' => 'boolean',
             ],
@@ -114,6 +117,7 @@ final class ChildController
             'status'        => 'offline',
             'used_minutes'  => 0,
             'limit_minutes' => $req->get_param('limit_minutes') ?? 60,
+            'daily_limit_enabled' => (int) ((bool) ($req->get_param('daily_limit_enabled') ?? false)),
         ]);
 
         if ($id === 0) {
@@ -143,6 +147,7 @@ final class ChildController
         $bedtimeEnabledParam = $req->get_param('bedtime_enabled');
         $bedtimeStartParam   = $req->get_param('bedtime_start');
         $bedtimeEndParam     = $req->get_param('bedtime_end');
+        $dailyEnabledParam   = $req->get_param('daily_limit_enabled');
 
         // Validação: enabled=true exige start e end (na request ou no row atual)
         $futureEnabled = $bedtimeEnabledParam === null
@@ -163,6 +168,7 @@ final class ChildController
             'avatar_url'       => $req->get_param('avatar_url'),
             'device'           => $req->get_param('device'),
             'limit_minutes'    => $req->get_param('limit_minutes'),
+            'daily_limit_enabled' => $dailyEnabledParam === null ? null : ((int) ((bool) $dailyEnabledParam)),
             'bedtime_enabled'  => $bedtimeEnabledParam === null ? null : ((int) ((bool) $bedtimeEnabledParam)),
             'bedtime_start'    => $this->coerceTime($bedtimeStartParam),
             'bedtime_end'      => $this->coerceTime($bedtimeEndParam),
@@ -268,6 +274,7 @@ final class ChildController
             'status'       => (string) ($row['status'] ?? 'offline'),
             'usedMinutes'  => (int) ($row['used_minutes'] ?? 0),
             'limitMinutes' => (int) ($row['limit_minutes'] ?? 60),
+            'dailyLimitEnabled' => (int) ($row['daily_limit_enabled'] ?? 0) === 1,
             'bedtimeEnabled'  => (int) ($row['bedtime_enabled'] ?? 0) === 1,
             'bedtimeStart'    => isset($row['bedtime_start']) && is_string($row['bedtime_start'])
                                  ? substr($row['bedtime_start'], 0, 5) : null,

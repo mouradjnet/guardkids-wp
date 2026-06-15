@@ -136,11 +136,15 @@ function ChildChip({
 function DailyTimeCard({ child }: { child: Child }) {
   const queryClient = useQueryClient();
   const [optimistic, setOptimistic] = useState<number | null>(null);
+  const [pendingEnabled, setPendingEnabled] = useState<boolean | null>(null);
   const value = optimistic ?? child.limitMinutes;
+  // Deriva o toggle do dado real; o override otimista vale só enquanto a
+  // mutation está no ar e some no onSettled — em sucesso o refetch traz o
+  // valor novo, em erro volta pro valor atual (deixa claro que não salvou).
+  const enabled = pendingEnabled ?? child.dailyLimitEnabled;
 
   const mutation = useMutation({
-    mutationFn: (limit_minutes: number) =>
-      updateChild(child.id, { limit_minutes }),
+    mutationFn: (input: UpdateChildInput) => updateChild(child.id, input),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['children'] });
       setOptimistic(null);
@@ -152,7 +156,7 @@ function DailyTimeCard({ child }: { child: Child }) {
 
   function pick(m: number) {
     setOptimistic(m);
-    mutation.mutate(m);
+    mutation.mutate({ limit_minutes: m });
   }
 
   return (
@@ -169,13 +173,29 @@ function DailyTimeCard({ child }: { child: Child }) {
             </p>
           </div>
         </div>
-        {mutation.isPending && (
-          <Icon
-            name="progress_activity"
-            className="animate-spin text-lg text-primary"
-            aria-label="Salvando"
+        <div className="flex items-center gap-2">
+          {mutation.isPending && (
+            <Icon
+              name="progress_activity"
+              className="animate-spin text-lg text-primary"
+              aria-label="Salvando"
+            />
+          )}
+          <span className="text-label-sm text-on-surface-variant">
+            Bloquear no limite
+          </span>
+          <Toggle
+            on={enabled}
+            onToggle={() => {
+              const next = !enabled;
+              setPendingEnabled(next);
+              mutation.mutate(
+                { daily_limit_enabled: next },
+                { onSettled: () => setPendingEnabled(null) },
+              );
+            }}
           />
-        )}
+        </div>
       </header>
 
       <div className="text-center">

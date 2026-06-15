@@ -65,7 +65,12 @@ export default function App() {
   // mesma sessão de bedtime (refetchInterval=60s gerava posts duplicados).
   useEffect(() => {
     if (!realIsBlocked || !unlockAt) return;
-    if (blockReason !== 'bedtime' && blockReason !== 'weekday') return;
+    if (
+      blockReason !== 'bedtime' &&
+      blockReason !== 'weekday' &&
+      blockReason !== 'limit'
+    )
+      return;
 
     const key = `${blockReason}:${unlockAt}`;
     if (window.localStorage.getItem('gk:lastReportedBlock') === key) return;

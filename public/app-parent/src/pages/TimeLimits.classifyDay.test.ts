@@ -13,6 +13,7 @@ const baseChild: Child = {
   status: 'online',
   usedMinutes: 0,
   limitMinutes: 60,
+  dailyLimitEnabled: false,
   bedtimeEnabled: false,
   bedtimeStart: null,
   bedtimeEnd: null,

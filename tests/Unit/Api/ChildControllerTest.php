@@ -138,6 +138,20 @@ final class ChildControllerTest extends TestCase
         self::assertSame('Rafael', $res->get_data()['name']);
     }
 
+    public function testCreatePersistsDailyLimitEnabledFlag(): void
+    {
+        $req = new WP_REST_Request('POST', '/children');
+        $req->set_param('name', 'Rafael');
+        $req->set_param('daily_limit_enabled', true);
+
+        $res = (new ChildController())->create($req);
+        self::assertInstanceOf(WP_REST_Response::class, $res);
+
+        $insert = array_values(array_filter($this->wpdb->log, fn ($e) => $e['method'] === 'insert'));
+        self::assertNotEmpty($insert);
+        self::assertSame(1, $insert[0]['args'][1]['daily_limit_enabled']);
+    }
+
     public function testCreateRespectsExplicitSlug(): void
     {
         $req = new WP_REST_Request('POST', '/children');

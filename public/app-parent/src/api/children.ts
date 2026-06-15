@@ -51,6 +51,7 @@ export type UpdateChildInput = Partial<{
   avatar_url: string | null;
   device: string | null;
   limit_minutes: number;
+  daily_limit_enabled: boolean;
   bedtime_enabled: boolean;
   bedtime_start: string;
   bedtime_end: string;

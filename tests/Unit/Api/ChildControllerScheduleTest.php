@@ -193,6 +193,49 @@ final class ChildControllerScheduleTest extends TestCase
         self::assertSame(422, $res->get_error_data()['status']);
     }
 
+    public function testUpdateDailyLimitEnabledPersists(): void
+    {
+        $req = $this->makeRequest(['daily_limit_enabled' => true]);
+        $res = (new ChildController(new AlwaysAllowGate()))->update($req);
+
+        self::assertInstanceOf(WP_REST_Response::class, $res);
+        $patch = end($this->wpdb->log)['args'][1];
+        self::assertSame(1, $patch['daily_limit_enabled']);
+    }
+
+    public function testUpdateDailyLimitEnabledIsNotPremiumGated(): void
+    {
+        // Gate que nega tudo (Free sem schedule). daily_limit_enabled NÃO entra
+        // em touchesSchedule, então ligar o toggle não pode retornar 402.
+        $denyGate = new class () extends \GuardKids\License\Gate {
+            public function __construct()
+            {
+            }
+            public function can(string $featureId): bool
+            {
+                return false;
+            }
+        };
+
+        $req = $this->makeRequest(['daily_limit_enabled' => true]);
+        $res = (new ChildController($denyGate))->update($req);
+
+        self::assertInstanceOf(WP_REST_Response::class, $res);
+        $patch = end($this->wpdb->log)['args'][1];
+        self::assertSame(1, $patch['daily_limit_enabled']);
+    }
+
+    public function testToJsonIncludesDailyLimitEnabled(): void
+    {
+        $this->wpdb->rows[1]['daily_limit_enabled'] = 1;
+
+        $req = new WP_REST_Request('GET', '/children/1');
+        $req['id'] = 1;
+        $res = (new ChildController(new AlwaysAllowGate()))->show($req);
+
+        self::assertTrue($res->get_data()['dailyLimitEnabled']);
+    }
+
     public function testToJsonReturnsDefaultsWhenScheduleFieldsAreEmpty(): void
     {
         // Row sem bedtime configurado nem allowed_weekdays setado.

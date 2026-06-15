@@ -77,6 +77,14 @@ describe('Blocked', () => {
     expect(screen.getByText(/Modo Dia de pausa/)).toBeInTheDocument();
   });
 
+  it('reason=limit mostra mensagem e label de tempo esgotado', () => {
+    render(<Blocked onNavigate={() => {}} reason="limit" unlockAt={UNLOCK_10H} />);
+    expect(
+      screen.getByText('Você usou todo o tempo de tela de hoje. Amanhã recarrega!'),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/Modo Tempo esgotado/)).toBeInTheDocument();
+  });
+
   it('reason=null cai no fallback bedtime', () => {
     render(<Blocked onNavigate={() => {}} reason={null} unlockAt={UNLOCK_10H} />);
     expect(screen.getByText(/Modo Bedtime/)).toBeInTheDocument();

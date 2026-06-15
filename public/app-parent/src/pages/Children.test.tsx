@@ -47,6 +47,7 @@ const lucas: Child = {
   status: 'online',
   usedMinutes: 30,
   limitMinutes: 60,
+  dailyLimitEnabled: false,
   bedtimeEnabled: false,
   bedtimeStart: null,
   bedtimeEnd: null,

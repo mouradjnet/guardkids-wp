@@ -221,6 +221,28 @@ final class UsageEventRepository extends Repository
         ], $rows);
     }
 
+    /**
+     * Minutos consumidos por um filho numa janela [fromUtc, toUtc) (UTC, half-open).
+     *
+     * Fonte de verdade do enforcement de limite diário: soma duration_seconds
+     * de heartbeat + site_open (ignora schedule_block, que não consome tempo).
+     * O caller passa as bordas do dia local já convertidas pra UTC — mesmo
+     * contrato de aggregateDailyMinutes/kpisForRange (created_at é UTC).
+     */
+    public function minutesUsedInWindow(int $childId, string $fromUtc, string $toUtc): int
+    {
+        $sql = $this->db->prepare(
+            'SELECT COALESCE(SUM(duration_seconds), 0) FROM ' . $this->table()
+            . ' WHERE child_id = %d AND type IN ("heartbeat", "site_open")'
+            . ' AND created_at >= %s AND created_at < %s',
+            $childId,
+            $fromUtc,
+            $toUtc,
+        );
+
+        return (int) floor(((int) $this->db->get_var($sql)) / 60);
+    }
+
     private function sumDurationSeconds(int $childId, string $fromIso, string $toIso): int
     {
         $base = 'SELECT COALESCE(SUM(duration_seconds), 0) FROM ' . $this->table()

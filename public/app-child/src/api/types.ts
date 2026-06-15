@@ -1,4 +1,4 @@
-export type ScheduleReason = 'bedtime' | 'weekday';
+export type ScheduleReason = 'bedtime' | 'weekday' | 'limit';
 
 export type ChildSchedule = {
   isBlocked: boolean;

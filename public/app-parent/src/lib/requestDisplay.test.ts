@@ -25,6 +25,7 @@ const baseChild: Child = {
   status: 'offline',
   usedMinutes: 0,
   limitMinutes: 60,
+  dailyLimitEnabled: false,
   bedtimeEnabled: false,
   bedtimeStart: null,
   bedtimeEnd: null,

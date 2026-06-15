@@ -14,11 +14,19 @@ type BlockedProps = {
 const MESSAGE_BY_REASON: Record<ScheduleReason, string> = {
   bedtime: 'A hora de dormir começou. Descansa que amanhã tem mais!',
   weekday: 'Hoje é dia de pausa de tela. Aproveita pra fazer outras coisas!',
+  limit: 'Você usou todo o tempo de tela de hoje. Amanhã recarrega!',
 };
 
 const LABEL_BY_REASON: Record<ScheduleReason, string> = {
   bedtime: 'Bedtime',
   weekday: 'Dia de pausa',
+  limit: 'Tempo esgotado',
+};
+
+const ICON_BY_REASON: Record<ScheduleReason, string> = {
+  bedtime: 'bedtime',
+  weekday: 'bedtime',
+  limit: 'timer_off',
 };
 
 const ALTERNATIVES = [
@@ -79,7 +87,7 @@ export function Blocked({
             className="material-symbols-outlined text-white"
             style={{ fontSize: 72, fontVariationSettings: "'FILL' 1" }}
           >
-            bedtime
+            {ICON_BY_REASON[effectiveReason]}
           </span>
         </div>
 
