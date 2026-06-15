@@ -19,9 +19,11 @@ $tables = [
     $wpdb->prefix . 'guardkids_sites',
     $wpdb->prefix . 'guardkids_categories',
     $wpdb->prefix . 'guardkids_settings',
+    $wpdb->prefix . 'guardkids_usage_events',
     $wpdb->prefix . 'guardkids_locations',
     $wpdb->prefix . 'guardkids_safe_zones',
     $wpdb->prefix . 'guardkids_guardians',
+    $wpdb->prefix . 'guardkids_companion_devices',
 ];
 
 foreach ($tables as $table) {
@@ -30,4 +32,5 @@ foreach ($tables as $table) {
 }
 
 delete_option('guardkids_db_version');
-delete_option('guardkids_jwt_secret');
+delete_option('guardkids_license');
+delete_option('guardkids_license_revoked');

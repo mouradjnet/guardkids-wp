@@ -236,6 +236,13 @@ final class CompanionController
             return new WP_Error('companion_auth_required', 'Token desconhecido.', ['status' => 401]);
         }
 
+        $expiresAt = isset($data['expiresAt']) && is_string($data['expiresAt'])
+            ? strtotime($data['expiresAt'])
+            : false;
+        if ($expiresAt === false || $expiresAt < time()) {
+            return new WP_Error('companion_auth_required', 'Token expirado.', ['status' => 401]);
+        }
+
         $device = $this->devices->findByUuid((string) $data['deviceUuid']);
         if ($device === null) {
             return new WP_Error('companion_auth_required', 'Dispositivo não encontrado.', ['status' => 401]);

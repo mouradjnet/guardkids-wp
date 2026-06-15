@@ -119,4 +119,46 @@ final class SettingsControllerTest extends TestCase
         self::assertArrayHasKey('valid', $data);
         self::assertArrayNotHasKey('', $data);
     }
+
+    /**
+     * Sem esta proteção, admin (ou XSS com nonce comprometido) consegue
+     * gravar `child_token:<sha256>` em wp_guardkids_settings e forjar
+     * autenticação de criança em /child/me, /child/location, etc.
+     */
+    public function testUpdateRejectsReservedTokenKeys(): void
+    {
+        $req = new WP_REST_Request('PATCH', '/settings');
+        $req->set_json_params([
+            'child_token:abc'           => ['childId' => 999],
+            'companion_token:def'       => ['childId' => 999],
+            'valid_setting'             => true,
+        ]);
+
+        $res = (new SettingsController())->update($req);
+        self::assertInstanceOf(WP_REST_Response::class, $res);
+        $data = $res->get_data();
+
+        self::assertArrayNotHasKey('child_token:abc', $data);
+        self::assertArrayNotHasKey('companion_token:def', $data);
+        self::assertArrayHasKey('valid_setting', $data);
+        self::assertArrayNotHasKey('child_token:abc', $this->wpdb->store);
+        self::assertArrayNotHasKey('companion_token:def', $this->wpdb->store);
+    }
+
+    public function testIndexOmitsReservedTokenKeys(): void
+    {
+        $this->wpdb->store = [
+            'child_token:hash1'     => json_encode(['childId' => 5]),
+            'companion_token:hash2' => json_encode(['childId' => 7]),
+            'location_enabled'      => json_encode(true),
+        ];
+
+        $res = (new SettingsController())->index();
+        self::assertInstanceOf(WP_REST_Response::class, $res);
+        $data = $res->get_data();
+
+        self::assertArrayNotHasKey('child_token:hash1', $data);
+        self::assertArrayNotHasKey('companion_token:hash2', $data);
+        self::assertArrayHasKey('location_enabled', $data);
+    }
 }
