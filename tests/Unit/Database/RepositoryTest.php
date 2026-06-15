@@ -157,6 +157,33 @@ final class RepositoryTest extends TestCase
         self::assertStringContainsString('ORDER BY id ASC', (string) $this->wpdb->log[0]['sql']);
     }
 
+    /**
+     * Defesa em profundidade: keys de findWhere devem ser hardcoded por
+     * callers internos, mas se alguma vier de input por bug futuro, a regex
+     * deve fail-fast em vez de concatenar diretamente no SQL.
+     */
+    public function testFindWhereRejectsInvalidColumnName(): void
+    {
+        $repo = new class () extends Repository {
+            protected function tableSuffix(): string
+            {
+                return 'children';
+            }
+            /**
+             * @param array<string, mixed> $where
+             * @return array<int, array<string, mixed>>
+             */
+            public function exposeFindWhere(array $where): array
+            {
+                return $this->findWhere($where);
+            }
+        };
+
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessageMatches('/Invalid column name/');
+        $repo->exposeFindWhere(['id; DROP TABLE wp_users--' => 1]);
+    }
+
     private function makeConcrete(string $suffix): Repository
     {
         return new class ($suffix) extends Repository {

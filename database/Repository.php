@@ -74,6 +74,14 @@ abstract class Repository
         $clauses = [];
         $values  = [];
         foreach ($where as $column => $value) {
+            // Defesa em profundidade: callers internos só passam keys
+            // hardcoded, mas se um dia algo vir de input, fail-fast aqui
+            // bloqueia SQL injection via column name.
+            if (preg_match('/^[a-zA-Z_]+$/', (string) $column) !== 1) {
+                throw new \InvalidArgumentException(
+                    'Invalid column name in findWhere: ' . (string) $column,
+                );
+            }
             $clauses[] = "{$column} = " . ($this->placeholderFor($value));
             $values[]  = $value;
         }

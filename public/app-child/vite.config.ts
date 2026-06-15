@@ -24,6 +24,7 @@ export default defineConfig(({ mode }) => {
           name: 'GuardKids — Painel Infantil',
           short_name: 'GuardKids',
           description: 'Ambiente seguro para crianças navegarem com o controle dos pais.',
+          lang: 'pt-BR',
           // Em produção via WP, a SPA mora em /painel-filho/. Em dev (Vite) mora em /.
           // Esse start_url só vale quando instalado; o usuário precisa instalar a partir
           // de /painel-filho/ pra essa URL fazer sentido como entry point.

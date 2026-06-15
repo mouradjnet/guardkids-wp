@@ -135,7 +135,11 @@ final class AcceptInviteApp
         }
 
         wp_set_current_user($userId);
-        wp_set_auth_cookie($userId, true);
+        // remember=false: cookie de sessão (válido até fechar browser).
+        // Convite admin não merece persistência de 14d — exige re-login
+        // após reboot/timeout, reduzindo janela de hijack se device for
+        // perdido. Trade-off de UX aceito.
+        wp_set_auth_cookie($userId, false);
 
         wp_safe_redirect(home_url('/painel-pais'));
     }

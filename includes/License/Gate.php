@@ -41,6 +41,8 @@ class Gate
     ];
 
     private readonly Verifier $verifier;
+    private ?Payload $cachedPayload = null;
+    private bool $payloadResolved = false;
 
     public function __construct(?Verifier $verifier = null)
     {
@@ -116,13 +118,25 @@ class Gate
         return $this->loadPayload();
     }
 
+    /**
+     * Memoiza payload na instância — endpoints com gating chamam status(),
+     * can() e plan() em sequência (~3 calls cada), evitando 3 verifys
+     * Ed25519 redundantes. Cache vive só durante o request: cada controller
+     * instancia um Gate novo.
+     */
     private function loadPayload(): ?Payload
     {
+        if ($this->payloadResolved) {
+            return $this->cachedPayload;
+        }
+        $this->payloadResolved = true;
+
         $stored = get_option('guardkids_license', null);
         if (! \is_array($stored) || ! isset($stored['key_b64']) || ! \is_string($stored['key_b64'])) {
             return null;
         }
-        return $this->verifier->verify($stored['key_b64']);
+        $this->cachedPayload = $this->verifier->verify($stored['key_b64']);
+        return $this->cachedPayload;
     }
 
     private function matchesSiteUrl(Payload $payload): bool
