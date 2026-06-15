@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace GuardKids\Ui;
 
+use GuardKids\Security\SecurityHeaders;
+
 /**
  * Serve a SPA `app-child` numa URL standalone (`/painel-filho`).
  *
@@ -69,6 +71,11 @@ final class ChildApp
             return;
         }
 
+        // Esta rota curto-circuita o WP em parse_request (prio 1) e dá exit
+        // antes de SecurityHeaders::send() (hook send_headers) rodar. Sem isto,
+        // a SPA infantil e seus assets sairiam sem os headers de segurança.
+        $this->sendSecurityHeaders();
+
         $suffix = substr($path, strlen(self::ROUTE_PREFIX));
         // Root da SPA — serve HTML
         if ($suffix === '' || $suffix === '/') {
@@ -91,6 +98,20 @@ final class ChildApp
         }
 
         $this->serveFile($file, $relative);
+    }
+
+    /**
+     * Emite os mesmos security headers globais do plugin
+     * ([[SecurityHeaders]]), reusando o mapa puro de `headers()`. Idempotente.
+     */
+    private function sendSecurityHeaders(): void
+    {
+        if (headers_sent()) {
+            return;
+        }
+        foreach ((new SecurityHeaders())->headers(is_ssl()) as $name => $value) {
+            header($name . ': ' . $value);
+        }
     }
 
     private function serveFile(string $file, string $relative): void
