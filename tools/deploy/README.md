@@ -12,6 +12,16 @@ WP root: `~/domains/guardiaokids.site/public_html`.
 Cobre itens 15–20 da auditoria do site público (HSTS / CSP / nosniff /
 X-Frame-Options / Referrer-Policy / Permissions-Policy).
 
+> **O plugin já aplica estes headers automaticamente** (`GuardKids\Security\SecurityHeaders`,
+> via hook `send_headers`) em todas as respostas renderizadas pelo WordPress —
+> não é mais necessário editar o `.htaccess` por SSH a cada ambiente.
+>
+> O snippet abaixo (`htaccess-security.txt`) continua útil como **reforço para
+> assets estáticos** servidos direto pelo Apache (imagens/CSS/JS), que não
+> passam pelo PHP e portanto não recebem os headers do plugin. Em servidor
+> dedicado/Hostinger vale aplicá-lo; em hospedagem onde editar `.htaccess` não
+> é viável, o plugin sozinho já cobre as respostas dinâmicas.
+
 ```bash
 ssh u217136411@82.25.73.253 -p 65002
 cd ~/domains/guardiaokids.site/public_html
