@@ -50,7 +50,23 @@ curl -s https://guardiaokids.site/.well-known/security.txt
 
 Esperado: 5 linhas (Contact, Expires, Preferred-Languages, Canonical, Policy).
 
-## 3) Rollback
+## 3) Cleanup WP content (Onda 4 — itens 6, 10, 14)
+
+Apaga "Hello world!" + sample page, configura Site Title/Tagline (refletem em
+`<meta description>` via tema), prepara favicon.
+
+Os outros itens da Onda 4 (7-9 SEO meta, 11-13 footer/contato) ficam pra
+serem resolvidos junto com a landing real, porque dependem do tema novo.
+
+```bash
+ssh u217136411@82.25.73.253 -p 65002
+cd ~/domains/guardiaokids.site/public_html
+bash <(curl -s https://raw.githubusercontent.com/mouradjnet/guardkids-wp/master/tools/deploy/wp-cleanup-onda4.sh)
+```
+
+Ou cole os comandos do script diretamente — todos idempotentes.
+
+## 4) Rollback
 
 ```bash
 # Se algo quebrar, reverter o .htaccess
