@@ -131,6 +131,41 @@ if (! function_exists('delete_option')) {
     }
 }
 
+// Transients in-memory (TTL ignorado). Reset entre tests via IntegrationTestCase.
+$GLOBALS['gk_transients'] = [];
+
+if (! function_exists('get_transient')) {
+    /**
+     * @return mixed
+     */
+    function get_transient(string $key)
+    {
+        return $GLOBALS['gk_transients'][$key] ?? false;
+    }
+}
+
+if (! function_exists('set_transient')) {
+    /**
+     * @param mixed $value
+     */
+    function set_transient(string $key, $value, int $ttl = 0): bool
+    {
+        $GLOBALS['gk_transients'][$key] = $value;
+        return true;
+    }
+}
+
+if (! function_exists('delete_transient')) {
+    function delete_transient(string $key): bool
+    {
+        if (! array_key_exists($key, $GLOBALS['gk_transients'])) {
+            return false;
+        }
+        unset($GLOBALS['gk_transients'][$key]);
+        return true;
+    }
+}
+
 if (! defined('OBJECT')) define('OBJECT', 'OBJECT');
 if (! defined('ARRAY_A')) define('ARRAY_A', 'ARRAY_A');
 if (! defined('ARRAY_N')) define('ARRAY_N', 'ARRAY_N');

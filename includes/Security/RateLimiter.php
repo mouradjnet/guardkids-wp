@@ -34,11 +34,14 @@ final class RateLimiter
     public function allow(string $endpoint, int $childId): bool
     {
         $key   = $this->key($endpoint, $childId);
-        $count = (int) get_transient($key);
+        // Prefix global \ é obrigatório dentro de namespace pra evitar lookup
+        // em GuardKids\Security\get_transient. PHP cai pro global no fallback
+        // só quando a função existe — em testes/integration sem WP, falhava.
+        $count = (int) \get_transient($key);
         if ($count >= $this->limit) {
             return false;
         }
-        set_transient($key, $count + 1, $this->window);
+        \set_transient($key, $count + 1, $this->window);
         return true;
     }
 

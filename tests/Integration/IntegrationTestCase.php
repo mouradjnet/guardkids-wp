@@ -45,5 +45,6 @@ abstract class IntegrationTestCase extends TestCase
         $GLOBALS['gk_current_user_id'] = 1;
         $GLOBALS['gk_user_caps']       = ['manage_options' => true];
         $GLOBALS['gk_users']           = [];
+        $GLOBALS['gk_transients']      = [];
     }
 }
