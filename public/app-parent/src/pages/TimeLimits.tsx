@@ -136,8 +136,12 @@ function ChildChip({
 function DailyTimeCard({ child }: { child: Child }) {
   const queryClient = useQueryClient();
   const [optimistic, setOptimistic] = useState<number | null>(null);
-  const [enabled, setEnabled] = useState<boolean>(child.dailyLimitEnabled);
+  const [pendingEnabled, setPendingEnabled] = useState<boolean | null>(null);
   const value = optimistic ?? child.limitMinutes;
+  // Deriva o toggle do dado real; o override otimista vale só enquanto a
+  // mutation está no ar e some no onSettled — em sucesso o refetch traz o
+  // valor novo, em erro volta pro valor atual (deixa claro que não salvou).
+  const enabled = pendingEnabled ?? child.dailyLimitEnabled;
 
   const mutation = useMutation({
     mutationFn: (input: UpdateChildInput) => updateChild(child.id, input),
@@ -184,8 +188,11 @@ function DailyTimeCard({ child }: { child: Child }) {
             on={enabled}
             onToggle={() => {
               const next = !enabled;
-              setEnabled(next);
-              mutation.mutate({ daily_limit_enabled: next });
+              setPendingEnabled(next);
+              mutation.mutate(
+                { daily_limit_enabled: next },
+                { onSettled: () => setPendingEnabled(null) },
+              );
             }}
           />
         </div>
