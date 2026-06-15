@@ -32,6 +32,8 @@ final class ChildSelfMeScheduleTest extends TestCase
             public array $settings = [];
             /** @var array<int, array<string, mixed>> */
             public array $children = [];
+            /** Segundos de uso retornados pela query de usage_events (SUM). */
+            public int $usageSeconds = 0;
 
             public function __construct()
             {
@@ -48,6 +50,9 @@ final class ChildSelfMeScheduleTest extends TestCase
 
             public function get_var($sql, $x = 0, $y = 0)
             {
+                if (str_contains((string) $sql, 'guardkids_usage_events')) {
+                    return (string) $this->usageSeconds;
+                }
                 if (preg_match("/setting_key = '([^']+)'/", (string) $sql, $m) === 1) {
                     if (str_contains((string) $sql, 'SELECT id')) {
                         return isset($this->settings[$m[1]]) ? '1' : null;
@@ -143,5 +148,32 @@ final class ChildSelfMeScheduleTest extends TestCase
         self::assertTrue($data['schedule']['isBlocked']);
         self::assertSame('weekday', $data['schedule']['reason']);
         self::assertNull($data['schedule']['unlockAt']);
+    }
+
+    public function testMeReportsBlockedByDailyLimitWhenUsageReachesCap(): void
+    {
+        // Toggle on, limite 60min, 60min de uso hoje (3600s) → bloqueia por limite.
+        $this->wpdb->children[1]['daily_limit_enabled'] = 1;
+        $this->wpdb->children[1]['limit_minutes']       = 60;
+        $this->wpdb->usageSeconds                       = 3600;
+
+        $data = (new ChildSelfController())->me($this->authedRequest())->get_data();
+
+        self::assertTrue($data['schedule']['isBlocked']);
+        self::assertSame('limit', $data['schedule']['reason']);
+        self::assertNotNull($data['schedule']['unlockAt']);
+    }
+
+    public function testMeNotBlockedWhenUsageUnderDailyLimit(): void
+    {
+        // Toggle on, limite 60min, só 30min de uso (1800s) → não bloqueia.
+        $this->wpdb->children[1]['daily_limit_enabled'] = 1;
+        $this->wpdb->children[1]['limit_minutes']       = 60;
+        $this->wpdb->usageSeconds                       = 1800;
+
+        $data = (new ChildSelfController())->me($this->authedRequest())->get_data();
+
+        self::assertFalse($data['schedule']['isBlocked']);
+        self::assertNull($data['schedule']['reason']);
     }
 }

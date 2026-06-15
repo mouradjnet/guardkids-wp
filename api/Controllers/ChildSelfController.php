@@ -56,7 +56,15 @@ final class ChildSelfController
 
         $tz       = function_exists('wp_timezone') ? wp_timezone() : new \DateTimeZone('UTC');
         $now      = new \DateTimeImmutable('now', $tz);
-        $schedule = $this->evaluator->evaluate($row, $now);
+
+        // Janela do dia local convertida pra UTC (created_at é UTC). [00:00, 24:00).
+        $utc        = new \DateTimeZone('UTC');
+        $startLocal = $now->setTime(0, 0, 0);
+        $fromUtc    = $startLocal->setTimezone($utc)->format('Y-m-d H:i:s');
+        $toUtc      = $startLocal->modify('+1 day')->setTimezone($utc)->format('Y-m-d H:i:s');
+        $usedMin    = $this->events->minutesUsedInWindow($childId, $fromUtc, $toUtc);
+
+        $schedule = $this->evaluator->evaluate($row, $now, $usedMin);
 
         return rest_ensure_response(
             $this->childToJson($row) + ['schedule' => $schedule]
