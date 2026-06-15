@@ -204,6 +204,30 @@ final class UsageEventRepositoryTest extends TestCase
         );
     }
 
+    public function testMinutesUsedInWindowBuildsScopedSql(): void
+    {
+        $repo = new UsageEventRepository();
+        $repo->minutesUsedInWindow(7, '2026-06-15 03:00:00', '2026-06-16 03:00:00');
+
+        $sql = (string) $this->wpdb->log[0]['sql'];
+        self::assertStringContainsString('wp_guardkids_usage_events', $sql);
+        self::assertStringContainsString('child_id = 7', $sql);
+        self::assertStringContainsString('SUM(duration_seconds)', $sql);
+        self::assertStringContainsString('type IN ("heartbeat", "site_open")', $sql);
+        self::assertStringContainsString("created_at >= '2026-06-15 03:00:00'", $sql);
+        self::assertStringContainsString("created_at < '2026-06-16 03:00:00'", $sql);
+    }
+
+    public function testMinutesUsedInWindowFloorsSecondsToMinutes(): void
+    {
+        // 150s = 2min (floor), 59s = 0min
+        $this->wpdb->cannedVars = [150, 59];
+        $repo = new UsageEventRepository();
+
+        self::assertSame(2, $repo->minutesUsedInWindow(1, '2026-06-15 00:00:00', '2026-06-16 00:00:00'));
+        self::assertSame(0, $repo->minutesUsedInWindow(1, '2026-06-15 00:00:00', '2026-06-16 00:00:00'));
+    }
+
     public function testKpisForRangeConvertsSecondsToMinutesAndReadsConsecutiveVars(): void
     {
         // 720 min = 43200s (current), 600 min = 36000s (previous)
