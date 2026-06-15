@@ -9,6 +9,7 @@ use GuardKids\Database\CategoryRepository;
 use GuardKids\Database\MigrationRunner;
 use GuardKids\Maintenance\Purger;
 use GuardKids\Security\RestHeaders;
+use GuardKids\Security\SecurityHeaders;
 use GuardKids\Ui\AcceptInviteApp;
 use GuardKids\Ui\ChildApp;
 use GuardKids\Ui\ParentApp;
@@ -56,6 +57,7 @@ final class Plugin
 
         (new RestApi())->register();
         (new RestHeaders())->register();
+        (new SecurityHeaders())->register();
         (new ParentApp())->register();
         (new ChildApp())->register();
         (new AcceptInviteApp())->register();
