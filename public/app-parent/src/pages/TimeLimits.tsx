@@ -7,7 +7,23 @@ import type { Child } from '../api/types';
 import { Icon } from '../components/Icon';
 import { PageHeader } from '../components/PageHeader';
 
-const PRESET_MINUTES = [60, 90, 120, 180, 240];
+const PRESET_MINUTES = [15, 30, 60, 90, 120, 180, 240];
+
+/** "15min" / "1h" / "1h 30min" — pro display grande. */
+function fmtDuration(m: number): string {
+  if (m < 60) return `${m}min`;
+  const h = Math.floor(m / 60);
+  const rest = m % 60;
+  return rest ? `${h}h ${rest}min` : `${h}h`;
+}
+
+/** Versão compacta pros botões de preset: "15min" / "1h" / "1h30". */
+function fmtPreset(m: number): string {
+  if (m < 60) return `${m}min`;
+  const h = Math.floor(m / 60);
+  const rest = m % 60;
+  return rest ? `${h}h${rest}` : `${h}h`;
+}
 
 const WEEK_DAYS = [
   { id: 'mon', label: 'Seg' },
@@ -200,11 +216,11 @@ function DailyTimeCard({ child }: { child: Child }) {
 
       <div className="text-center">
         <span className="font-display text-display-lg leading-none text-primary">
-          {Math.floor(value / 60)}h{value % 60 ? ` ${value % 60}min` : ''}
+          {fmtDuration(value)}
         </span>
       </div>
 
-      <div className="mt-4 grid grid-cols-5 gap-2">
+      <div className="mt-4 grid grid-cols-4 gap-2">
         {PRESET_MINUTES.map((m) => (
           <button
             key={m}
@@ -217,7 +233,7 @@ function DailyTimeCard({ child }: { child: Child }) {
                 : 'rounded-xl border border-outline-variant bg-surface-container-low py-2 text-label-md font-semibold text-on-surface hover:bg-surface-variant disabled:opacity-60'
             }
           >
-            {Math.floor(m / 60)}h{m % 60 ? `${m % 60}` : ''}
+            {fmtPreset(m)}
           </button>
         ))}
       </div>
