@@ -32,3 +32,9 @@
     # geolocation/camera mantidos sem restrição porque o PWA infantil consome
     Header always set Permissions-Policy "accelerometer=(), autoplay=(), browsing-topics=(), camera=(self), gyroscope=(), magnetometer=(), microphone=(), midi=(), payment=(), usb=(), interest-cohort=()"
 </IfModule>
+
+# Hardening: bloqueia o XML-RPC do WordPress (vetor de brute-force via
+# system.multicall e de pingback DDoS). O site não usa app mobile do WP/Jetpack.
+<Files xmlrpc.php>
+    Require all denied
+</Files>
