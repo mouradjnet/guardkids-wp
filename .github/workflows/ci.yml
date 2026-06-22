@@ -20,7 +20,7 @@ jobs:
     name: PHPUnit
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - name: Setup PHP 8.2
         uses: shivammathur/setup-php@v2
@@ -68,7 +68,7 @@ jobs:
           --health-timeout=5s
           --health-retries=10
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - name: Setup PHP 8.2
         uses: shivammathur/setup-php@v2
@@ -97,7 +97,7 @@ jobs:
       run:
         working-directory: public/app-parent
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - uses: pnpm/action-setup@v6
         with:
@@ -133,7 +133,7 @@ jobs:
       run:
         working-directory: public/app-child
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - uses: pnpm/action-setup@v6
         with:
