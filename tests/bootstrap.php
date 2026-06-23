@@ -389,6 +389,14 @@ if (! class_exists('WP_Error')) {
     }
 }
 
+// home_url — usado pelo PrivacyExporter
+if (! function_exists('home_url')) {
+    function home_url(string $path = ''): string
+    {
+        return 'http://test.local' . $path;
+    }
+}
+
 // rest_ensure_response — usado pelos controllers
 if (! function_exists('rest_ensure_response')) {
     function rest_ensure_response($value)
