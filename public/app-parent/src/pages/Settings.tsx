@@ -8,9 +8,11 @@ import {
   resendInvite,
   updateGuardianRole,
 } from '../api/guardians';
+import { clearHistory, deleteAllData, exportData } from '../api/privacy';
 import { listSettings, updateSettings, type SettingsBag } from '../api/settings';
 import type { Guardian, GuardianRole, GuardianWithInvite } from '../api/types';
 import { Icon } from '../components/Icon';
+import { DeleteAccountDialog } from '../components/DeleteAccountDialog';
 import { InviteGuardianDialog } from '../components/InviteGuardianDialog';
 import { InviteLinkPanel } from '../components/InviteLinkPanel';
 import { PageHeader } from '../components/PageHeader';
@@ -25,6 +27,38 @@ export function Settings() {
     mutationFn: updateSettings,
     onSuccess: (full) => queryClient.setQueryData(['settings'], full),
   });
+
+  const [deleteOpen, setDeleteOpen] = useState(false);
+
+  const exportMutation = useMutation({
+    mutationFn: exportData,
+    onSuccess: (data) => {
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `guardkids-export-${new Date().toISOString().slice(0, 10)}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+    },
+  });
+
+  const clearMutation = useMutation({ mutationFn: clearHistory });
+
+  const deleteMutation = useMutation({
+    mutationFn: () => deleteAllData('EXCLUIR'),
+    onSuccess: () => {
+      setDeleteOpen(false);
+      queryClient.invalidateQueries();
+    },
+  });
+
+  const handleClearHistory = () => {
+    const ok = window.confirm(
+      'Limpar histórico antigo? Eventos e pedidos com mais de 90 dias (e localizações com mais de 30 dias) serão removidos permanentemente.',
+    );
+    if (ok) clearMutation.mutate();
+  };
 
   const bag: SettingsBag = settingsQuery.data ?? {};
   const get = (key: string, fallback: boolean) => {
@@ -195,29 +229,56 @@ export function Settings() {
         iconTone="primary"
         title="Privacidade"
         subtitle="Seu controle sobre os dados da família"
-        comingSoon
       >
         <ActionRow
           icon="download"
           title="Exportar todos os dados"
-          description="ZIP com tudo: filhos, pedidos, histórico, regras e configurações."
+          description="Baixa um JSON com tudo: filhos, pedidos, histórico, regras e configurações."
           actionLabel="Solicitar"
+          onClick={() => exportMutation.mutate()}
+          pending={exportMutation.isPending}
         />
+        {exportMutation.error ? <MutationError error={exportMutation.error} /> : null}
         <ActionRow
           icon="cleaning_services"
           title="Limpar histórico"
-          description="Remove relatórios, bloqueios e pedidos anteriores a 90 dias."
+          description="Remove eventos e pedidos com mais de 90 dias e localizações com mais de 30 dias."
           actionLabel="Limpar"
           tone="warn"
+          onClick={handleClearHistory}
+          pending={clearMutation.isPending}
         />
+        {clearMutation.data ? (
+          <p className="text-label-sm text-on-surface-variant">
+            Removidos: {clearMutation.data.usage_events} eventos, {clearMutation.data.locations}{' '}
+            localizações, {clearMutation.data.requests} pedidos.
+          </p>
+        ) : null}
+        {clearMutation.error ? <MutationError error={clearMutation.error} /> : null}
         <ActionRow
           icon="delete_forever"
           title="Excluir conta e todos os dados"
-          description="Ação irreversível. Pede confirmação dupla."
+          description="Apaga os dados da família. Mantém guardiões e licença. Ação irreversível."
           actionLabel="Excluir"
           tone="danger"
+          onClick={() => setDeleteOpen(true)}
+          pending={deleteMutation.isPending}
         />
       </Section>
+
+      <DeleteAccountDialog
+        open={deleteOpen}
+        onClose={() => setDeleteOpen(false)}
+        onConfirm={() => deleteMutation.mutate()}
+        pending={deleteMutation.isPending}
+        error={
+          deleteMutation.error instanceof ApiError
+            ? `${deleteMutation.error.message} (${deleteMutation.error.status})`
+            : deleteMutation.error instanceof Error
+              ? deleteMutation.error.message
+              : null
+        }
+      />
 
       <InviteGuardianDialog open={inviteOpen} onClose={() => setInviteOpen(false)} />
     </main>
@@ -656,15 +717,19 @@ function ActionRow({
   description,
   actionLabel,
   tone,
+  onClick,
+  pending,
 }: {
   icon: string;
   title: string;
   description: string;
   actionLabel: string;
   tone?: 'warn' | 'danger';
+  onClick?: () => void;
+  pending?: boolean;
 }) {
   return (
-    <div className="flex items-start gap-3 rounded-xl border border-outline-variant bg-surface-container-low p-4 opacity-60">
+    <div className="flex items-start gap-3 rounded-xl border border-outline-variant bg-surface-container-low p-4">
       <div
         className={`flex h-10 w-10 items-center justify-center rounded-xl ${
           tone === 'danger'
@@ -682,10 +747,15 @@ function ActionRow({
       </div>
       <button
         type="button"
-        disabled
-        className="shrink-0 rounded-lg border border-outline-variant bg-surface-container px-4 py-2 text-label-md font-semibold text-on-surface-variant"
+        onClick={onClick}
+        disabled={pending}
+        className={`shrink-0 rounded-lg border px-4 py-2 text-label-md font-semibold disabled:opacity-60 ${
+          tone === 'danger'
+            ? 'border-error/40 bg-error/10 text-error hover:bg-error/20'
+            : 'border-outline-variant bg-surface-container text-on-surface hover:bg-surface-variant'
+        }`}
       >
-        {actionLabel}
+        {pending ? '…' : actionLabel}
       </button>
     </div>
   );

@@ -38,6 +38,17 @@ vi.mock('../api/guardians', () => ({
   resendInvite: resendInviteMock,
 }));
 
+const { exportDataMock, clearHistoryMock, deleteAllDataMock } = vi.hoisted(() => ({
+  exportDataMock: vi.fn(),
+  clearHistoryMock: vi.fn(),
+  deleteAllDataMock: vi.fn(),
+}));
+vi.mock('../api/privacy', () => ({
+  exportData: exportDataMock,
+  clearHistory: clearHistoryMock,
+  deleteAllData: deleteAllDataMock,
+}));
+
 import { Settings } from './Settings';
 
 const djair: Guardian = {
@@ -94,6 +105,14 @@ describe('Settings page', () => {
     activateGuardianMock.mockReset();
     removeGuardianMock.mockReset();
     resendInviteMock.mockReset();
+    exportDataMock.mockReset().mockResolvedValue({
+      exported_at: 'x',
+      site_url: 'x',
+      version: '1',
+      tables: {},
+    });
+    clearHistoryMock.mockReset().mockResolvedValue({ usage_events: 1, locations: 2, requests: 3 });
+    deleteAllDataMock.mockReset().mockResolvedValue({ tables: { children: 1 } });
   });
   afterEach(() => vi.restoreAllMocks());
 
@@ -243,13 +262,17 @@ describe('Settings page', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent(/falha ao salvar/i);
   });
 
-  it('renders ComingSoonBadge only on Privacidade now', async () => {
+  it('renders ComingSoonBadge on Notificações/Segurança but not Privacidade/Família', async () => {
     listSettingsMock.mockResolvedValue({});
     renderPage();
 
-    const privacidade = await screen.findByRole('heading', { name: /privacidade/i });
-    expect(privacidade).toHaveTextContent(/em breve/i);
-    const familia = screen.getByRole('heading', { name: /família/i });
+    const notificacoes = await screen.findByRole('heading', { name: /^notificações/i, level: 3 });
+    expect(notificacoes).toHaveTextContent(/em breve/i);
+    const seguranca = screen.getByRole('heading', { name: /^segurança/i, level: 3 });
+    expect(seguranca).toHaveTextContent(/em breve/i);
+    const privacidade = screen.getByRole('heading', { name: /^privacidade/i, level: 3 });
+    expect(privacidade).not.toHaveTextContent(/em breve/i);
+    const familia = screen.getByRole('heading', { name: /^família/i, level: 3 });
     expect(familia).not.toHaveTextContent(/em breve/i);
   });
 
@@ -410,5 +433,47 @@ describe('Settings page', () => {
     expect(confirmSpy).toHaveBeenCalled();
     expect(removeGuardianMock).not.toHaveBeenCalled();
     confirmSpy.mockRestore();
+  });
+
+  it('Privacidade: exports data when "Solicitar" is clicked', async () => {
+    listSettingsMock.mockResolvedValue({});
+    const createUrl = vi.fn(() => 'blob:x');
+    const revokeUrl = vi.fn();
+    vi.stubGlobal('URL', { ...URL, createObjectURL: createUrl, revokeObjectURL: revokeUrl });
+    const clickSpy = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
+    const user = userEvent.setup();
+    renderPage();
+
+    await user.click(await screen.findByRole('button', { name: /solicitar/i }));
+
+    await waitFor(() => expect(exportDataMock).toHaveBeenCalled());
+    expect(clickSpy).toHaveBeenCalled();
+    clickSpy.mockRestore();
+    vi.unstubAllGlobals();
+  });
+
+  it('Privacidade: clears history after confirm', async () => {
+    listSettingsMock.mockResolvedValue({});
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
+    const user = userEvent.setup();
+    renderPage();
+
+    await user.click(await screen.findByRole('button', { name: /^limpar$/i }));
+
+    expect(confirmSpy).toHaveBeenCalled();
+    await waitFor(() => expect(clearHistoryMock).toHaveBeenCalled());
+    confirmSpy.mockRestore();
+  });
+
+  it('Privacidade: deletes account through the confirm dialog', async () => {
+    listSettingsMock.mockResolvedValue({});
+    const user = userEvent.setup();
+    renderPage();
+
+    await user.click(await screen.findByRole('button', { name: /^excluir$/i }));
+    await user.type(screen.getByLabelText(/digite/i), 'EXCLUIR');
+    await user.click(screen.getByRole('button', { name: /excluir tudo/i }));
+
+    await waitFor(() => expect(deleteAllDataMock).toHaveBeenCalledWith('EXCLUIR'));
   });
 });
