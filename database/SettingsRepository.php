@@ -28,6 +28,15 @@ final class SettingsRepository extends Repository
         return json_last_error() === JSON_ERROR_NONE ? $decoded : $default;
     }
 
+    /**
+     * Remove uma setting pela chave. Usado pra consumir tokens de uso único
+     * (ex.: pairing token do Companion, descartado após o enroll).
+     */
+    public function deleteByKey(string $key): void
+    {
+        $this->db->delete($this->table(), ['setting_key' => $key]);
+    }
+
     public function set(string $key, mixed $value): void
     {
         $payload = wp_json_encode($value);

@@ -84,10 +84,17 @@ final class RestApi
             'args'                => $controller->pairArgs(),
         ]);
 
+        register_rest_route(self::NAMESPACE, '/companion/enroll', [
+            'methods'             => \WP_REST_Server::CREATABLE,
+            'callback'            => [$controller, 'enroll'],
+            // Auth via pairing token no header — validado dentro do handler.
+            'permission_callback' => '__return_true',
+        ]);
+
         register_rest_route(self::NAMESPACE, '/companion/sync', [
             'methods'             => \WP_REST_Server::CREATABLE,
             'callback'            => [$controller, 'sync'],
-            // Auth via token Companion no header — não usar nonce admin.
+            // Auth via token de sessão no header — não usar nonce admin.
             'permission_callback' => '__return_true',
             'args'                => $controller->syncArgs(),
         ]);
