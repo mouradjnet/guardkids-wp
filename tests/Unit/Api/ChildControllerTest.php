@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace GuardKids\Tests\Unit\Api;
 
 use GuardKids\Api\Controllers\ChildController;
+use GuardKids\License\Gate;
 use PHPUnit\Framework\TestCase;
 use WP_Error;
 use WP_REST_Request;
@@ -47,6 +48,14 @@ final class ChildControllerTest extends TestCase
                 if (preg_match('/WHERE id = (\d+)/', (string) $sql, $m) === 1) {
                     return $this->rows[(int) $m[1]] ?? null;
                 }
+                if (preg_match("/WHERE slug = '([^']+)'/", (string) $sql, $m) === 1) {
+                    foreach ($this->rows as $row) {
+                        if (($row['slug'] ?? null) === $m[1]) {
+                            return $row;
+                        }
+                    }
+                    return null;
+                }
                 return null;
             }
 
@@ -86,6 +95,24 @@ final class ChildControllerTest extends TestCase
             }
         };
         $GLOBALS['wpdb'] = $this->wpdb;
+    }
+
+    /**
+     * Gate "premium" (todas as features liberadas) — evita tropeçar no limite
+     * de 1 filho do plano Free quando o teste pré-popula filhos existentes.
+     */
+    private function premiumGate(): Gate
+    {
+        return new class () extends Gate {
+            public function __construct()
+            {
+            }
+
+            public function can(string $featureId): bool
+            {
+                return true;
+            }
+        };
     }
 
     public function testIndexReturnsAllChildrenAsJson(): void
@@ -160,6 +187,33 @@ final class ChildControllerTest extends TestCase
 
         $res = (new ChildController())->create($req);
         self::assertSame('rafa', $res->get_data()['slug']);
+    }
+
+    public function testCreateGeneratesUniqueSlugWhenNameCollides(): void
+    {
+        // Já existe um filho com slug "lucas" (pode ser de outro responsável —
+        // o slug é UNIQUE global). Criar outro "Lucas" não pode colidir.
+        $this->wpdb->rows[1] = ['id' => 1, 'slug' => 'lucas', 'name' => 'Lucas', 'status' => 'offline', 'used_minutes' => 0, 'limit_minutes' => 60];
+
+        $req = new WP_REST_Request('POST', '/children');
+        $req->set_param('name', 'Lucas');
+
+        $res = (new ChildController($this->premiumGate()))->create($req);
+        self::assertInstanceOf(WP_REST_Response::class, $res);
+        self::assertSame(201, $res->get_status());
+        self::assertSame('lucas-2', $res->get_data()['slug']);
+    }
+
+    public function testCreateIncrementsSlugSuffixUntilFree(): void
+    {
+        $this->wpdb->rows[1] = ['id' => 1, 'slug' => 'lucas', 'name' => 'Lucas', 'status' => 'offline', 'used_minutes' => 0, 'limit_minutes' => 60];
+        $this->wpdb->rows[2] = ['id' => 2, 'slug' => 'lucas-2', 'name' => 'Lucas', 'status' => 'offline', 'used_minutes' => 0, 'limit_minutes' => 60];
+
+        $req = new WP_REST_Request('POST', '/children');
+        $req->set_param('name', 'Lucas');
+
+        $res = (new ChildController($this->premiumGate()))->create($req);
+        self::assertSame('lucas-3', $res->get_data()['slug']);
     }
 
     public function testCreateReturns422WhenNameEmpty(): void

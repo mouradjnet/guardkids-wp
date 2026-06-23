@@ -106,7 +106,7 @@ final class ChildController
             );
         }
 
-        $slug = (string) ($req->get_param('slug') ?? sanitize_title($name));
+        $slug = $this->uniqueSlug((string) ($req->get_param('slug') ?? sanitize_title($name)));
 
         $id = $this->repo->insert([
             'slug'          => $slug,
@@ -126,6 +126,25 @@ final class ChildController
 
         $created = $this->repo->findById($id);
         return new WP_REST_Response($this->toJson($created ?? []), 201);
+    }
+
+    /**
+     * Garante slug único — a coluna `slug` é UNIQUE global. Anexa sufixo
+     * numérico (`lucas` → `lucas-2` → `lucas-3`…) enquanto o slug já existir,
+     * evitando "Duplicate entry" no insert → 500 ao cadastrar filhos de mesmo
+     * nome (inclusive entre responsáveis distintos). Fallback "filho" quando
+     * o nome sanitiza pra vazio.
+     */
+    private function uniqueSlug(string $base): string
+    {
+        $base = $base !== '' ? $base : 'filho';
+        $slug = $base;
+        $n    = 2;
+        while ($this->repo->findBySlug($slug) !== null) {
+            $slug = $base . '-' . $n;
+            $n++;
+        }
+        return $slug;
     }
 
     public function update(WP_REST_Request $req): WP_REST_Response|WP_Error
