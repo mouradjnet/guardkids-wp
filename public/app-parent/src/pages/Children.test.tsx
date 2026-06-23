@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event';
 import type { ReactNode } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Child } from '../api/types';
+import { ApiError } from '../api/client';
 
 const {
   listChildrenMock,
@@ -240,6 +241,25 @@ describe('Children page', () => {
 
     expect(confirmSpy).toHaveBeenCalled();
     await waitFor(() => expect(deleteChildMock).toHaveBeenCalledWith(1));
+    confirmSpy.mockRestore();
+  });
+
+  it('surfaces an error when deleteChild fails', async () => {
+    listChildrenMock.mockResolvedValue([lucas]);
+    deleteChildMock.mockRejectedValue(
+      new ApiError('rest_cookie_invalid_nonce', 'Cookie nonce inválido', 403),
+    );
+    const user = userEvent.setup();
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
+    renderPage();
+
+    await screen.findByText('Lucas');
+    await user.click(screen.getByRole('button', { name: /mais ações/i }));
+    await user.click(screen.getByRole('menuitem', { name: /excluir/i }));
+
+    const alert = await screen.findByRole('alert');
+    expect(alert).toHaveTextContent(/falha ao excluir/i);
+    expect(alert).toHaveTextContent(/403/);
     confirmSpy.mockRestore();
   });
 

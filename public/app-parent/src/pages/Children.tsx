@@ -133,6 +133,7 @@ function ChildProfileCard({ child, onPair, onEdit }: CardProps) {
 
   const [menuOpen, setMenuOpen] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
   const menuRef = useRef<HTMLDivElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -157,6 +158,7 @@ function ChildProfileCard({ child, onPair, onEdit }: CardProps) {
   const deleteMutation = useMutation({
     mutationFn: () => deleteChild(child.id),
     onSuccess: invalidate,
+    onError: (err) => setDeleteError(errorMessage(err)),
   });
 
   const avatarMutation = useMutation({
@@ -186,7 +188,10 @@ function ChildProfileCard({ child, onPair, onEdit }: CardProps) {
     const ok = window.confirm(
       `Excluir ${child.name}? Essa ação remove o perfil e não pode ser desfeita.`,
     );
-    if (ok) deleteMutation.mutate();
+    if (ok) {
+      setDeleteError(null);
+      deleteMutation.mutate();
+    }
   };
 
   const handlePauseToggle = () => {
@@ -336,6 +341,11 @@ function ChildProfileCard({ child, onPair, onEdit }: CardProps) {
           {uploadError && (
             <p role="alert" className="mt-1 text-label-sm text-error">
               {uploadError}
+            </p>
+          )}
+          {deleteError && (
+            <p role="alert" className="mt-1 text-label-sm text-error">
+              Falha ao excluir: {deleteError}
             </p>
           )}
         </div>
