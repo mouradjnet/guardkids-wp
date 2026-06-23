@@ -45,6 +45,26 @@ final class CompanionDeviceRepository extends Repository
     }
 
     /**
+     * Resolve o device pelo hash do token de sessão (auth de sync/heartbeat).
+     * O hash mora na linha do device desde a migration 010 — re-parear o
+     * limpa, revogando a sessão antiga.
+     *
+     * @return array<string, mixed>|null
+     */
+    public function findBySessionTokenHash(string $hash): ?array
+    {
+        if ($hash === '') {
+            return null;
+        }
+        $sql = $this->db->prepare(
+            'SELECT * FROM ' . $this->table() . ' WHERE session_token_hash = %s LIMIT 1',
+            $hash,
+        );
+        $row = $this->db->get_row($sql, ARRAY_A);
+        return is_array($row) ? $row : null;
+    }
+
+    /**
      * Marca last_sync = NOW e atualiza flags reportadas pelo Companion.
      * Usado por POST /companion/heartbeat e /companion/sync.
      *

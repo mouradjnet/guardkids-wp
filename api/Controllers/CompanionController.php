@@ -16,16 +16,22 @@ use WP_REST_Response;
  *
  * Reservado para o GuardKids Companion Android (ainda não implementado).
  * Esta versão prepara o backend — schema, auth via token e fluxo de pairing
- * — sem implementar o app Android. O wizard de pareamento no painel
- * gera um token temporário (hash em settings) e o Companion futuro vai
- * apresentá-lo no header X-GuardKids-Companion-Token nos endpoints
- * heartbeat/sync.
+ * — sem implementar o app Android.
+ *
+ * Modelo de tokens (dois papéis distintos, ambos no header
+ * X-GuardKids-Companion-Token):
+ *   - Pairing token: efêmero (10min), uso único, vai no QR gerado por /pair.
+ *     Só serve pra trocar por um token de sessão via /enroll.
+ *   - Session token: persistente (sem expiry), emitido por /enroll, usado em
+ *     todo sync/heartbeat. Hash mora na linha do device; re-parear o limpa,
+ *     revogando o device perdido/roubado.
  *
  * Endpoints:
  *   - GET  /companion/status?child_id=N    (admin)
  *   - POST /companion/pair                 (admin)
- *   - POST /companion/sync                 (companion token)
- *   - POST /companion/heartbeat            (companion token)
+ *   - POST /companion/enroll               (pairing token → session token)
+ *   - POST /companion/sync                 (session token)
+ *   - POST /companion/heartbeat            (session token)
  *
  * Modo de proteção (family|maximum):
  *   - GET  /protection-mode                (admin)
@@ -34,7 +40,7 @@ use WP_REST_Response;
 final class CompanionController
 {
     private const HEADER_TOKEN  = 'X-GuardKids-Companion-Token';
-    private const TOKEN_PREFIX  = 'companion_token:';
+    private const TOKEN_PREFIX  = 'companion_token:'; // pairing token (efêmero, 10min)
     private const TOKEN_BYTES   = 32;
     private const TOKEN_LENGTH  = 64; // hex
     private const SETTINGS_KEY  = 'protection_mode';
@@ -131,7 +137,12 @@ final class CompanionController
             ]);
         } else {
             $deviceUuid = (string) $existing['device_uuid'];
-            $this->devices->update((int) $existing['id'], ['status' => 'pending']);
+            // Re-parear revoga a sessão atual: zera o hash pra que o token de
+            // sessão antigo (device perdido/roubado) pare de autenticar já.
+            $this->devices->update((int) $existing['id'], [
+                'status'             => 'pending',
+                'session_token_hash' => null,
+            ]);
         }
 
         $this->settings->set(self::TOKEN_PREFIX . $hash, [
@@ -173,11 +184,46 @@ final class CompanionController
         ];
     }
 
+    // -------------------- companion/enroll --------------------
+
+    /**
+     * Troca o pairing token (efêmero, do QR) por um token de sessão persistente.
+     *
+     * O Companion chama isto uma vez logo após escanear o QR, apresentando o
+     * pairing token no header. Devolvemos um token de sessão novo (sem expiry)
+     * que o app guarda e usa em todo sync/heartbeat. O pairing token é de uso
+     * único: consumido (deletado) aqui mesmo.
+     */
+    public function enroll(WP_REST_Request $req): WP_REST_Response|WP_Error
+    {
+        $pairing = $this->authenticatePairing($req);
+        if ($pairing instanceof WP_Error) {
+            return $pairing;
+        }
+        [$device, $pairingKey] = $pairing;
+
+        $sessionToken = bin2hex(random_bytes(self::TOKEN_BYTES));
+        $sessionHash  = hash('sha256', $sessionToken);
+
+        $this->devices->update((int) $device['id'], [
+            'session_token_hash' => $sessionHash,
+            'status'             => 'active',
+        ]);
+
+        // Pairing token é de uso único — não pode ser reapresentado.
+        $this->settings->deleteByKey($pairingKey);
+
+        return new WP_REST_Response([
+            'sessionToken' => $sessionToken,
+            'deviceUuid'   => (string) $device['device_uuid'],
+        ], 201);
+    }
+
     // -------------------- companion/sync --------------------
 
     public function sync(WP_REST_Request $req): WP_REST_Response|WP_Error
     {
-        $device = $this->authenticate($req);
+        $device = $this->authenticateSession($req);
         if ($device instanceof WP_Error) {
             return $device;
         }
@@ -210,7 +256,7 @@ final class CompanionController
 
     public function heartbeat(WP_REST_Request $req): WP_REST_Response|WP_Error
     {
-        $device = $this->authenticate($req);
+        $device = $this->authenticateSession($req);
         if ($device instanceof WP_Error) {
             return $device;
         }
@@ -221,17 +267,33 @@ final class CompanionController
     // -------------------- helpers --------------------
 
     /**
-     * @return array<string, mixed>|WP_Error
+     * Lê e valida o formato do token no header (64 chars hex), devolvendo-o
+     * em lowercase. null = ausente ou malformado.
      */
-    private function authenticate(WP_REST_Request $req): array|WP_Error
+    private function readToken(WP_REST_Request $req): ?string
     {
         $raw = (string) $req->get_header(self::HEADER_TOKEN);
         if ($raw === '' || strlen($raw) !== self::TOKEN_LENGTH || preg_match('/^[a-f0-9]+$/i', $raw) !== 1) {
+            return null;
+        }
+        return strtolower($raw);
+    }
+
+    /**
+     * Auth do enroll: valida o pairing token (efêmero, do QR) e checa o expiry.
+     * Devolve [device, settingsKey] — a key é usada pra consumir o token.
+     *
+     * @return array{0: array<string, mixed>, 1: string}|WP_Error
+     */
+    private function authenticatePairing(WP_REST_Request $req): array|WP_Error
+    {
+        $token = $this->readToken($req);
+        if ($token === null) {
             return new WP_Error('companion_auth_required', 'Token do Companion inválido ou ausente.', ['status' => 401]);
         }
 
-        $hash = hash('sha256', strtolower($raw));
-        $data = $this->settings->get(self::TOKEN_PREFIX . $hash);
+        $key  = self::TOKEN_PREFIX . hash('sha256', $token);
+        $data = $this->settings->get($key);
         if (! is_array($data) || ! isset($data['deviceUuid'])) {
             return new WP_Error('companion_auth_required', 'Token desconhecido.', ['status' => 401]);
         }
@@ -240,12 +302,32 @@ final class CompanionController
             ? strtotime($data['expiresAt'])
             : false;
         if ($expiresAt === false || $expiresAt < time()) {
-            return new WP_Error('companion_auth_required', 'Token expirado.', ['status' => 401]);
+            return new WP_Error('companion_auth_required', 'Token de pareamento expirado.', ['status' => 401]);
         }
 
         $device = $this->devices->findByUuid((string) $data['deviceUuid']);
         if ($device === null) {
             return new WP_Error('companion_auth_required', 'Dispositivo não encontrado.', ['status' => 401]);
+        }
+        return [$device, $key];
+    }
+
+    /**
+     * Auth de sync/heartbeat: valida o token de SESSÃO (persistente, sem expiry)
+     * pelo hash gravado na linha do device. Re-parear limpa o hash, revogando.
+     *
+     * @return array<string, mixed>|WP_Error
+     */
+    private function authenticateSession(WP_REST_Request $req): array|WP_Error
+    {
+        $token = $this->readToken($req);
+        if ($token === null) {
+            return new WP_Error('companion_auth_required', 'Token do Companion inválido ou ausente.', ['status' => 401]);
+        }
+
+        $device = $this->devices->findBySessionTokenHash(hash('sha256', $token));
+        if ($device === null) {
+            return new WP_Error('companion_auth_required', 'Sessão inválida. Refaça o pareamento.', ['status' => 401]);
         }
         return $device;
     }
