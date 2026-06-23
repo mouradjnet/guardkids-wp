@@ -17,6 +17,7 @@ use GuardKids\Api\Controllers\SafeZoneController;
 use GuardKids\Api\Controllers\SettingsController;
 use GuardKids\Api\Controllers\SiteController;
 use GuardKids\Api\Controllers\MeController;
+use GuardKids\Api\Controllers\PrivacyController;
 use GuardKids\Auth\ChildAuth;
 use GuardKids\Auth\GuardianAuth;
 
@@ -49,7 +50,31 @@ final class RestApi
         $this->registerLicenseRoutes();
         $this->registerGuardiansRoutes();
         $this->registerMeRoute();
+        $this->registerPrivacyRoutes();
         $this->registerCompanionRoutes();
+    }
+
+    private function registerPrivacyRoutes(): void
+    {
+        $controller = new PrivacyController();
+
+        register_rest_route(self::NAMESPACE, '/privacy/export', [
+            'methods'             => \WP_REST_Server::READABLE,
+            'callback'            => [$controller, 'export'],
+            'permission_callback' => [self::class, 'requireAdmin'],
+        ]);
+
+        register_rest_route(self::NAMESPACE, '/privacy/clear-history', [
+            'methods'             => \WP_REST_Server::CREATABLE,
+            'callback'            => [$controller, 'clearHistory'],
+            'permission_callback' => [self::class, 'requireAdmin'],
+        ]);
+
+        register_rest_route(self::NAMESPACE, '/privacy/delete-all', [
+            'methods'             => \WP_REST_Server::CREATABLE,
+            'callback'            => [$controller, 'deleteAll'],
+            'permission_callback' => [self::class, 'requireAdmin'],
+        ]);
     }
 
     private function registerCompanionRoutes(): void
