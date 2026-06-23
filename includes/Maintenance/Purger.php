@@ -20,8 +20,9 @@ namespace GuardKids\Maintenance;
  */
 final class Purger
 {
-    public const USAGE_EVENTS_DAYS = 90;
-    public const LOCATIONS_DAYS    = 30;
+    public const USAGE_EVENTS_DAYS     = 90;
+    public const LOCATIONS_DAYS        = 30;
+    public const DECIDED_REQUESTS_DAYS = 90;
 
     private readonly \wpdb $db;
 
@@ -65,6 +66,25 @@ final class Purger
             'recorded_at',
             $daysOld,
         );
+    }
+
+    /**
+     * Apaga pedidos já decididos (approve/deny) mais antigos que a janela.
+     * Pendentes têm `decided_at` NULL e são preservados. NÃO entra no run()
+     * do cron — é exclusivo da ação manual "Limpar histórico".
+     *
+     * @return int linhas removidas (0 quando wpdb falha).
+     */
+    public function purgeOldDecidedRequests(int $daysOld): int
+    {
+        $cutoff = gmdate('Y-m-d H:i:s', time() - $daysOld * 86400);
+        $sql = $this->db->prepare(
+            'DELETE FROM ' . $this->db->prefix . 'guardkids_requests'
+            . ' WHERE decided_at IS NOT NULL AND decided_at < %s',
+            $cutoff,
+        );
+        $result = $this->db->query($sql);
+        return is_numeric($result) ? (int) $result : 0;
     }
 
     private function purgeBefore(string $table, string $column, int $daysOld): int

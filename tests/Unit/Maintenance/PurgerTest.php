@@ -95,4 +95,24 @@ final class PurgerTest extends TestCase
 
         self::assertSame(0, $purger->purgeOldUsageEvents(90));
     }
+
+    public function testPurgeOldDecidedRequestsTargetsRequestsAndPreservesPending(): void
+    {
+        $deleted = (new Purger($this->wpdb))->purgeOldDecidedRequests(90);
+
+        self::assertSame(7, $deleted);
+        self::assertCount(1, $this->wpdb->queries);
+        self::assertStringContainsString('wp_guardkids_requests', $this->wpdb->queries[0]);
+        self::assertStringContainsString('decided_at IS NOT NULL', $this->wpdb->queries[0]);
+        self::assertStringContainsString('decided_at <', $this->wpdb->queries[0]);
+    }
+
+    public function testRunDoesNotTouchRequests(): void
+    {
+        (new Purger($this->wpdb))->run();
+
+        foreach ($this->wpdb->queries as $sql) {
+            self::assertStringNotContainsString('guardkids_requests', $sql);
+        }
+    }
 }
