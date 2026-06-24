@@ -14,6 +14,7 @@ use GuardKids\Api\Controllers\LocationController;
 use GuardKids\Api\Controllers\ReportsController;
 use GuardKids\Api\Controllers\RequestController;
 use GuardKids\Api\Controllers\SafeZoneController;
+use GuardKids\Api\Controllers\SecurityController;
 use GuardKids\Api\Controllers\SettingsController;
 use GuardKids\Api\Controllers\SiteController;
 use GuardKids\Api\Controllers\MeController;
@@ -43,6 +44,7 @@ final class RestApi
         $this->registerSitesRoutes();
         $this->registerCategoriesRoutes();
         $this->registerSettingsRoutes();
+        $this->registerSecurityRoutes();
         $this->registerChildSelfRoutes();
         $this->registerReportsRoutes();
         $this->registerLocationsRoutes();
@@ -209,6 +211,30 @@ final class RestApi
         ]);
     }
 
+    private function registerSecurityRoutes(): void
+    {
+        $controller = new SecurityController();
+
+        register_rest_route(self::NAMESPACE, '/security/pin', [
+            [
+                'methods'             => \WP_REST_Server::READABLE,
+                'callback'            => [$controller, 'status'],
+                'permission_callback' => [self::class, 'requireAdmin'],
+            ],
+            [
+                'methods'             => \WP_REST_Server::CREATABLE,
+                'callback'            => [$controller, 'setPin'],
+                'permission_callback' => [self::class, 'requireAdmin'],
+                'args'                => $controller->setPinArgs(),
+            ],
+            [
+                'methods'             => \WP_REST_Server::DELETABLE,
+                'callback'            => [$controller, 'clearPin'],
+                'permission_callback' => [self::class, 'requireAdmin'],
+            ],
+        ]);
+    }
+
     private function registerChildSelfRoutes(): void
     {
         $controller = new ChildSelfController();
@@ -218,6 +244,13 @@ final class RestApi
             'methods'             => \WP_REST_Server::READABLE,
             'callback'            => [$controller, 'me'],
             'permission_callback' => $requireToken,
+        ]);
+
+        register_rest_route(self::NAMESPACE, '/child/security/pin/verify', [
+            'methods'             => \WP_REST_Server::CREATABLE,
+            'callback'            => [$controller, 'verifyPin'],
+            'permission_callback' => $requireToken,
+            'args'                => $controller->verifyPinArgs(),
         ]);
 
         register_rest_route(self::NAMESPACE, '/child/requests', [

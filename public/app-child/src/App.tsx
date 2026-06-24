@@ -34,6 +34,23 @@ export default function App() {
   const realIsBlocked = meQuery.data?.schedule?.isBlocked === true;
   const blockReason = meQuery.data?.schedule?.reason ?? null;
   const unlockAt = meQuery.data?.schedule?.unlockAt ?? null;
+  const pinUnlockEnabled = meQuery.data?.pinUnlockEnabled === true;
+
+  // Desbloqueio por PIN dos pais: libera o ambiente seguro por uma janela
+  // curta (15min). Ao expirar, um bloqueio ainda ativo volta a valer.
+  const [bypassUntil, setBypassUntil] = useState(0);
+  const pinBypassed = bypassUntil > Date.now();
+
+  useEffect(() => {
+    if (bypassUntil <= Date.now()) return;
+    const id = window.setTimeout(() => setBypassUntil(0), bypassUntil - Date.now());
+    return () => window.clearTimeout(id);
+  }, [bypassUntil]);
+
+  const handlePinUnlock = () => {
+    setBypassUntil(Date.now() + 15 * 60 * 1000);
+    setActivePage('home');
+  };
 
   useEffect(() => {
     if (!token) return;
@@ -52,10 +69,10 @@ export default function App() {
   }, [token]);
 
   useEffect(() => {
-    if (realIsBlocked && activePage !== 'blocked') {
+    if (realIsBlocked && !pinBypassed && activePage !== 'blocked') {
       setActivePage('blocked');
     }
-  }, [realIsBlocked, activePage]);
+  }, [realIsBlocked, pinBypassed, activePage]);
 
   // Dedupe robusto: a "sessão de bloqueio" é identificada por reason+unlockAt.
   // Guardamos a última chave reportada em localStorage pra sobreviver a hard
@@ -100,6 +117,8 @@ export default function App() {
           reason={meQuery.data?.schedule?.reason ?? 'bedtime'}
           unlockAt={meQuery.data?.schedule?.unlockAt ?? null}
           lockedMode={realIsBlocked}
+          pinUnlockEnabled={pinUnlockEnabled}
+          onPinUnlock={handlePinUnlock}
         />
       </div>
     );

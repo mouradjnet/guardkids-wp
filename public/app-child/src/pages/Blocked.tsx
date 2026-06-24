@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { verifyPin } from '../api/child';
 import type { ScheduleReason } from '../api/types';
 import { Icon } from '../components/Icon';
 import type { PageId } from '../data/mockData';
@@ -9,6 +10,10 @@ type BlockedProps = {
   unlockAt: string | null;
   /** Quando true, oculta o botão Voltar (bloqueio real, não preview). */
   lockedMode?: boolean;
+  /** Habilita o desbloqueio por PIN dos pais (vem do /child/me). */
+  pinUnlockEnabled?: boolean;
+  /** Chamado quando o PIN dos pais confere — libera o ambiente por um tempo. */
+  onPinUnlock?: () => void;
 };
 
 const MESSAGE_BY_REASON: Record<ScheduleReason, string> = {
@@ -53,6 +58,8 @@ export function Blocked({
   reason,
   unlockAt,
   lockedMode = false,
+  pinUnlockEnabled = false,
+  onPinUnlock,
 }: BlockedProps) {
   const [remaining, setRemaining] = useState(() => secondsUntil(unlockAt));
 
@@ -149,6 +156,89 @@ export function Blocked({
       <p className="mt-3 text-center text-label-sm text-white/60">
         Seus responsáveis vão receber a solicitação na hora.
       </p>
+
+      {lockedMode && pinUnlockEnabled && onPinUnlock ? (
+        <PinUnlock onUnlock={onPinUnlock} />
+      ) : null}
     </main>
+  );
+}
+
+function PinUnlock({ onUnlock }: { onUnlock: () => void }) {
+  const [open, setOpen] = useState(false);
+  const [pin, setPin] = useState('');
+  const [pending, setPending] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const submit = async () => {
+    setPending(true);
+    setError(null);
+    try {
+      const res = await verifyPin(pin);
+      if (res.ok) {
+        onUnlock();
+      } else {
+        setError('PIN incorreto.');
+        setPin('');
+      }
+    } catch {
+      setError('Não foi possível verificar agora. Tente de novo.');
+    } finally {
+      setPending(false);
+    }
+  };
+
+  if (!open) {
+    return (
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        className="mt-6 text-label-sm font-semibold text-white/70 underline underline-offset-4 hover:text-white"
+      >
+        Sou responsável · desbloquear com PIN
+      </button>
+    );
+  }
+
+  return (
+    <div className="mt-6 w-full max-w-sm rounded-2xl bg-white/10 p-4">
+      <label className="block text-label-sm font-semibold text-white/85">
+        PIN dos responsáveis
+        <input
+          type="password"
+          inputMode="numeric"
+          autoFocus
+          value={pin}
+          onChange={(e) => setPin(e.target.value.replace(/\D/g, '').slice(0, 6))}
+          className="mt-1 w-full rounded-lg bg-white/90 px-3 py-2 text-center font-mono text-lg tracking-widest text-primary focus:outline-none"
+        />
+      </label>
+      {error ? (
+        <p role="alert" className="mt-2 text-label-sm text-tertiary-fixed">
+          {error}
+        </p>
+      ) : null}
+      <div className="mt-3 flex gap-2">
+        <button
+          type="button"
+          onClick={() => {
+            setOpen(false);
+            setPin('');
+            setError(null);
+          }}
+          className="flex-1 rounded-lg bg-white/15 py-2 text-label-md font-semibold text-white"
+        >
+          Cancelar
+        </button>
+        <button
+          type="button"
+          onClick={submit}
+          disabled={pin.length < 4 || pending}
+          className="flex-1 rounded-lg bg-white py-2 text-label-md font-bold text-primary disabled:opacity-50"
+        >
+          {pending ? 'Verificando…' : 'Liberar'}
+        </button>
+      </div>
+    </div>
   );
 }
