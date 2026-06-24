@@ -389,6 +389,23 @@ if (! class_exists('WP_Error')) {
     }
 }
 
+// wp_mail — captura envios pros testes de notificação
+if (! function_exists('wp_mail')) {
+    function wp_mail(...$args): bool
+    {
+        $GLOBALS['gk_wp_mail_log'][] = $args;
+        return true;
+    }
+}
+
+// esc_html — usado pelo DigestMailer ao renderizar o HTML
+if (! function_exists('esc_html')) {
+    function esc_html($text): string
+    {
+        return htmlspecialchars((string) $text, ENT_QUOTES);
+    }
+}
+
 // home_url — usado pelo PrivacyExporter
 if (! function_exists('home_url')) {
     function home_url(string $path = ''): string
