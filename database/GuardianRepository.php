@@ -63,4 +63,14 @@ final class GuardianRepository extends Repository
             'invite_expires_at' => null,
         ]);
     }
+
+    /**
+     * Todos os guardiões com status active (para envio de notificações).
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    public function findActive(): array
+    {
+        return $this->findWhere(['status' => 'active']);
+    }
 }
