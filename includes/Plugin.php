@@ -8,6 +8,7 @@ use GuardKids\Api\RestApi;
 use GuardKids\Database\CategoryRepository;
 use GuardKids\Database\MigrationRunner;
 use GuardKids\Maintenance\Purger;
+use GuardKids\Notifications\DigestMailer;
 use GuardKids\Security\RestHeaders;
 use GuardKids\Security\SecurityHeaders;
 use GuardKids\Ui\AcceptInviteApp;
@@ -23,6 +24,8 @@ use GuardKids\Ui\ParentApp;
 final class Plugin
 {
     public const PURGE_HOOK = 'guardkids_daily_purge';
+    public const DAILY_DIGEST_HOOK  = 'guardkids_daily_digest';
+    public const WEEKLY_DIGEST_HOOK = 'guardkids_weekly_digest';
 
     private static ?Plugin $instance = null;
 
@@ -54,6 +57,8 @@ final class Plugin
         add_action('plugins_loaded', [$this, 'maybeScheduleCron']);
         add_action('init', [$this, 'loadTextdomain']);
         add_action(self::PURGE_HOOK, [$this, 'runPurger']);
+        add_action(self::DAILY_DIGEST_HOOK, [$this, 'runDailyDigest']);
+        add_action(self::WEEKLY_DIGEST_HOOK, [$this, 'runWeeklyDigest']);
 
         (new RestApi())->register();
         (new RestHeaders())->register();
@@ -109,6 +114,8 @@ final class Plugin
     public function onDeactivate(): void
     {
         wp_clear_scheduled_hook(self::PURGE_HOOK);
+        wp_clear_scheduled_hook(self::DAILY_DIGEST_HOOK);
+        wp_clear_scheduled_hook(self::WEEKLY_DIGEST_HOOK);
         flush_rewrite_rules();
     }
 
@@ -126,6 +133,38 @@ final class Plugin
         if (wp_next_scheduled(self::PURGE_HOOK) === false) {
             wp_schedule_event(time() + 3600, 'daily', self::PURGE_HOOK);
         }
+        if (wp_next_scheduled(self::DAILY_DIGEST_HOOK) === false) {
+            wp_schedule_event($this->nextDailyAt(22), 'daily', self::DAILY_DIGEST_HOOK);
+        }
+        if (wp_next_scheduled(self::WEEKLY_DIGEST_HOOK) === false) {
+            wp_schedule_event($this->nextWeeklyAt(1, 8), 'weekly', self::WEEKLY_DIGEST_HOOK);
+        }
+    }
+
+    /** Próximo timestamp para a hora `$hour` no fuso do site. */
+    private function nextDailyAt(int $hour): int
+    {
+        $tz     = wp_timezone();
+        $now    = new \DateTimeImmutable('now', $tz);
+        $target = $now->setTime($hour, 0, 0);
+        if ($target <= $now) {
+            $target = $target->modify('+1 day');
+        }
+        return $target->getTimestamp();
+    }
+
+    /** Próximo timestamp para o dia da semana `$weekday` (1=seg) à hora `$hour`. */
+    private function nextWeeklyAt(int $weekday, int $hour): int
+    {
+        $tz     = wp_timezone();
+        $now    = new \DateTimeImmutable('now', $tz);
+        $target = $now->setTime($hour, 0, 0);
+        $diff   = ($weekday - (int) $target->format('N') + 7) % 7;
+        $target = $target->modify('+' . $diff . ' day');
+        if ($target <= $now) {
+            $target = $target->modify('+7 day');
+        }
+        return $target->getTimestamp();
     }
 
     /**
@@ -135,6 +174,16 @@ final class Plugin
     public function runPurger(): void
     {
         (new Purger())->run();
+    }
+
+    public function runDailyDigest(): void
+    {
+        (new DigestMailer())->sendDaily();
+    }
+
+    public function runWeeklyDigest(): void
+    {
+        (new DigestMailer())->sendWeekly();
     }
 
     /**
