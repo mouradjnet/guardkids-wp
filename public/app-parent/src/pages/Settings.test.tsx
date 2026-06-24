@@ -262,18 +262,52 @@ describe('Settings page', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent(/falha ao salvar/i);
   });
 
-  it('renders ComingSoonBadge on Notificações/Segurança but not Privacidade/Família', async () => {
+  it('renders ComingSoonBadge on Segurança but not Notificações/Privacidade/Família', async () => {
     listSettingsMock.mockResolvedValue({});
     renderPage();
 
-    const notificacoes = await screen.findByRole('heading', { name: /^notificações/i, level: 3 });
-    expect(notificacoes).toHaveTextContent(/em breve/i);
-    const seguranca = screen.getByRole('heading', { name: /^segurança/i, level: 3 });
+    const seguranca = await screen.findByRole('heading', { name: /^segurança/i, level: 3 });
     expect(seguranca).toHaveTextContent(/em breve/i);
+    const notificacoes = screen.getByRole('heading', { name: /^notificações/i, level: 3 });
+    expect(notificacoes).not.toHaveTextContent(/em breve/i);
     const privacidade = screen.getByRole('heading', { name: /^privacidade/i, level: 3 });
     expect(privacidade).not.toHaveTextContent(/em breve/i);
     const familia = screen.getByRole('heading', { name: /^família/i, level: 3 });
     expect(familia).not.toHaveTextContent(/em breve/i);
+  });
+
+  it('Notificações: liga resumo diário por email', async () => {
+    listSettingsMock.mockResolvedValue({});
+    updateSettingsMock.mockResolvedValue({});
+    const user = userEvent.setup();
+    renderPage();
+    await waitFor(() => expect(listSettingsMock).toHaveBeenCalled());
+
+    await user.click(toggleFor('Resumo diário por email'));
+
+    await waitFor(() => expect(updateSettingsMock).toHaveBeenCalled());
+    expect(updateSettingsMock.mock.calls[0]?.[0]).toEqual({ 'notifications.email': true });
+  });
+
+  it('Notificações: liga relatório semanal', async () => {
+    listSettingsMock.mockResolvedValue({});
+    updateSettingsMock.mockResolvedValue({});
+    const user = userEvent.setup();
+    renderPage();
+    await waitFor(() => expect(listSettingsMock).toHaveBeenCalled());
+
+    await user.click(toggleFor('Relatório semanal'));
+
+    await waitFor(() => expect(updateSettingsMock).toHaveBeenCalled());
+    expect(updateSettingsMock.mock.calls[0]?.[0]).toEqual({ 'notifications.weekly_report': true });
+  });
+
+  it('Notificações: push segue desabilitado', async () => {
+    listSettingsMock.mockResolvedValue({});
+    renderPage();
+    await waitFor(() => expect(listSettingsMock).toHaveBeenCalled());
+
+    expect(toggleFor('Notificações push')).toBeDisabled();
   });
 
   it('Família: shows empty state when no guardians', async () => {

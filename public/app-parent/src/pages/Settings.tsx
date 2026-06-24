@@ -81,7 +81,6 @@ export function Settings() {
         iconTone="primary"
         title="Notificações"
         subtitle="Como você quer ser avisado sobre o que acontece"
-        comingSoon
       >
         <SettingToggleRow
           settingsKey="notifications.push"
@@ -98,10 +97,9 @@ export function Settings() {
           settingsKey="notifications.email"
           title="Resumo diário por email"
           description="Email todo dia às 22h com o que aconteceu na família."
-          fallback={true}
+          fallback={false}
           loading={settingsQuery.isLoading}
           saving={mutation.isPending}
-          locked
           get={get}
           set={set}
         />
@@ -120,10 +118,9 @@ export function Settings() {
           settingsKey="notifications.weekly_report"
           title="Relatório semanal"
           description="Toda segunda às 8h com gráficos da semana anterior."
-          fallback={true}
+          fallback={false}
           loading={settingsQuery.isLoading}
           saving={mutation.isPending}
-          locked
           get={get}
           set={set}
         />
