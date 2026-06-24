@@ -9,10 +9,12 @@ import {
   updateGuardianRole,
 } from '../api/guardians';
 import { clearHistory, deleteAllData, exportData } from '../api/privacy';
+import { clearPin, getPinStatus, setPin } from '../api/security';
 import { listSettings, updateSettings, type SettingsBag } from '../api/settings';
 import type { Guardian, GuardianRole, GuardianWithInvite } from '../api/types';
 import { Icon } from '../components/Icon';
 import { DeleteAccountDialog } from '../components/DeleteAccountDialog';
+import { PinDialog } from '../components/PinDialog';
 import { InviteGuardianDialog } from '../components/InviteGuardianDialog';
 import { InviteLinkPanel } from '../components/InviteLinkPanel';
 import { PageHeader } from '../components/PageHeader';
@@ -29,6 +31,29 @@ export function Settings() {
   });
 
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [pinOpen, setPinOpen] = useState(false);
+
+  const pinStatusQuery = useQuery({ queryKey: ['security', 'pin'], queryFn: getPinStatus });
+  const hasPin = pinStatusQuery.data?.pinSet ?? false;
+
+  const setPinMutation = useMutation({
+    mutationFn: setPin,
+    onSuccess: (status) => {
+      setPinOpen(false);
+      queryClient.setQueryData(['security', 'pin'], status);
+    },
+  });
+
+  const clearPinMutation = useMutation({
+    mutationFn: clearPin,
+    onSuccess: (status) => queryClient.setQueryData(['security', 'pin'], status),
+  });
+
+  const handleClearPin = () => {
+    if (window.confirm('Remover o PIN? O ambiente seguro deixará de poder ser destravado por PIN no aparelho da criança.')) {
+      clearPinMutation.mutate();
+    }
+  };
 
   const exportMutation = useMutation({
     mutationFn: exportData,
@@ -132,24 +157,35 @@ export function Settings() {
         iconTone="secondary"
         title="Segurança"
         subtitle="Proteção da conta e do ambiente das crianças"
-        comingSoon
       >
+        <SettingToggleRow
+          settingsKey="security.pin_child"
+          title="PIN no painel infantil"
+          description="Exige o PIN dos pais pra destravar o ambiente seguro no aparelho da criança (ex.: a tela de bloqueio de horário)."
+          fallback={true}
+          activeBadge="Ativo"
+          loading={settingsQuery.isLoading}
+          saving={mutation.isPending}
+          get={get}
+          set={set}
+        />
+        <PinManageRow
+          hasPin={hasPin}
+          loading={pinStatusQuery.isLoading}
+          clearing={clearPinMutation.isPending}
+          onManage={() => setPinOpen(true)}
+          onClear={handleClearPin}
+        />
+        {get('security.pin_child', true) && !hasPin ? (
+          <p className="px-1 text-label-sm text-tertiary">
+            Defina um PIN pra o desbloqueio funcionar no aparelho da criança.
+          </p>
+        ) : null}
         <SettingToggleRow
           settingsKey="security.two_fa"
           title="Autenticação em 2 fatores (2FA)"
           description="Pede código no celular além da senha ao logar."
           fallback={false}
-          loading={settingsQuery.isLoading}
-          saving={mutation.isPending}
-          locked
-          get={get}
-          set={set}
-        />
-        <SettingToggleRow
-          settingsKey="security.pin_child"
-          title="PIN no painel infantil"
-          description="A criança precisa de PIN pra trocar de perfil ou sair do ambiente seguro."
-          fallback={true}
           loading={settingsQuery.isLoading}
           saving={mutation.isPending}
           locked
@@ -278,6 +314,21 @@ export function Settings() {
       />
 
       <InviteGuardianDialog open={inviteOpen} onClose={() => setInviteOpen(false)} />
+
+      <PinDialog
+        open={pinOpen}
+        hasPin={hasPin}
+        onClose={() => setPinOpen(false)}
+        onConfirm={(pin) => setPinMutation.mutate(pin)}
+        pending={setPinMutation.isPending}
+        error={
+          setPinMutation.error instanceof ApiError
+            ? `${setPinMutation.error.message} (${setPinMutation.error.status})`
+            : setPinMutation.error instanceof Error
+              ? setPinMutation.error.message
+              : null
+        }
+      />
     </main>
   );
 }
@@ -705,6 +756,56 @@ function ComingSoonBadge() {
       <Icon name="hourglass_empty" className="text-xs" />
       Em breve
     </span>
+  );
+}
+
+function PinManageRow({
+  hasPin,
+  loading,
+  clearing,
+  onManage,
+  onClear,
+}: {
+  hasPin: boolean;
+  loading: boolean;
+  clearing: boolean;
+  onManage: () => void;
+  onClear: () => void;
+}) {
+  return (
+    <div className="flex items-center justify-between gap-3 rounded-xl border border-outline-variant bg-surface-container-low p-4">
+      <div className="flex items-center gap-3">
+        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-surface-container-high text-primary">
+          <Icon name="pin" className="text-xl" filled />
+        </div>
+        <div>
+          <h4 className="text-label-md font-bold text-on-surface">PIN de desbloqueio</h4>
+          <p className="mt-0.5 text-label-sm text-on-surface-variant">
+            {loading ? 'Carregando…' : hasPin ? 'PIN configurado.' : 'Nenhum PIN definido ainda.'}
+          </p>
+        </div>
+      </div>
+      <div className="flex shrink-0 items-center gap-2">
+        {hasPin ? (
+          <button
+            type="button"
+            onClick={onClear}
+            disabled={clearing}
+            className="rounded-lg border border-error/40 bg-error/10 px-3 py-2 text-label-md font-semibold text-error hover:bg-error/20 disabled:opacity-60"
+          >
+            {clearing ? '…' : 'Remover'}
+          </button>
+        ) : null}
+        <button
+          type="button"
+          onClick={onManage}
+          disabled={loading}
+          className="rounded-lg border border-outline-variant bg-surface-container px-4 py-2 text-label-md font-semibold text-on-surface hover:bg-surface-variant disabled:opacity-60"
+        >
+          {hasPin ? 'Trocar' : 'Definir PIN'}
+        </button>
+      </div>
+    </div>
   );
 }
 

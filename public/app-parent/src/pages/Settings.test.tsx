@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { ReactNode } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -47,6 +47,17 @@ vi.mock('../api/privacy', () => ({
   exportData: exportDataMock,
   clearHistory: clearHistoryMock,
   deleteAllData: deleteAllDataMock,
+}));
+
+const { getPinStatusMock, setPinMock, clearPinMock } = vi.hoisted(() => ({
+  getPinStatusMock: vi.fn(),
+  setPinMock: vi.fn(),
+  clearPinMock: vi.fn(),
+}));
+vi.mock('../api/security', () => ({
+  getPinStatus: getPinStatusMock,
+  setPin: setPinMock,
+  clearPin: clearPinMock,
 }));
 
 import { Settings } from './Settings';
@@ -113,6 +124,9 @@ describe('Settings page', () => {
     });
     clearHistoryMock.mockReset().mockResolvedValue({ usage_events: 1, locations: 2, requests: 3 });
     deleteAllDataMock.mockReset().mockResolvedValue({ tables: { children: 1 } });
+    getPinStatusMock.mockReset().mockResolvedValue({ pinSet: false });
+    setPinMock.mockReset().mockResolvedValue({ pinSet: true });
+    clearPinMock.mockReset().mockResolvedValue({ pinSet: false });
   });
   afterEach(() => vi.restoreAllMocks());
 
@@ -262,18 +276,55 @@ describe('Settings page', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent(/falha ao salvar/i);
   });
 
-  it('renders ComingSoonBadge on Segurança but not Notificações/Privacidade/Família', async () => {
+  it('Segurança não mostra mais "em breve" no header (PIN é real)', async () => {
     listSettingsMock.mockResolvedValue({});
     renderPage();
 
     const seguranca = await screen.findByRole('heading', { name: /^segurança/i, level: 3 });
-    expect(seguranca).toHaveTextContent(/em breve/i);
+    expect(seguranca).not.toHaveTextContent(/em breve/i);
     const notificacoes = screen.getByRole('heading', { name: /^notificações/i, level: 3 });
     expect(notificacoes).not.toHaveTextContent(/em breve/i);
     const privacidade = screen.getByRole('heading', { name: /^privacidade/i, level: 3 });
     expect(privacidade).not.toHaveTextContent(/em breve/i);
-    const familia = screen.getByRole('heading', { name: /^família/i, level: 3 });
-    expect(familia).not.toHaveTextContent(/em breve/i);
+  });
+
+  it('Segurança: PIN toggle destravado (não disabled)', async () => {
+    listSettingsMock.mockResolvedValue({});
+    renderPage();
+    await screen.findByText('PIN no painel infantil');
+
+    await waitFor(() => expect(toggleFor('PIN no painel infantil')).not.toBeDisabled());
+  });
+
+  it('Segurança: define PIN pelo diálogo e chama setPin', async () => {
+    listSettingsMock.mockResolvedValue({});
+    getPinStatusMock.mockResolvedValue({ pinSet: false });
+    const user = userEvent.setup();
+    renderPage();
+
+    await user.click(await screen.findByRole('button', { name: /definir pin/i }));
+
+    const dialog = await screen.findByRole('dialog');
+    await user.type(within(dialog).getByLabelText(/novo pin/i), '4321');
+    await user.type(within(dialog).getByLabelText(/confirmar pin/i), '4321');
+    await user.click(within(dialog).getByRole('button', { name: /salvar pin/i }));
+
+    await waitFor(() => expect(setPinMock).toHaveBeenCalled());
+    expect(setPinMock.mock.calls[0]?.[0]).toBe('4321');
+  });
+
+  it('Segurança: botão Remover aparece quando há PIN e chama clearPin após confirm', async () => {
+    listSettingsMock.mockResolvedValue({});
+    getPinStatusMock.mockResolvedValue({ pinSet: true });
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
+    const user = userEvent.setup();
+    renderPage();
+
+    await user.click(await screen.findByRole('button', { name: /^remover$/i }));
+
+    expect(confirmSpy).toHaveBeenCalled();
+    await waitFor(() => expect(clearPinMock).toHaveBeenCalled());
+    confirmSpy.mockRestore();
   });
 
   it('Notificações: liga resumo diário por email', async () => {

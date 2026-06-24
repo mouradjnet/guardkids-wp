@@ -21,6 +21,14 @@ export function createRequest(input: CreateRequestInput): Promise<MyRequest> {
   });
 }
 
+/** Confere o PIN dos pais pra destravar o ambiente seguro neste aparelho. */
+export function verifyPin(pin: string): Promise<{ ok: boolean }> {
+  return apiFetch<{ ok: boolean }>('/child/security/pin/verify', {
+    method: 'POST',
+    body: JSON.stringify({ pin }),
+  });
+}
+
 export type BlockDetail = 'bedtime' | 'weekday' | 'limit';
 
 export function reportScheduleBlock(detail: BlockDetail): Promise<unknown> {

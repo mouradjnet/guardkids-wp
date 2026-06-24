@@ -6,6 +6,7 @@ namespace GuardKids\Tests\Unit\Api;
 
 use GuardKids\Api\Controllers\ChildSelfController;
 use GuardKids\Auth\ChildAuth;
+use GuardKids\Auth\ChildPin;
 use PHPUnit\Framework\TestCase;
 use WP_REST_Request;
 use WP_REST_Response;
@@ -162,6 +163,23 @@ final class ChildSelfMeScheduleTest extends TestCase
         self::assertTrue($data['schedule']['isBlocked']);
         self::assertSame('limit', $data['schedule']['reason']);
         self::assertNotNull($data['schedule']['unlockAt']);
+    }
+
+    public function testMePinUnlockDisabledByDefault(): void
+    {
+        $data = (new ChildSelfController())->me($this->authedRequest())->get_data();
+
+        self::assertArrayHasKey('pinUnlockEnabled', $data);
+        self::assertFalse($data['pinUnlockEnabled']);
+    }
+
+    public function testMePinUnlockEnabledWhenPinSet(): void
+    {
+        (new ChildPin())->set('1234');
+
+        $data = (new ChildSelfController())->me($this->authedRequest())->get_data();
+
+        self::assertTrue($data['pinUnlockEnabled']);
     }
 
     public function testMeNotBlockedWhenUsageUnderDailyLimit(): void

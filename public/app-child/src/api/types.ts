@@ -21,6 +21,8 @@ export type Child = {
   bedtimeEnd?: string | null;
   allowedWeekdays?: string;
   schedule?: ChildSchedule;
+  /** PIN dos pais disponível pra destravar o ambiente seguro neste aparelho. */
+  pinUnlockEnabled?: boolean;
 };
 
 export type MyRequestStatus = 'pending' | 'approved' | 'denied';

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace GuardKids\Api\Controllers;
 
 use GuardKids\Auth\ChildAuth;
+use GuardKids\Auth\ChildPin;
 use GuardKids\Database\ChildRepository;
 use GuardKids\Database\LocationRepository;
 use GuardKids\Database\RequestRepository;
@@ -30,8 +31,9 @@ final class ChildSelfController
     private readonly SettingsRepository $settings;
     private readonly ScheduleEvaluator $evaluator;
     private readonly RateLimiter $limiter;
+    private readonly ChildPin $pin;
 
-    public function __construct(?RateLimiter $limiter = null)
+    public function __construct(?RateLimiter $limiter = null, ?ChildPin $pin = null)
     {
         $this->auth      = new ChildAuth();
         $this->children  = new ChildRepository();
@@ -41,6 +43,7 @@ final class ChildSelfController
         $this->settings  = new SettingsRepository();
         $this->evaluator = new ScheduleEvaluator();
         $this->limiter   = $limiter ?? new RateLimiter();
+        $this->pin       = $pin ?? new ChildPin();
     }
 
     public function me(WP_REST_Request $req): WP_REST_Response|WP_Error
@@ -67,8 +70,49 @@ final class ChildSelfController
         $schedule = $this->evaluator->evaluate($row, $now, $usedMin);
 
         return rest_ensure_response(
-            $this->childToJson($row) + ['schedule' => $schedule]
+            $this->childToJson($row) + [
+                'schedule'         => $schedule,
+                'pinUnlockEnabled' => $this->pinUnlockEnabled(),
+            ]
         );
+    }
+
+    /**
+     * Confere o PIN dos pais pra liberar o ambiente seguro no aparelho.
+     * Só responde se o desbloqueio estiver ativo (toggle + PIN definido).
+     */
+    public function verifyPin(WP_REST_Request $req): WP_REST_Response|WP_Error
+    {
+        $childId = $this->auth->resolveChildId($req);
+        if ($childId === null) {
+            return new WP_Error('child_auth_required', 'Token inválido.', ['status' => 401]);
+        }
+
+        // Checa auth ANTES da feature gate pra não vazar estado do toggle
+        // pra quem manda request sem token (mesmo padrão de reportLocation).
+        if (! $this->pinUnlockEnabled()) {
+            return new WP_Error('pin_disabled', 'Desbloqueio por PIN não está ativo.', ['status' => 403]);
+        }
+
+        // Barra brute force do PIN curto via o cap por janela do RateLimiter.
+        if (! $this->limiter->allow('pin_verify', $childId)) {
+            return new WP_Error(
+                'rate_limited',
+                'Muitas tentativas. Tente de novo em instantes.',
+                ['status' => 429, 'retryAfter' => $this->limiter->retryAfter()],
+            );
+        }
+
+        return rest_ensure_response(['ok' => $this->pin->verify((string) $req->get_param('pin'))]);
+    }
+
+    /**
+     * Desbloqueio por PIN disponível quando o toggle dos pais está ligado
+     * (default on) E existe um PIN definido. Fail-closed: sem PIN, nunca.
+     */
+    private function pinUnlockEnabled(): bool
+    {
+        return $this->pin->isSet() && (bool) $this->settings->get('security.pin_child', true);
     }
 
     public function requestsIndex(WP_REST_Request $req): WP_REST_Response|WP_Error
@@ -248,6 +292,20 @@ final class ChildSelfController
                 'type'    => 'integer',
                 'minimum' => 0,
                 'maximum' => 100,
+            ],
+        ];
+    }
+
+    /**
+     * @return array<string, array<string, mixed>>
+     */
+    public function verifyPinArgs(): array
+    {
+        return [
+            'pin' => [
+                'type'              => 'string',
+                'required'          => true,
+                'sanitize_callback' => 'sanitize_text_field',
             ],
         ];
     }
