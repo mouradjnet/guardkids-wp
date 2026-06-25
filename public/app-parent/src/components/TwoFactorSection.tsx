@@ -5,6 +5,7 @@ import {
   getTwoFactorStatus,
   setupTwoFactor,
   activateTwoFactor,
+  regenerateRecoveryCodes,
   disableTwoFactor,
   type TwoFactorSetup,
 } from '../api/twofactor';
@@ -31,6 +32,30 @@ export function TwoFactorSection() {
   const [code, setCode] = useState('');
   const [recoveryCodes, setRecoveryCodes] = useState<string[]>([]);
   const [error, setError] = useState('');
+  const [copied, setCopied] = useState(false);
+
+  async function copyCodes() {
+    const text = recoveryCodes.join('\n');
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(text);
+      } else {
+        const ta = document.createElement('textarea');
+        ta.value = text;
+        ta.style.position = 'fixed';
+        ta.style.opacity = '0';
+        document.body.appendChild(ta);
+        ta.focus();
+        ta.select();
+        document.execCommand('copy');
+        document.body.removeChild(ta);
+      }
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 2000);
+    } catch {
+      setCopied(false);
+    }
+  }
 
   const begin = useMutation({
     mutationFn: setupTwoFactor,
@@ -65,6 +90,18 @@ export function TwoFactorSection() {
     onError: () => setError('Código inválido.'),
   });
 
+  const regen = useMutation({
+    mutationFn: () => regenerateRecoveryCodes(code),
+    onSuccess: (data) => {
+      setRecoveryCodes(data.recoveryCodes);
+      setPhase('codes');
+      setCode('');
+      setError('');
+      void qc.invalidateQueries({ queryKey: ['2fa'] });
+    },
+    onError: () => setError('Código inválido.'),
+  });
+
   let body: ReactNode;
 
   if (status.isLoading) {
@@ -81,20 +118,29 @@ export function TwoFactorSection() {
         </p>
         <input
           className={inputClass}
-          inputMode="numeric"
           aria-label="Código atual para desativar"
           placeholder="Código atual pra desativar"
           value={code}
           onChange={(e) => setCode(e.target.value)}
         />
-        <button
-          type="button"
-          className={destructiveBtn}
-          disabled={turnOff.isPending}
-          onClick={() => turnOff.mutate()}
-        >
-          {turnOff.isPending ? 'Desativando…' : 'Desativar'}
-        </button>
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            className={neutralBtn}
+            disabled={regen.isPending || !code}
+            onClick={() => regen.mutate()}
+          >
+            {regen.isPending ? 'Gerando…' : 'Gerar novos códigos'}
+          </button>
+          <button
+            type="button"
+            className={destructiveBtn}
+            disabled={turnOff.isPending || !code}
+            onClick={() => turnOff.mutate()}
+          >
+            {turnOff.isPending ? 'Desativando…' : 'Desativar'}
+          </button>
+        </div>
         {error ? (
           <p role="alert" className="text-label-sm text-error">
             {error}
@@ -118,12 +164,8 @@ export function TwoFactorSection() {
           ))}
         </ul>
         <div className="flex gap-2">
-          <button
-            type="button"
-            className={neutralBtn}
-            onClick={() => navigator.clipboard?.writeText(recoveryCodes.join('\n'))}
-          >
-            Copiar
+          <button type="button" className={neutralBtn} onClick={copyCodes}>
+            {copied ? 'Copiado!' : 'Copiar'}
           </button>
           <button type="button" className={primaryBtn} onClick={() => setPhase('idle')}>
             Concluir
@@ -153,19 +195,35 @@ export function TwoFactorSection() {
         <input
           className={inputClass}
           inputMode="numeric"
+          autoComplete="one-time-code"
+          maxLength={6}
           aria-label="Código de 6 dígitos"
           placeholder="Código de 6 dígitos"
           value={code}
-          onChange={(e) => setCode(e.target.value)}
+          onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))}
         />
-        <button
-          type="button"
-          className={primaryBtn}
-          disabled={confirm.isPending}
-          onClick={() => confirm.mutate()}
-        >
-          {confirm.isPending ? 'Ativando…' : 'Confirmar e ativar'}
-        </button>
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            className={neutralBtn}
+            onClick={() => {
+              setPhase('idle');
+              setSetup(null);
+              setCode('');
+              setError('');
+            }}
+          >
+            Cancelar
+          </button>
+          <button
+            type="button"
+            className={primaryBtn}
+            disabled={confirm.isPending || !code}
+            onClick={() => confirm.mutate()}
+          >
+            {confirm.isPending ? 'Ativando…' : 'Confirmar e ativar'}
+          </button>
+        </div>
         {error ? (
           <p role="alert" className="text-label-sm text-error">
             {error}

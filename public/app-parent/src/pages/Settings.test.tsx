@@ -60,6 +60,11 @@ vi.mock('../api/security', () => ({
   clearPin: clearPinMock,
 }));
 
+vi.mock('qrcode', () => ({
+  default: { toDataURL: vi.fn().mockResolvedValue('data:image/png;base64,xxx') },
+}));
+vi.mock('../api/twofactor');
+
 import { Settings } from './Settings';
 
 const djair: Guardian = {
