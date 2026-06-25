@@ -85,4 +85,14 @@ final class CompanionDeviceRepository extends Repository
         $patch['session_expires_at'] = $this->expiryFromNow();
         return $this->update($id, $patch);
     }
+
+    /** Revoga a sessão do device sem re-parear: zera hash+expiry, marca revoked. */
+    public function revokeSession(int $id): bool
+    {
+        return $this->update($id, [
+            'session_token_hash' => null,
+            'session_expires_at' => null,
+            'status'             => 'revoked',
+        ]);
+    }
 }

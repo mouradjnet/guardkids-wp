@@ -214,6 +214,40 @@ final class CompanionControllerTest extends TestCase
         self::assertGreaterThan(time() + 20 * 86400, strtotime($renewed . ' UTC')); // ~30d à frente
     }
 
+    public function testRevokeClearsSessionAndStatus(): void
+    {
+        $token = str_repeat('1', 64);
+        $device = $this->seedDevice([
+            'child_id'           => 7,
+            'device_uuid'        => 'uuid-rev',
+            'session_token_hash' => hash('sha256', $token),
+            'session_expires_at' => gmdate('Y-m-d H:i:s', time() + 86400),
+            'status'             => 'active',
+        ]);
+
+        $req = new WP_REST_Request('POST', '/companion/revoke');
+        $req->set_param('child_id', 7);
+        $res = (new CompanionController())->revoke($req);
+
+        self::assertInstanceOf(WP_REST_Response::class, $res);
+        self::assertTrue($res->get_data()['revoked']);
+        self::assertNull($this->wpdb->devices[$device['id']]['session_token_hash']);
+        self::assertSame('revoked', $this->wpdb->devices[$device['id']]['status']);
+
+        // o token revogado para de autenticar
+        $after = (new CompanionController())->sync($this->request('/companion/sync', $token));
+        self::assertInstanceOf(WP_Error::class, $after);
+    }
+
+    public function testRevokeWithoutPairedDeviceReturns404(): void
+    {
+        $req = new WP_REST_Request('POST', '/companion/revoke');
+        $req->set_param('child_id', 999);
+        $res = (new CompanionController())->revoke($req);
+        self::assertInstanceOf(WP_Error::class, $res);
+        self::assertSame(404, $res->get_error_data()['status']);
+    }
+
     public function testHeartbeatAcceptsValidSessionToken(): void
     {
         $token = str_repeat('b', 64);

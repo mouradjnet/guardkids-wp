@@ -265,6 +265,29 @@ final class CompanionController
         return rest_ensure_response(['ok' => true, 'lastSync' => current_time('mysql', true)]);
     }
 
+    // -------------------- companion/revoke (admin) --------------------
+
+    public function revoke(WP_REST_Request $req): WP_REST_Response|WP_Error
+    {
+        $childId = (int) $req->get_param('child_id');
+        if ($childId <= 0) {
+            return new WP_Error('invalid_payload', 'child_id obrigatório.', ['status' => 422]);
+        }
+        $device = $this->devices->findByChildId($childId);
+        if ($device === null) {
+            return new WP_Error('not_found', 'Nenhum dispositivo pareado.', ['status' => 404]);
+        }
+        $this->devices->revokeSession((int) $device['id']);
+        return rest_ensure_response(['revoked' => true]);
+    }
+
+    public function revokeArgs(): array
+    {
+        return [
+            'child_id' => ['type' => 'integer', 'required' => true, 'minimum' => 1],
+        ];
+    }
+
     // -------------------- helpers --------------------
 
     /**
