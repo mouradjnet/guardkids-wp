@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { AutoLogoutGuard } from './components/AutoLogoutGuard';
 import { BottomNav } from './components/BottomNav';
 import { SideNav } from './components/SideNav';
 import { TopNav } from './components/TopNav';
@@ -21,6 +22,7 @@ export default function App() {
 
   return (
     <div className="flex min-h-screen flex-col bg-background text-on-background md:flex-row">
+      <AutoLogoutGuard />
       <TopNav />
       <SideNav activePage={activePage} onNavigate={setActivePage} />
       <PageRenderer page={activePage} />

@@ -13,6 +13,8 @@ vi.mock('./hooks/useCurrentRole', () => ({
   }),
 }));
 
+vi.mock('./components/AutoLogoutGuard', () => ({ AutoLogoutGuard: () => null }));
+
 vi.mock('./pages/Dashboard', () => ({ Dashboard: () => <div data-testid="page-dashboard" /> }));
 vi.mock('./pages/Children', () => ({ Children: () => <div data-testid="page-children" /> }));
 vi.mock('./pages/Approvals', () => ({ Approvals: () => <div data-testid="page-approvals" /> }));

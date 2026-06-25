@@ -88,7 +88,7 @@ export function SideNav({ activePage, onNavigate }: SideNavProps) {
             <span className="text-label-sm">Suporte</span>
           </a>
           <a
-            href="#logout"
+            href={window.guardkidsApi?.logoutUrl ?? '/wp-login.php?action=logout'}
             className="flex items-center gap-3 py-2 text-on-surface-variant transition-colors hover:text-on-surface"
           >
             <Icon name="logout" className="text-lg" />

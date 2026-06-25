@@ -13,5 +13,6 @@ interface Window {
   guardkidsApi?: {
     nonce: string;
     root: string;
+    logoutUrl?: string;
   };
 }

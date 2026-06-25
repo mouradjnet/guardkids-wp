@@ -115,9 +115,11 @@ final class ParentApp
         echo '</head>' . "\n";
         echo '<body class="bg-background">' . "\n";
         echo '  <div id="root"></div>' . "\n";
+        $logoutUrl = wp_logout_url(home_url('/painel-pais'));
         echo '  <script>window.guardkidsApi = ' . wp_json_encode([
-            'nonce' => $nonce,
-            'root'  => $root,
+            'nonce'     => $nonce,
+            'root'      => $root,
+            'logoutUrl' => $logoutUrl,
         ]) . ';</script>' . "\n";
         echo '  <script type="module" src="' . esc_url($jsFile) . '"></script>' . "\n";
         echo '</body>' . "\n";
