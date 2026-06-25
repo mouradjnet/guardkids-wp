@@ -4,8 +4,16 @@ Snippets prontos pra apply via SSH no servidor Hostinger.
 
 ## Pré-requisito
 
-Acesso SSH: `u217136411@82.25.73.253:65002`.
-WP root: `~/domains/guardiaokids.site/public_html`.
+Acesso SSH ao servidor. Defina os valores do seu ambiente (NÃO commitar os reais):
+
+```bash
+export SSH_USER="<seu-usuario>"
+export SSH_HOST="<seu-host-ou-ip>"
+export SSH_PORT="<sua-porta>"
+export SSH_SITE="<seu-site>"   # ex.: o domínio sob ~/domains/
+```
+
+WP root: `~/domains/$SSH_SITE/public_html`.
 
 ## Deploy do plugin (release)
 
@@ -22,8 +30,8 @@ Passo-a-passo pra subir uma nova versão do plugin (zip gerado por
 ### 1. Backup (obrigatório)
 
 ```bash
-ssh u217136411@82.25.73.253 -p 65002
-cd ~/domains/guardiaokids.site/public_html/wp-content/plugins
+ssh $SSH_USER@$SSH_HOST -p "$SSH_PORT"
+cd ~/domains/$SSH_SITE/public_html/wp-content/plugins
 cp -r guardkids-wp guardkids-wp.bak-$(date +%Y%m%d-%H%M)
 ```
 
@@ -36,8 +44,8 @@ zip → "Substituir o atual pelo enviado" (mantém ativado).
 
 ```bash
 # do seu lado, suba o zip via scp:
-#   scp -P 65002 "<zip>" u217136411@82.25.73.253:~/domains/guardiaokids.site/public_html/wp-content/plugins/
-cd ~/domains/guardiaokids.site/public_html/wp-content/plugins
+#   scp -P "$SSH_PORT" "<zip>" $SSH_USER@$SSH_HOST:~/domains/$SSH_SITE/public_html/wp-content/plugins/
+cd ~/domains/$SSH_SITE/public_html/wp-content/plugins
 rm -rf guardkids-wp                 # backup já feito no passo 1
 unzip -q guardkids-wp-*.zip         # o zip já carrega o prefixo guardkids-wp/
 rm guardkids-wp-*.zip
@@ -46,7 +54,7 @@ rm guardkids-wp-*.zip
 ### 3. Verificar
 
 ```bash
-cd ~/domains/guardiaokids.site/public_html
+cd ~/domains/$SSH_SITE/public_html
 wp plugin get guardkids-wp --field=version    # confirma a versão nova
 
 # Security headers nas respostas dinâmicas (6 esperados em HTTPS)
@@ -63,7 +71,7 @@ pro Gutenberg) — sem erros de CSP no console.
 ### 4. Rollback
 
 ```bash
-cd ~/domains/guardiaokids.site/public_html/wp-content/plugins
+cd ~/domains/$SSH_SITE/public_html/wp-content/plugins
 rm -rf guardkids-wp
 mv guardkids-wp.bak-YYYYMMDD-HHMM guardkids-wp
 ```
@@ -71,7 +79,7 @@ mv guardkids-wp.bak-YYYYMMDD-HHMM guardkids-wp
 ### 5. Limpeza (após validar, ~1 dia)
 
 ```bash
-rm -rf ~/domains/guardiaokids.site/public_html/wp-content/plugins/guardkids-wp.bak-*
+rm -rf ~/domains/$SSH_SITE/public_html/wp-content/plugins/guardkids-wp.bak-*
 ```
 
 ## 1) Security headers globais
@@ -90,8 +98,8 @@ X-Frame-Options / Referrer-Policy / Permissions-Policy).
 > é viável, o plugin sozinho já cobre as respostas dinâmicas.
 
 ```bash
-ssh u217136411@82.25.73.253 -p 65002
-cd ~/domains/guardiaokids.site/public_html
+ssh $SSH_USER@$SSH_HOST -p "$SSH_PORT"
+cd ~/domains/$SSH_SITE/public_html
 
 # Backup do .htaccess atual
 cp .htaccess .htaccess.bak-$(date +%Y%m%d)
@@ -137,8 +145,8 @@ Os outros itens da Onda 4 (7-9 SEO meta, 11-13 footer/contato) ficam pra
 serem resolvidos junto com a landing real, porque dependem do tema novo.
 
 ```bash
-ssh u217136411@82.25.73.253 -p 65002
-cd ~/domains/guardiaokids.site/public_html
+ssh $SSH_USER@$SSH_HOST -p "$SSH_PORT"
+cd ~/domains/$SSH_SITE/public_html
 bash <(curl -s https://raw.githubusercontent.com/mouradjnet/guardkids-wp/master/tools/deploy/wp-cleanup-onda4.sh)
 ```
 
@@ -148,6 +156,6 @@ Ou cole os comandos do script diretamente — todos idempotentes.
 
 ```bash
 # Se algo quebrar, reverter o .htaccess
-cd ~/domains/guardiaokids.site/public_html
+cd ~/domains/$SSH_SITE/public_html
 mv .htaccess.bak-YYYYMMDD .htaccess
 ```
