@@ -15,6 +15,7 @@ import type { Guardian, GuardianRole, GuardianWithInvite } from '../api/types';
 import { Icon } from '../components/Icon';
 import { DeleteAccountDialog } from '../components/DeleteAccountDialog';
 import { PinDialog } from '../components/PinDialog';
+import { TwoFactorSection } from '../components/TwoFactorSection';
 import { InviteGuardianDialog } from '../components/InviteGuardianDialog';
 import { InviteLinkPanel } from '../components/InviteLinkPanel';
 import { PageHeader } from '../components/PageHeader';
@@ -181,6 +182,7 @@ export function Settings() {
             Defina um PIN pra o desbloqueio funcionar no aparelho da criança.
           </p>
         ) : null}
+        <TwoFactorSection />
         <SettingToggleRow
           settingsKey="security.two_fa"
           title="Autenticação em 2 fatores (2FA)"
