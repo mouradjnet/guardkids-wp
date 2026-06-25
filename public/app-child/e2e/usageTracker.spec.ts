@@ -28,8 +28,9 @@ test.describe('Phase 5 wire-up — usageTracker no PWA real', () => {
       localStorage.setItem(key, value);
     }, { key: TOKEN_KEY, value: FAKE_TOKEN });
 
-    // Stub /child/me pra Home conseguir renderizar nome do child
-    await page.route('**/wp-json/guardkids/v1/child/me', (route) =>
+    // Stub /child/me pra Home conseguir renderizar nome do child.
+    // `**` no fim casa o cache-buster (?_=<ts>) que o client anexa em GET.
+    await page.route('**/wp-json/guardkids/v1/child/me**', (route) =>
       route.fulfill({
         status: 200,
         contentType: 'application/json',
