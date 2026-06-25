@@ -46,3 +46,10 @@ export function pairCompanion(childId: number): Promise<CompanionPairResponse> {
     body: JSON.stringify({ child_id: childId }),
   });
 }
+
+export function revokeCompanion(childId: number): Promise<{ revoked: boolean }> {
+  return apiFetch<{ revoked: boolean }>('/companion/revoke', {
+    method: 'POST',
+    body: JSON.stringify({ child_id: childId }),
+  });
+}
