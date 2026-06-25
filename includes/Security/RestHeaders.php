@@ -32,6 +32,11 @@ final class RestHeaders
         'X-Robots-Tag'           => 'noindex, nofollow',
         'Cache-Control'          => 'no-store, no-cache, must-revalidate, max-age=0',
         'Pragma'                 => 'no-cache',
+        // Diretiva específica do LiteSpeed (Hostinger/hcdn): só `no-store` não
+        // basta — o edge chegou a cachear um 404 de /child/me e servir pra todos
+        // os devices. `X-LiteSpeed-Cache-Control: no-cache` manda o edge nunca
+        // cachear estas respostas autenticadas.
+        'X-LiteSpeed-Cache-Control' => 'no-cache',
     ];
 
     public function register(): void
