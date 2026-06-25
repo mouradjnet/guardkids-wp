@@ -11,6 +11,7 @@ use GuardKids\Maintenance\Purger;
 use GuardKids\Notifications\DigestMailer;
 use GuardKids\Security\RestHeaders;
 use GuardKids\Security\SecurityHeaders;
+use GuardKids\Security\TwoFactorLogin;
 use GuardKids\Ui\AcceptInviteApp;
 use GuardKids\Ui\ChildApp;
 use GuardKids\Ui\ParentApp;
@@ -63,6 +64,7 @@ final class Plugin
         (new RestApi())->register();
         (new RestHeaders())->register();
         (new SecurityHeaders())->register();
+        (new TwoFactorLogin())->register();
         (new ParentApp())->register();
         (new ChildApp())->register();
         (new AcceptInviteApp())->register();
