@@ -225,14 +225,14 @@ describe('Settings page', () => {
 
     expect(toggleFor('Notificações push')).toHaveAttribute('aria-checked', 'true');
     expect(toggleFor('Alertas em tempo real')).toHaveAttribute('aria-checked', 'false');
-    expect(toggleFor('Autenticação em 2 fatores (2FA)')).toHaveAttribute('aria-checked', 'false');
+    expect(toggleFor('Logout automático em 7 dias')).toHaveAttribute('aria-checked', 'false');
     expect(toggleFor('PIN no painel infantil')).toHaveAttribute('aria-checked', 'true');
   });
 
   it('overrides fallback with server value', async () => {
     listSettingsMock.mockResolvedValue({
       'notifications.push': false,
-      'security.two_fa': true,
+      'security.auto_logout': true,
     });
     renderPage();
     await screen.findByText('Notificações push');
@@ -240,7 +240,7 @@ describe('Settings page', () => {
     await waitFor(() => {
       expect(toggleFor('Notificações push')).toHaveAttribute('aria-checked', 'false');
     });
-    expect(toggleFor('Autenticação em 2 fatores (2FA)')).toHaveAttribute('aria-checked', 'true');
+    expect(toggleFor('Logout automático em 7 dias')).toHaveAttribute('aria-checked', 'true');
   });
 
   it('calls updateSettings with toggled value when switch clicked', async () => {

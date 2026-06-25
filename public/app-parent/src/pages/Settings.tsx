@@ -184,17 +184,6 @@ export function Settings() {
         ) : null}
         <TwoFactorSection />
         <SettingToggleRow
-          settingsKey="security.two_fa"
-          title="Autenticação em 2 fatores (2FA)"
-          description="Pede código no celular além da senha ao logar."
-          fallback={false}
-          loading={settingsQuery.isLoading}
-          saving={mutation.isPending}
-          locked
-          get={get}
-          set={set}
-        />
-        <SettingToggleRow
           settingsKey="security.auto_logout"
           title="Logout automático em 7 dias"
           description="Por segurança, força login novo depois de 7 dias sem usar."
