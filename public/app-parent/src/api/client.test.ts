@@ -28,9 +28,33 @@ describe('apiFetch', () => {
     await apiFetch('/children');
 
     expect(fetchMock).toHaveBeenCalledWith(
-      '/wp-json/guardkids/v1/children',
+      expect.stringContaining('/wp-json/guardkids/v1/children'),
       expect.any(Object),
     );
+  });
+
+  it('adds a cache-buster to GET requests', async () => {
+    const fetchMock = vi.fn().mockImplementation(() => Promise.resolve(jsonResponse({ ok: true })));
+    globalThis.fetch = fetchMock;
+
+    await apiFetch('/children');
+    expect(fetchMock.mock.calls[0]?.[0]).toMatch(
+      /^\/wp-json\/guardkids\/v1\/children\?_=\d+$/,
+    );
+
+    // path que já tem query string usa "&"
+    await apiFetch('/locations?child_id=1');
+    expect(fetchMock.mock.calls[1]?.[0]).toMatch(
+      /^\/wp-json\/guardkids\/v1\/locations\?child_id=1&_=\d+$/,
+    );
+  });
+
+  it('does not add a cache-buster to non-GET requests', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(new Response(null, { status: 204 }));
+    globalThis.fetch = fetchMock;
+
+    await apiFetch('/security/2fa', { method: 'DELETE', body: '{}' });
+    expect(fetchMock.mock.calls[0]?.[0]).toBe('/wp-json/guardkids/v1/security/2fa');
   });
 
   it('sends X-WP-Nonce when window.guardkidsApi.nonce is present (prod)', async () => {

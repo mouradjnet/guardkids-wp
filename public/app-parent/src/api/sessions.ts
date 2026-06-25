@@ -10,10 +10,8 @@ export type SessionDto = {
 };
 
 export function listSessions(): Promise<{ sessions: SessionDto[] }> {
-  // Cache-buster: o edge (LiteSpeed/hcdn) serve GET autenticado do cache privado
-  // mesmo com `no-store`, devolvendo lista de sessões velha. A URL única força
-  // uma resposta fresca a cada chamada.
-  return apiFetch<{ sessions: SessionDto[] }>(`/security/sessions?_=${Date.now()}`);
+  // Cache-buster aplicado centralmente no apiFetch (GET) — ver client.ts.
+  return apiFetch<{ sessions: SessionDto[] }>('/security/sessions');
 }
 
 export function destroyOtherSessions(): Promise<{ destroyed: number; sessions: SessionDto[] }> {

@@ -26,7 +26,16 @@ export function authHeaders(): Record<string, string> {
 }
 
 export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(`${API_ROOT}${path}`, {
+  const method = (init?.method ?? 'GET').toUpperCase();
+  let url = `${API_ROOT}${path}`;
+  if (method === 'GET') {
+    // Cache-buster: o edge (LiteSpeed/hcdn) serve GET autenticado do cache
+    // privado mesmo com `no-store`, devolvendo dados velhos (visto no PIN e nas
+    // sessões). A URL única garante resposta fresca a cada leitura.
+    url += (path.includes('?') ? '&' : '?') + '_=' + Date.now();
+  }
+
+  const res = await fetch(url, {
     credentials: 'same-origin',
     ...init,
     headers: {
