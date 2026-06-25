@@ -143,7 +143,17 @@ final class UsageEventRepository extends Repository
      */
     public function minutesByHourOfDay(int $childId, string $dateIso): array
     {
-        $tzString = function_exists('wp_timezone_string') ? wp_timezone_string() : 'UTC';
+        // Offset numérico (±HH:MM) calculado em PHP. CONVERT_TZ com fuso NOMEADO
+        // (ex.: "America/Sao_Paulo") depende das mysql tz tables, que muitos
+        // hosts (Hostinger inclusive) não carregam → retornaria NULL e colapsaria
+        // todo o uso no bucket 0. Offset não precisa dessas tabelas. (Aproxima o
+        // dia inteiro pelo offset do meio-dia; irrelevante no BR pós-fim do DST.)
+        $tz = function_exists('wp_timezone') ? wp_timezone() : new \DateTimeZone('UTC');
+        $offsetSec = $tz->getOffset(new \DateTimeImmutable($dateIso . ' 12:00:00', new \DateTimeZone('UTC')));
+        $sign   = $offsetSec < 0 ? '-' : '+';
+        $abs    = abs($offsetSec);
+        $offset = sprintf('%s%02d:%02d', $sign, intdiv($abs, 3600), intdiv($abs % 3600, 60));
+
         $fromLocal = "{$dateIso} 00:00:00";
         $toLocal   = "{$dateIso} 23:59:59";
 
@@ -154,9 +164,9 @@ final class UsageEventRepository extends Repository
             . ' WHERE child_id = %d AND type IN ("heartbeat", "site_open")'
             . ' AND CONVERT_TZ(created_at, "+00:00", %s) BETWEEN %s AND %s'
             . ' GROUP BY h',
-            $tzString,
+            $offset,
             $childId,
-            $tzString,
+            $offset,
             $fromLocal,
             $toLocal,
         );

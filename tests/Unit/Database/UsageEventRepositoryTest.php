@@ -66,6 +66,21 @@ final class UsageEventRepositoryTest extends TestCase
             }
         };
         $GLOBALS['wpdb'] = $this->wpdb;
+        $GLOBALS['gk_timezone'] = 'UTC';
+    }
+
+    public function testMinutesByHourUsesNumericOffsetNotNamedTz(): void
+    {
+        $GLOBALS['gk_timezone'] = 'America/Sao_Paulo'; // UTC-3 (sem DST desde 2019)
+
+        $repo = new UsageEventRepository();
+        $repo->minutesByHourOfDay(7, '2026-06-15');
+
+        $sql = (string) $this->wpdb->log[0]['sql'];
+        self::assertStringContainsString('-03:00', $sql);
+        self::assertStringNotContainsString('America/Sao_Paulo', $sql);
+        self::assertStringContainsString('child_id = 7', $sql);
+        self::assertStringContainsString('GROUP BY h', $sql);
     }
 
     public function testInsertPersistsRowWithoutUpdatedAt(): void
