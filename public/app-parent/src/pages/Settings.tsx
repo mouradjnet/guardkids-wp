@@ -16,6 +16,7 @@ import { Icon } from '../components/Icon';
 import { DeleteAccountDialog } from '../components/DeleteAccountDialog';
 import { PinDialog } from '../components/PinDialog';
 import { TwoFactorSection } from '../components/TwoFactorSection';
+import { SessionsSection } from '../components/SessionsSection';
 import { InviteGuardianDialog } from '../components/InviteGuardianDialog';
 import { InviteLinkPanel } from '../components/InviteLinkPanel';
 import { PageHeader } from '../components/PageHeader';
@@ -214,7 +215,7 @@ export function Settings() {
             </select>
           </div>
         ) : null}
-        <SessionsBlock />
+        <SessionsSection />
       </Section>
 
       <Section
@@ -520,30 +521,6 @@ function SettingToggleRow({
           }`}
         />
       </button>
-    </div>
-  );
-}
-
-function SessionsBlock() {
-  return (
-    <div className="rounded-xl border border-primary/30 bg-primary/5 p-4">
-      <div className="mb-2 flex items-center gap-2">
-        <Icon name="devices" className="text-primary" />
-        <h4 className="font-display text-label-md font-bold text-on-surface">
-          Sessões ativas
-        </h4>
-        <ComingSoonBadge />
-      </div>
-      <p className="mb-3 text-label-sm text-on-surface-variant">
-        Auditoria de dispositivos entra junto com tabela de sessões na próxima migration.
-      </p>
-      <div className="flex flex-col items-center gap-2 rounded-lg bg-white py-6 text-center text-on-surface-variant">
-        <Icon name="devices_other" className="text-3xl" />
-        <p className="text-label-sm">
-          Sem dispositivos pra mostrar ainda. Quando a tabela de sessões existir, os
-          aparelhos logados nesta conta vão aparecer aqui.
-        </p>
-      </div>
     </div>
   );
 }

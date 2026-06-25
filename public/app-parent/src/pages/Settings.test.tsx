@@ -64,6 +64,7 @@ vi.mock('qrcode', () => ({
   default: { toDataURL: vi.fn().mockResolvedValue('data:image/png;base64,xxx') },
 }));
 vi.mock('../api/twofactor');
+vi.mock('../api/sessions');
 
 import { Settings } from './Settings';
 
