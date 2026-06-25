@@ -207,6 +207,7 @@ final class CompanionController
 
         $this->devices->update((int) $device['id'], [
             'session_token_hash' => $sessionHash,
+            'session_expires_at' => $this->devices->expiryFromNow(),
             'status'             => 'active',
         ]);
 
@@ -329,6 +330,12 @@ final class CompanionController
         if ($device === null) {
             return new WP_Error('companion_auth_required', 'Sessão inválida. Refaça o pareamento.', ['status' => 401]);
         }
+
+        $expiresAt = $device['session_expires_at'] ?? null;
+        if (is_string($expiresAt) && $expiresAt !== '' && strtotime($expiresAt . ' UTC') < time()) {
+            return new WP_Error('companion_auth_required', 'Sessão expirada. Refaça o pareamento.', ['status' => 401]);
+        }
+
         return $device;
     }
 

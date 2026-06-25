@@ -12,9 +12,18 @@ namespace GuardKids\Database;
  */
 final class CompanionDeviceRepository extends Repository
 {
+    /** Janela deslizante do token de sessão (renovada a cada sync). */
+    public const SESSION_TTL_DAYS = 30;
+
     protected function tableSuffix(): string
     {
         return 'companion_devices';
+    }
+
+    /** Timestamp UTC (mysql) de expiração do token de sessão a partir de agora. */
+    public function expiryFromNow(): string
+    {
+        return gmdate('Y-m-d H:i:s', time() + self::SESSION_TTL_DAYS * 86400);
     }
 
     /**
@@ -73,6 +82,7 @@ final class CompanionDeviceRepository extends Repository
     public function touchSync(int $id, array $patch = []): bool
     {
         $patch['last_sync'] = current_time('mysql', true);
+        $patch['session_expires_at'] = $this->expiryFromNow();
         return $this->update($id, $patch);
     }
 }
