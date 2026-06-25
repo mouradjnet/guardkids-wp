@@ -24,7 +24,7 @@ final class RestHeadersTest extends TestCase
         $this->server = new WP_REST_Server();
     }
 
-    public function testAddsAllFourHeadersForGuardkidsRoute(): void
+    public function testAddsAllSecurityHeadersForGuardkidsRoute(): void
     {
         $response = new WP_REST_Response(['ok' => true]);
         $request = new WP_REST_Request('GET', '/guardkids/v1/children');
@@ -36,6 +36,19 @@ final class RestHeadersTest extends TestCase
         self::assertSame('strict-origin-when-cross-origin', $response->headers['Referrer-Policy']);
         self::assertSame('DENY', $response->headers['X-Frame-Options']);
         self::assertSame('noindex, nofollow', $response->headers['X-Robots-Tag']);
+        self::assertSame('no-store, no-cache, must-revalidate, max-age=0', $response->headers['Cache-Control']);
+        self::assertSame('no-cache', $response->headers['Pragma']);
+    }
+
+    public function testSetsNoStoreOnPinStatusRoute(): void
+    {
+        // Bug v1.11.0: GET /security/pin servia {"pinSet":false} cacheado no edge.
+        $response = new WP_REST_Response(['pinSet' => true]);
+        $request = new WP_REST_Request('GET', '/guardkids/v1/security/pin');
+
+        $this->headers->addHeaders($response, $this->server, $request);
+
+        self::assertStringContainsString('no-store', $response->headers['Cache-Control']);
     }
 
     public function testIgnoresCoreNamespaceRoutes(): void
