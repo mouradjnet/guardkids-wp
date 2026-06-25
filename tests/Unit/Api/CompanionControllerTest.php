@@ -135,6 +135,7 @@ final class CompanionControllerTest extends TestCase
             }
         };
         $GLOBALS['wpdb'] = $this->wpdb;
+        $GLOBALS['gk_transients'] = [];
     }
 
     /**
@@ -246,6 +247,24 @@ final class CompanionControllerTest extends TestCase
         $res = (new CompanionController())->revoke($req);
         self::assertInstanceOf(WP_Error::class, $res);
         self::assertSame(404, $res->get_error_data()['status']);
+    }
+
+    public function testSyncIsRateLimited(): void
+    {
+        $token = str_repeat('2', 64);
+        $device = $this->seedDevice([
+            'device_uuid'        => 'uuid-rl',
+            'session_token_hash' => hash('sha256', $token),
+            'session_expires_at' => gmdate('Y-m-d H:i:s', time() + 86400),
+            'status'             => 'active',
+        ]);
+        // pré-enche o bucket no limite (default 60) → próxima chamada estoura
+        $GLOBALS['gk_transients']['gk_rate:companion_sync:' . $device['id']] = 60;
+
+        $res = (new CompanionController())->sync($this->request('/companion/sync', $token));
+
+        self::assertInstanceOf(WP_Error::class, $res);
+        self::assertSame(429, $res->get_error_data()['status']);
     }
 
     public function testHeartbeatAcceptsValidSessionToken(): void

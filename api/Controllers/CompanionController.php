@@ -7,6 +7,7 @@ namespace GuardKids\Api\Controllers;
 use GuardKids\Database\ChildRepository;
 use GuardKids\Database\CompanionDeviceRepository;
 use GuardKids\Database\SettingsRepository;
+use GuardKids\Security\RateLimiter;
 use WP_Error;
 use WP_REST_Request;
 use WP_REST_Response;
@@ -202,6 +203,10 @@ final class CompanionController
         }
         [$device, $pairingKey] = $pairing;
 
+        if (($limited = $this->rateLimited('companion_enroll', (int) $device['id'])) !== null) {
+            return $limited;
+        }
+
         $sessionToken = bin2hex(random_bytes(self::TOKEN_BYTES));
         $sessionHash  = hash('sha256', $sessionToken);
 
@@ -227,6 +232,9 @@ final class CompanionController
         $device = $this->authenticateSession($req);
         if ($device instanceof WP_Error) {
             return $device;
+        }
+        if (($limited = $this->rateLimited('companion_sync', (int) $device['id'])) !== null) {
+            return $limited;
         }
 
         $patch = $this->extractDevicePatch($req);
@@ -261,6 +269,9 @@ final class CompanionController
         if ($device instanceof WP_Error) {
             return $device;
         }
+        if (($limited = $this->rateLimited('companion_heartbeat', (int) $device['id'])) !== null) {
+            return $limited;
+        }
         $this->devices->touchSync((int) $device['id'], ['status' => 'active']);
         return rest_ensure_response(['ok' => true, 'lastSync' => current_time('mysql', true)]);
     }
@@ -289,6 +300,14 @@ final class CompanionController
     }
 
     // -------------------- helpers --------------------
+
+    private function rateLimited(string $endpoint, int $deviceId): ?WP_Error
+    {
+        if (! (new RateLimiter())->allow($endpoint, $deviceId)) {
+            return new WP_Error('too_many', 'Muitas requisições. Tente novamente em instantes.', ['status' => 429]);
+        }
+        return null;
+    }
 
     /**
      * Lê e valida o formato do token no header (64 chars hex), devolvendo-o
