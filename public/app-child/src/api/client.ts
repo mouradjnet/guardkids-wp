@@ -2,6 +2,17 @@ import { getStoredToken } from './token';
 
 const API_ROOT = '/wp-json/guardkids/v1';
 
+// Cache-buster em GET: o edge (LiteSpeed/hcdn) cacheia GET autenticado por header
+// mesmo com `no-store` — chegou a servir um 404 velho de /child/me pra todos os
+// devices. A URL única garante resposta fresca a cada leitura.
+function buildUrl(path: string, method: string): string {
+  const url = `${API_ROOT}${path}`;
+  if (method.toUpperCase() !== 'GET') {
+    return url;
+  }
+  return url + (path.includes('?') ? '&' : '?') + '_=' + Date.now();
+}
+
 export class ApiError extends Error {
   constructor(
     public readonly code: string,
@@ -14,7 +25,7 @@ export class ApiError extends Error {
 
 export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
   const token = getStoredToken();
-  const res = await fetch(`${API_ROOT}${path}`, {
+  const res = await fetch(buildUrl(path, init?.method ?? 'GET'), {
     credentials: 'omit',
     ...init,
     headers: {
@@ -27,7 +38,7 @@ export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> 
 }
 
 export async function apiFetchWithToken<T>(token: string, path: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(`${API_ROOT}${path}`, {
+  const res = await fetch(buildUrl(path, init?.method ?? 'GET'), {
     credentials: 'omit',
     ...init,
     headers: {

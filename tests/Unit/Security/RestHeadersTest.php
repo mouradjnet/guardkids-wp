@@ -38,6 +38,7 @@ final class RestHeadersTest extends TestCase
         self::assertSame('noindex, nofollow', $response->headers['X-Robots-Tag']);
         self::assertSame('no-store, no-cache, must-revalidate, max-age=0', $response->headers['Cache-Control']);
         self::assertSame('no-cache', $response->headers['Pragma']);
+        self::assertSame('no-cache', $response->headers['X-LiteSpeed-Cache-Control']);
     }
 
     public function testSetsNoStoreOnPinStatusRoute(): void
