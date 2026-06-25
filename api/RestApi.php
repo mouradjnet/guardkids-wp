@@ -17,6 +17,7 @@ use GuardKids\Api\Controllers\SafeZoneController;
 use GuardKids\Api\Controllers\SecurityController;
 use GuardKids\Api\Controllers\SettingsController;
 use GuardKids\Api\Controllers\SiteController;
+use GuardKids\Api\Controllers\TwoFactorController;
 use GuardKids\Api\Controllers\MeController;
 use GuardKids\Api\Controllers\PrivacyController;
 use GuardKids\Auth\ChildAuth;
@@ -45,6 +46,7 @@ final class RestApi
         $this->registerCategoriesRoutes();
         $this->registerSettingsRoutes();
         $this->registerSecurityRoutes();
+        $this->registerTwoFactorRoutes();
         $this->registerChildSelfRoutes();
         $this->registerReportsRoutes();
         $this->registerLocationsRoutes();
@@ -232,6 +234,45 @@ final class RestApi
                 'callback'            => [$controller, 'clearPin'],
                 'permission_callback' => [self::class, 'requireAdmin'],
             ],
+        ]);
+    }
+
+    private function registerTwoFactorRoutes(): void
+    {
+        $controller = new TwoFactorController();
+
+        register_rest_route(self::NAMESPACE, '/security/2fa', [
+            [
+                'methods'             => \WP_REST_Server::READABLE,
+                'callback'            => [$controller, 'status'],
+                'permission_callback' => [self::class, 'requireAdmin'],
+            ],
+            [
+                'methods'             => \WP_REST_Server::DELETABLE,
+                'callback'            => [$controller, 'disable'],
+                'permission_callback' => [self::class, 'requireAdmin'],
+                'args'                => $controller->codeArgs(),
+            ],
+        ]);
+
+        register_rest_route(self::NAMESPACE, '/security/2fa/setup', [
+            'methods'             => \WP_REST_Server::CREATABLE,
+            'callback'            => [$controller, 'setup'],
+            'permission_callback' => [self::class, 'requireAdmin'],
+        ]);
+
+        register_rest_route(self::NAMESPACE, '/security/2fa/activate', [
+            'methods'             => \WP_REST_Server::CREATABLE,
+            'callback'            => [$controller, 'activate'],
+            'permission_callback' => [self::class, 'requireAdmin'],
+            'args'                => $controller->codeArgs(),
+        ]);
+
+        register_rest_route(self::NAMESPACE, '/security/2fa/recovery-codes', [
+            'methods'             => \WP_REST_Server::CREATABLE,
+            'callback'            => [$controller, 'regenerateRecovery'],
+            'permission_callback' => [self::class, 'requireAdmin'],
+            'args'                => $controller->codeArgs(),
         ]);
     }
 

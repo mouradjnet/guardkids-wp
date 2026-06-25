@@ -463,6 +463,46 @@ if (! function_exists('wp_get_current_user')) {
     }
 }
 
+// Storage in-memory pra user_meta usado pelos testes da 2FA.
+$GLOBALS['gk_user_meta'] = [];
+
+if (! function_exists('get_user_meta')) {
+    /**
+     * @return mixed
+     */
+    function get_user_meta(int $userId, string $key, bool $single = false)
+    {
+        $val = $GLOBALS['gk_user_meta'][$userId][$key] ?? ($single ? '' : []);
+        return $val;
+    }
+}
+
+if (! function_exists('update_user_meta')) {
+    /**
+     * @param mixed $value
+     */
+    function update_user_meta(int $userId, string $key, $value): bool
+    {
+        $GLOBALS['gk_user_meta'][$userId][$key] = $value;
+        return true;
+    }
+}
+
+if (! function_exists('delete_user_meta')) {
+    function delete_user_meta(int $userId, string $key): bool
+    {
+        unset($GLOBALS['gk_user_meta'][$userId][$key]);
+        return true;
+    }
+}
+
+if (! function_exists('get_bloginfo')) {
+    function get_bloginfo(string $show = ''): string
+    {
+        return $GLOBALS['gk_bloginfo'][$show] ?? 'GuardKids';
+    }
+}
+
 // Stub mínimo do WP_REST_Response e WP_REST_Server pra RestHeaders/Controllers
 if (! class_exists('WP_REST_Response')) {
     class WP_REST_Response
