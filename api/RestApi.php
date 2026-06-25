@@ -17,6 +17,7 @@ use GuardKids\Api\Controllers\SafeZoneController;
 use GuardKids\Api\Controllers\SecurityController;
 use GuardKids\Api\Controllers\SettingsController;
 use GuardKids\Api\Controllers\SiteController;
+use GuardKids\Api\Controllers\SessionsController;
 use GuardKids\Api\Controllers\TwoFactorController;
 use GuardKids\Api\Controllers\MeController;
 use GuardKids\Api\Controllers\PrivacyController;
@@ -47,6 +48,7 @@ final class RestApi
         $this->registerSettingsRoutes();
         $this->registerSecurityRoutes();
         $this->registerTwoFactorRoutes();
+        $this->registerSessionsRoutes();
         $this->registerChildSelfRoutes();
         $this->registerReportsRoutes();
         $this->registerLocationsRoutes();
@@ -273,6 +275,23 @@ final class RestApi
             'callback'            => [$controller, 'regenerateRecovery'],
             'permission_callback' => [self::class, 'requireAdmin'],
             'args'                => $controller->codeArgs(),
+        ]);
+    }
+
+    private function registerSessionsRoutes(): void
+    {
+        $controller = new SessionsController();
+
+        register_rest_route(self::NAMESPACE, '/security/sessions', [
+            'methods'             => \WP_REST_Server::READABLE,
+            'callback'            => [$controller, 'index'],
+            'permission_callback' => [self::class, 'requireAdmin'],
+        ]);
+
+        register_rest_route(self::NAMESPACE, '/security/sessions/destroy-others', [
+            'methods'             => \WP_REST_Server::CREATABLE,
+            'callback'            => [$controller, 'destroyOthers'],
+            'permission_callback' => [self::class, 'requireAdmin'],
         ]);
     }
 
