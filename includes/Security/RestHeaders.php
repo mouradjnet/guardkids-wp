@@ -15,6 +15,8 @@ use WP_REST_Server;
  *
  * Seção 7 do spec: nosniff + Referrer-Policy + X-Frame-Options.
  * X-Robots-Tag adicionado pra evitar indexação acidental dos endpoints.
+ * Cache-Control: no-store impede que edge/CDN (LiteSpeed/hcdn) cacheiem
+ * respostas autenticadas — estado mutável por site nunca deve ser cacheado.
  */
 final class RestHeaders
 {
@@ -28,6 +30,8 @@ final class RestHeaders
         'Referrer-Policy'        => 'strict-origin-when-cross-origin',
         'X-Frame-Options'        => 'DENY',
         'X-Robots-Tag'           => 'noindex, nofollow',
+        'Cache-Control'          => 'no-store, no-cache, must-revalidate, max-age=0',
+        'Pragma'                 => 'no-cache',
     ];
 
     public function register(): void
