@@ -267,6 +267,25 @@ final class CompanionControllerTest extends TestCase
         self::assertSame(429, $res->get_error_data()['status']);
     }
 
+    public function testEnrollDeletesExpiredPairingToken(): void
+    {
+        $token = str_repeat('3', 64);
+        $key = 'companion_token:' . hash('sha256', $token);
+        $this->wpdb->settings[$key] = (string) wp_json_encode([
+            'childId'    => 5,
+            'deviceUuid' => 'uuid-pair',
+            'createdAt'  => gmdate('c', time() - 3600),
+            'expiresAt'  => gmdate('c', time() - 60), // expirado
+        ]);
+        $this->seedDevice(['device_uuid' => 'uuid-pair']);
+
+        $res = (new CompanionController())->enroll($this->request('/companion/enroll', $token));
+
+        self::assertInstanceOf(WP_Error::class, $res);
+        self::assertSame(401, $res->get_error_data()['status']);
+        self::assertContains($key, $this->wpdb->deletedKeys);
+    }
+
     public function testHeartbeatAcceptsValidSessionToken(): void
     {
         $token = str_repeat('b', 64);

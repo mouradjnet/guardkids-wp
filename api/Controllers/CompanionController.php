@@ -345,6 +345,7 @@ final class CompanionController
             ? strtotime($data['expiresAt'])
             : false;
         if ($expiresAt === false || $expiresAt < time()) {
+            $this->settings->deleteByKey($key);
             return new WP_Error('companion_auth_required', 'Token de pareamento expirado.', ['status' => 401]);
         }
 

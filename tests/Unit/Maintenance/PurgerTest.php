@@ -115,4 +115,36 @@ final class PurgerTest extends TestCase
             self::assertStringNotContainsString('guardkids_requests', $sql);
         }
     }
+
+    public function testPurgeExpiredPairingTokens(): void
+    {
+        $wpdb = new class () extends \wpdb {
+            public string $prefix = 'wp_';
+            /** @var list<array<string, string>> */
+            public array $rows = [];
+            /** @var list<string> */
+            public array $deleted = [];
+            public function __construct()
+            {
+            }
+            public function get_results($sql, $output = ARRAY_A)
+            {
+                return $this->rows;
+            }
+            public function delete($table, $where, $where_format = null)
+            {
+                $this->deleted[] = (string) $where['setting_key'];
+                return 1;
+            }
+        };
+        $wpdb->rows = [
+            ['setting_key' => 'companion_token:aaa', 'value' => (string) json_encode(['expiresAt' => gmdate('c', time() - 60)])],
+            ['setting_key' => 'companion_token:bbb', 'value' => (string) json_encode(['expiresAt' => gmdate('c', time() + 600)])],
+        ];
+
+        $removed = (new Purger($wpdb))->purgeExpiredPairingTokens();
+
+        self::assertSame(1, $removed);
+        self::assertSame(['companion_token:aaa'], $wpdb->deleted);
+    }
 }
