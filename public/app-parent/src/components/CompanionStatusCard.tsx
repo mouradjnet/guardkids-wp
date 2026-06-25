@@ -1,5 +1,5 @@
-import { useQuery } from '@tanstack/react-query';
-import { getCompanionStatus, type CompanionStatus } from '../api/companion';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { getCompanionStatus, revokeCompanion, type CompanionStatus } from '../api/companion';
 import { ApiError } from '../api/client';
 import { formatRelative } from '../lib/requestDisplay';
 import { Icon } from './Icon';
@@ -11,6 +11,12 @@ export function CompanionStatusCard({ childId, childName }: Props) {
     queryKey: ['companion', 'status', childId],
     queryFn: () => getCompanionStatus(childId),
     refetchInterval: 30_000,
+  });
+
+  const qc = useQueryClient();
+  const revoke = useMutation({
+    mutationFn: () => revokeCompanion(childId),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['companion', 'status', childId] }),
   });
 
   return (
@@ -44,6 +50,21 @@ export function CompanionStatusCard({ childId, childName }: Props) {
       )}
 
       {data && !isLoading && <StatusGrid data={data} />}
+
+      {data?.paired && !isLoading && (
+        <button
+          type="button"
+          className="mt-4 rounded-lg border border-error/40 bg-error/10 px-4 py-2 text-label-lg text-error"
+          disabled={revoke.isPending}
+          onClick={() => {
+            if (window.confirm('Revogar este dispositivo? Ele precisará ser pareado de novo para voltar a sincronizar.')) {
+              revoke.mutate();
+            }
+          }}
+        >
+          {revoke.isPending ? 'Revogando…' : 'Revogar dispositivo'}
+        </button>
+      )}
     </article>
   );
 }

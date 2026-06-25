@@ -23,6 +23,7 @@ final class Purger
     public const USAGE_EVENTS_DAYS     = 90;
     public const LOCATIONS_DAYS        = 30;
     public const DECIDED_REQUESTS_DAYS = 90;
+    public const PAIRING_TOKEN_PREFIX  = 'companion_token:';
 
     private readonly \wpdb $db;
 
@@ -42,6 +43,36 @@ final class Purger
     {
         $this->purgeOldUsageEvents(self::USAGE_EVENTS_DAYS);
         $this->purgeOldLocations(self::LOCATIONS_DAYS);
+        $this->purgeExpiredPairingTokens();
+    }
+
+    /**
+     * Remove pairing tokens (companion_token:*) com expiresAt vencido. O delete
+     * on-demand cobre tokens reapresentados; este sweep limpa os abandonados.
+     *
+     * @return int linhas removidas
+     */
+    public function purgeExpiredPairingTokens(): int
+    {
+        $table = $this->db->prefix . 'guardkids_settings';
+        $rows = $this->db->get_results(
+            "SELECT setting_key, value FROM {$table} WHERE setting_key LIKE '" . self::PAIRING_TOKEN_PREFIX . "%'",
+            ARRAY_A,
+        );
+        if (! is_array($rows)) {
+            return 0;
+        }
+        $now = time();
+        $removed = 0;
+        foreach ($rows as $row) {
+            $data = json_decode((string) ($row['value'] ?? ''), true);
+            $exp = is_array($data) && isset($data['expiresAt']) ? strtotime((string) $data['expiresAt']) : 0;
+            if ($exp === false || $exp < $now) {
+                $this->db->delete($table, ['setting_key' => $row['setting_key']]);
+                $removed++;
+            }
+        }
+        return $removed;
     }
 
     /**

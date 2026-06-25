@@ -7,6 +7,7 @@ namespace GuardKids\Api\Controllers;
 use GuardKids\Database\ChildRepository;
 use GuardKids\Database\CompanionDeviceRepository;
 use GuardKids\Database\SettingsRepository;
+use GuardKids\Security\RateLimiter;
 use WP_Error;
 use WP_REST_Request;
 use WP_REST_Response;
@@ -202,11 +203,16 @@ final class CompanionController
         }
         [$device, $pairingKey] = $pairing;
 
+        if (($limited = $this->rateLimited('companion_enroll', (int) $device['id'])) !== null) {
+            return $limited;
+        }
+
         $sessionToken = bin2hex(random_bytes(self::TOKEN_BYTES));
         $sessionHash  = hash('sha256', $sessionToken);
 
         $this->devices->update((int) $device['id'], [
             'session_token_hash' => $sessionHash,
+            'session_expires_at' => $this->devices->expiryFromNow(),
             'status'             => 'active',
         ]);
 
@@ -226,6 +232,9 @@ final class CompanionController
         $device = $this->authenticateSession($req);
         if ($device instanceof WP_Error) {
             return $device;
+        }
+        if (($limited = $this->rateLimited('companion_sync', (int) $device['id'])) !== null) {
+            return $limited;
         }
 
         $patch = $this->extractDevicePatch($req);
@@ -260,11 +269,45 @@ final class CompanionController
         if ($device instanceof WP_Error) {
             return $device;
         }
+        if (($limited = $this->rateLimited('companion_heartbeat', (int) $device['id'])) !== null) {
+            return $limited;
+        }
         $this->devices->touchSync((int) $device['id'], ['status' => 'active']);
         return rest_ensure_response(['ok' => true, 'lastSync' => current_time('mysql', true)]);
     }
 
+    // -------------------- companion/revoke (admin) --------------------
+
+    public function revoke(WP_REST_Request $req): WP_REST_Response|WP_Error
+    {
+        $childId = (int) $req->get_param('child_id');
+        if ($childId <= 0) {
+            return new WP_Error('invalid_payload', 'child_id obrigatório.', ['status' => 422]);
+        }
+        $device = $this->devices->findByChildId($childId);
+        if ($device === null) {
+            return new WP_Error('not_found', 'Nenhum dispositivo pareado.', ['status' => 404]);
+        }
+        $this->devices->revokeSession((int) $device['id']);
+        return rest_ensure_response(['revoked' => true]);
+    }
+
+    public function revokeArgs(): array
+    {
+        return [
+            'child_id' => ['type' => 'integer', 'required' => true, 'minimum' => 1],
+        ];
+    }
+
     // -------------------- helpers --------------------
+
+    private function rateLimited(string $endpoint, int $deviceId): ?WP_Error
+    {
+        if (! (new RateLimiter())->allow($endpoint, $deviceId)) {
+            return new WP_Error('too_many', 'Muitas requisições. Tente novamente em instantes.', ['status' => 429]);
+        }
+        return null;
+    }
 
     /**
      * Lê e valida o formato do token no header (64 chars hex), devolvendo-o
@@ -302,6 +345,7 @@ final class CompanionController
             ? strtotime($data['expiresAt'])
             : false;
         if ($expiresAt === false || $expiresAt < time()) {
+            $this->settings->deleteByKey($key);
             return new WP_Error('companion_auth_required', 'Token de pareamento expirado.', ['status' => 401]);
         }
 
@@ -329,6 +373,12 @@ final class CompanionController
         if ($device === null) {
             return new WP_Error('companion_auth_required', 'Sessão inválida. Refaça o pareamento.', ['status' => 401]);
         }
+
+        $expiresAt = $device['session_expires_at'] ?? null;
+        if (is_string($expiresAt) && $expiresAt !== '' && strtotime($expiresAt . ' UTC') < time()) {
+            return new WP_Error('companion_auth_required', 'Sessão expirada. Refaça o pareamento.', ['status' => 401]);
+        }
+
         return $device;
     }
 

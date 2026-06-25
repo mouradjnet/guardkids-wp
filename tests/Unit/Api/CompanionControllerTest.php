@@ -135,6 +135,7 @@ final class CompanionControllerTest extends TestCase
             }
         };
         $GLOBALS['wpdb'] = $this->wpdb;
+        $GLOBALS['gk_transients'] = [];
     }
 
     /**
@@ -179,6 +180,110 @@ final class CompanionControllerTest extends TestCase
 
         self::assertInstanceOf(WP_REST_Response::class, $res);
         self::assertTrue($res->get_data()['paired']);
+    }
+
+    public function testSyncRejectsExpiredSession(): void
+    {
+        $token = str_repeat('e', 64);
+        $this->seedDevice([
+            'device_uuid'        => 'uuid-exp',
+            'session_token_hash' => hash('sha256', $token),
+            'session_expires_at' => gmdate('Y-m-d H:i:s', time() - 60), // expirado
+            'status'             => 'active',
+        ]);
+
+        $res = (new CompanionController())->sync($this->request('/companion/sync', $token));
+
+        self::assertInstanceOf(WP_Error::class, $res);
+        self::assertSame('companion_auth_required', $res->get_error_code());
+        self::assertSame(401, $res->get_error_data()['status']);
+    }
+
+    public function testSyncRenewsExpiryWindow(): void
+    {
+        $token = str_repeat('f', 64);
+        $device = $this->seedDevice([
+            'device_uuid'        => 'uuid-renew',
+            'session_token_hash' => hash('sha256', $token),
+            'session_expires_at' => gmdate('Y-m-d H:i:s', time() + 86400), // 1 dia
+            'status'             => 'active',
+        ]);
+
+        (new CompanionController())->sync($this->request('/companion/sync', $token));
+
+        $renewed = $this->wpdb->devices[$device['id']]['session_expires_at'];
+        self::assertGreaterThan(time() + 20 * 86400, strtotime($renewed . ' UTC')); // ~30d à frente
+    }
+
+    public function testRevokeClearsSessionAndStatus(): void
+    {
+        $token = str_repeat('1', 64);
+        $device = $this->seedDevice([
+            'child_id'           => 7,
+            'device_uuid'        => 'uuid-rev',
+            'session_token_hash' => hash('sha256', $token),
+            'session_expires_at' => gmdate('Y-m-d H:i:s', time() + 86400),
+            'status'             => 'active',
+        ]);
+
+        $req = new WP_REST_Request('POST', '/companion/revoke');
+        $req->set_param('child_id', 7);
+        $res = (new CompanionController())->revoke($req);
+
+        self::assertInstanceOf(WP_REST_Response::class, $res);
+        self::assertTrue($res->get_data()['revoked']);
+        self::assertNull($this->wpdb->devices[$device['id']]['session_token_hash']);
+        self::assertSame('revoked', $this->wpdb->devices[$device['id']]['status']);
+
+        // o token revogado para de autenticar
+        $after = (new CompanionController())->sync($this->request('/companion/sync', $token));
+        self::assertInstanceOf(WP_Error::class, $after);
+    }
+
+    public function testRevokeWithoutPairedDeviceReturns404(): void
+    {
+        $req = new WP_REST_Request('POST', '/companion/revoke');
+        $req->set_param('child_id', 999);
+        $res = (new CompanionController())->revoke($req);
+        self::assertInstanceOf(WP_Error::class, $res);
+        self::assertSame(404, $res->get_error_data()['status']);
+    }
+
+    public function testSyncIsRateLimited(): void
+    {
+        $token = str_repeat('2', 64);
+        $device = $this->seedDevice([
+            'device_uuid'        => 'uuid-rl',
+            'session_token_hash' => hash('sha256', $token),
+            'session_expires_at' => gmdate('Y-m-d H:i:s', time() + 86400),
+            'status'             => 'active',
+        ]);
+        // pré-enche o bucket no limite (default 60) → próxima chamada estoura
+        $GLOBALS['gk_transients']['gk_rate:companion_sync:' . $device['id']] = 60;
+
+        $res = (new CompanionController())->sync($this->request('/companion/sync', $token));
+
+        self::assertInstanceOf(WP_Error::class, $res);
+        self::assertSame(429, $res->get_error_data()['status']);
+    }
+
+    public function testEnrollDeletesExpiredPairingToken(): void
+    {
+        $token = str_repeat('3', 64);
+        $key = 'companion_token:' . hash('sha256', $token);
+        $this->wpdb->settings[$key] = (string) wp_json_encode([
+            'childId'    => 5,
+            'deviceUuid' => 'uuid-pair',
+            'createdAt'  => gmdate('c', time() - 3600),
+            'expiresAt'  => gmdate('c', time() - 60), // expirado
+        ]);
+        $this->seedDevice(['device_uuid' => 'uuid-pair']);
+
+        $res = (new CompanionController())->enroll($this->request('/companion/enroll', $token));
+
+        self::assertInstanceOf(WP_Error::class, $res);
+        self::assertSame(401, $res->get_error_data()['status']);
+        self::assertContains($key, $this->wpdb->deletedKeys);
     }
 
     public function testHeartbeatAcceptsValidSessionToken(): void
