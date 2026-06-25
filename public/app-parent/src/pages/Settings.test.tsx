@@ -230,7 +230,7 @@ describe('Settings page', () => {
 
     expect(toggleFor('Notificações push')).toHaveAttribute('aria-checked', 'true');
     expect(toggleFor('Alertas em tempo real')).toHaveAttribute('aria-checked', 'false');
-    expect(toggleFor('Logout automático em 7 dias')).toHaveAttribute('aria-checked', 'false');
+    expect(toggleFor('Logout automático por inatividade')).toHaveAttribute('aria-checked', 'false');
     expect(toggleFor('PIN no painel infantil')).toHaveAttribute('aria-checked', 'true');
   });
 
@@ -245,7 +245,7 @@ describe('Settings page', () => {
     await waitFor(() => {
       expect(toggleFor('Notificações push')).toHaveAttribute('aria-checked', 'false');
     });
-    expect(toggleFor('Logout automático em 7 dias')).toHaveAttribute('aria-checked', 'true');
+    expect(toggleFor('Logout automático por inatividade')).toHaveAttribute('aria-checked', 'true');
   });
 
   it('calls updateSettings with toggled value when switch clicked', async () => {

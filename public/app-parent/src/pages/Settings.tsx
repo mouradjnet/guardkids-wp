@@ -185,15 +185,35 @@ export function Settings() {
         <TwoFactorSection />
         <SettingToggleRow
           settingsKey="security.auto_logout"
-          title="Logout automático em 7 dias"
-          description="Por segurança, força login novo depois de 7 dias sem usar."
+          title="Logout automático por inatividade"
+          description="Desconecta o painel após um tempo parado, por segurança."
           fallback={false}
           loading={settingsQuery.isLoading}
           saving={mutation.isPending}
-          locked
           get={get}
           set={set}
         />
+        {get('security.auto_logout', false) ? (
+          <div className="flex items-center justify-between gap-4 rounded-xl border border-outline-variant bg-surface-container-low p-4">
+            <label htmlFor="auto-logout-minutes" className="text-body-md text-on-surface">
+              Tempo de inatividade
+            </label>
+            <select
+              id="auto-logout-minutes"
+              className="rounded-lg border border-outline-variant bg-surface px-3 py-2 text-body-md text-on-surface"
+              value={Number(bag['security.auto_logout_minutes']) || 15}
+              disabled={mutation.isPending}
+              onChange={(e) =>
+                mutation.mutate({ 'security.auto_logout_minutes': Number(e.target.value) })
+              }
+            >
+              <option value={5}>5 minutos</option>
+              <option value={15}>15 minutos</option>
+              <option value={30}>30 minutos</option>
+              <option value={60}>60 minutos</option>
+            </select>
+          </div>
+        ) : null}
         <SessionsBlock />
       </Section>
 
