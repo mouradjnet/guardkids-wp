@@ -38,6 +38,13 @@ spl_autoload_register(static function (string $class): void {
 
 // --- Stubs mínimos das funções do WP que o código sob teste chama ---
 
+if (! function_exists('wp_timezone')) {
+    function wp_timezone(): \DateTimeZone
+    {
+        return new \DateTimeZone($GLOBALS['gk_timezone'] ?? 'UTC');
+    }
+}
+
 if (! function_exists('current_time')) {
     /**
      * @param string $type
