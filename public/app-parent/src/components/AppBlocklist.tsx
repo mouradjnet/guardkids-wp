@@ -35,6 +35,12 @@ export function AppBlocklist({ childId }: { childId: number }) {
   return (
     <div className="rounded-xl border border-outline-variant bg-surface-container-low p-4">
       <h4 className="font-display text-title-md text-on-surface">Apps bloqueados</h4>
+      {statusQuery.data && !statusQuery.data.accessibilityEnabled && (
+        <p role="alert" className="mt-2 rounded-lg bg-error/10 p-3 text-label-sm text-error">
+          Requer Acessibilidade ativa no aparelho pra o bloqueio por-app funcionar. No
+          GuardKids Companion do aparelho, toque em "Ativar bloqueio (Acessibilidade)".
+        </p>
+      )}
       {apps.length === 0 ? (
         <p className="mt-2 text-label-sm text-on-surface-variant">
           Aguardando o aparelho reportar os apps instalados (sincroniza periodicamente).
