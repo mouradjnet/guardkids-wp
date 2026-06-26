@@ -136,6 +136,13 @@ final class RestApi
             'permission_callback' => '__return_true',
         ]);
 
+        register_rest_route(self::NAMESPACE, '/companion/verify-pin', [
+            'methods'             => \WP_REST_Server::CREATABLE,
+            'callback'            => [$controller, 'verifyPin'],
+            'permission_callback' => '__return_true',
+            'args'                => $controller->verifyPinArgs(),
+        ]);
+
         register_rest_route(self::NAMESPACE, '/companion/revoke', [
             'methods'             => \WP_REST_Server::CREATABLE,
             'callback'            => [$controller, 'revoke'],

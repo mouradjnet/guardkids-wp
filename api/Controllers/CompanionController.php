@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace GuardKids\Api\Controllers;
 
+use GuardKids\Auth\ChildPin;
 use GuardKids\Database\ChildRepository;
 use GuardKids\Database\CompanionDeviceRepository;
 use GuardKids\Database\SettingsRepository;
@@ -55,6 +56,7 @@ final class CompanionController
     private readonly SettingsRepository $settings;
     private readonly UsageEventRepository $events;
     private readonly ScheduleEvaluator $evaluator;
+    private readonly ChildPin $pin;
 
     public function __construct()
     {
@@ -63,6 +65,7 @@ final class CompanionController
         $this->settings  = new SettingsRepository();
         $this->events    = new UsageEventRepository();
         $this->evaluator = new ScheduleEvaluator();
+        $this->pin       = new ChildPin();
     }
 
     // -------------------- protection-mode --------------------
@@ -321,6 +324,39 @@ final class CompanionController
             'settings_locked'            => ['type' => 'boolean'],
             'kiosk_mode'                 => ['type' => 'boolean'],
             'device_shutdown_protection' => ['type' => 'boolean'],
+        ];
+    }
+
+    // -------------------- companion/verify-pin --------------------
+
+    /**
+     * Verifica o PIN do responsável (global) pra saída de emergência da tela de
+     * bloqueio. Server-side: o PIN nunca trafega de volta nem fica no device.
+     */
+    public function verifyPin(WP_REST_Request $req): WP_REST_Response|WP_Error
+    {
+        $device = $this->authenticateSession($req);
+        if ($device instanceof WP_Error) {
+            return $device;
+        }
+        if (($limited = $this->rateLimited('companion_pin_verify', (int) $device['id'])) !== null) {
+            return $limited;
+        }
+        if (! $this->pin->isSet()) {
+            return new WP_Error('pin_disabled', 'PIN do responsável não configurado.', ['status' => 403]);
+        }
+
+        return rest_ensure_response(['ok' => $this->pin->verify((string) $req->get_param('pin'))]);
+    }
+
+    public function verifyPinArgs(): array
+    {
+        return [
+            'pin' => [
+                'type'              => 'string',
+                'required'          => true,
+                'sanitize_callback' => 'sanitize_text_field',
+            ],
         ];
     }
 
