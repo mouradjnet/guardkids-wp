@@ -29,6 +29,7 @@ export function CompanionWizard({ childId, childName, onClose }: Props) {
   const queryClient = useQueryClient();
   const [step, setStep] = useState<StepIdx>(0);
   const [pair, setPair] = useState<CompanionPairResponse | null>(null);
+  const [confirmRePair, setConfirmRePair] = useState(false);
 
   const pairMutation = useMutation({
     mutationFn: () => pairCompanion(childId),
@@ -42,8 +43,21 @@ export function CompanionWizard({ childId, childName, onClose }: Props) {
     queryKey: ['companion', 'status', childId],
     queryFn: () => getCompanionStatus(childId),
     refetchInterval: step === 2 || step === 3 ? 5_000 : false,
-    enabled: step >= 2,
+    enabled: step >= 1,
   });
+
+  const alreadyConnected = statusQuery.data?.status === 'active';
+
+  // Re-parear um aparelho já conectado revoga a sessão dele (server-side).
+  // Exige confirmação pra não desconectar o aparelho atual sem querer.
+  function handleGenerate() {
+    if (alreadyConnected && !confirmRePair) {
+      setConfirmRePair(true);
+      return;
+    }
+    setConfirmRePair(false);
+    pairMutation.mutate();
+  }
 
   // Avança automaticamente quando Companion conecta
   useEffect(() => {
@@ -113,7 +127,10 @@ export function CompanionWizard({ childId, childName, onClose }: Props) {
             <StepGenerateQR
               pending={pairMutation.isPending}
               error={pairMutation.error}
-              onGenerate={() => pairMutation.mutate()}
+              alreadyConnected={alreadyConnected}
+              confirming={confirmRePair}
+              onGenerate={handleGenerate}
+              onCancel={() => setConfirmRePair(false)}
             />
           )}
           {step === 2 && pair && <StepWaiting pair={pair} status={statusQuery.data} />}
@@ -160,11 +177,17 @@ function StepInstall({ onNext }: { onNext: () => void }) {
 function StepGenerateQR({
   pending,
   error,
+  alreadyConnected,
+  confirming,
   onGenerate,
+  onCancel,
 }: {
   pending: boolean;
   error: unknown;
+  alreadyConnected: boolean;
+  confirming: boolean;
   onGenerate: () => void;
+  onCancel: () => void;
 }) {
   const message =
     error instanceof ApiError
@@ -184,6 +207,12 @@ function StepGenerateQR({
           {message}
         </p>
       )}
+      {confirming && (
+        <p role="alert" className="rounded-lg bg-error/10 p-3 text-label-sm text-error">
+          Este aparelho já está conectado. Gerar um novo QR vai <strong>desconectar
+          o aparelho atual</strong> — ele vai precisar ser pareado de novo. Continuar?
+        </p>
+      )}
       <button
         type="button"
         onClick={onGenerate}
@@ -198,10 +227,24 @@ function StepGenerateQR({
         ) : (
           <>
             <Icon name="qr_code" className="text-sm" filled />
-            Gerar QR Code
+            {confirming
+              ? 'Desconectar e gerar novo QR'
+              : alreadyConnected
+                ? 'Gerar novo QR'
+                : 'Gerar QR Code'}
           </>
         )}
       </button>
+      {confirming && (
+        <button
+          type="button"
+          onClick={onCancel}
+          disabled={pending}
+          className="inline-flex w-full items-center justify-center rounded-xl py-2 text-label-md font-semibold text-on-surface-variant hover:bg-surface-variant/50"
+        >
+          Cancelar
+        </button>
+      )}
     </div>
   );
 }
