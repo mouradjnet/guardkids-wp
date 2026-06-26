@@ -25,10 +25,22 @@ export type CompanionStatus = {
   deviceAdminEnabled: boolean;
   playStoreEnabled: boolean;
   lastSync: string | null;
+  installedApps: { packageName: string; label: string }[];
+  blockedApps: string[];
 };
 
 export function getCompanionStatus(childId: number): Promise<CompanionStatus> {
   return apiFetch<CompanionStatus>(`/companion/status?child_id=${childId}`);
+}
+
+export function setBlockedApps(
+  childId: number,
+  apps: string[],
+): Promise<{ blockedApps: string[] }> {
+  return apiFetch<{ blockedApps: string[] }>('/companion/blocked-apps', {
+    method: 'POST',
+    body: JSON.stringify({ child_id: childId, apps }),
+  });
 }
 
 export type CompanionPairResponse = {

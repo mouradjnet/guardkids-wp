@@ -143,6 +143,13 @@ final class RestApi
             'args'                => $controller->verifyPinArgs(),
         ]);
 
+        register_rest_route(self::NAMESPACE, '/companion/blocked-apps', [
+            'methods'             => \WP_REST_Server::CREATABLE,
+            'callback'            => [$controller, 'setBlockedApps'],
+            'permission_callback' => [self::class, 'requireAdmin'],
+            'args'                => $controller->setBlockedAppsArgs(),
+        ]);
+
         register_rest_route(self::NAMESPACE, '/companion/revoke', [
             'methods'             => \WP_REST_Server::CREATABLE,
             'callback'            => [$controller, 'revoke'],

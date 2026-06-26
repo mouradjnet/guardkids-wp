@@ -22,7 +22,9 @@ const pairedStatus = {
   deviceAdminEnabled: true,
   playStoreEnabled: false,
   lastSync: null,
-} as const;
+  installedApps: [],
+  blockedApps: [],
+};
 
 describe('CompanionStatusCard', () => {
   beforeEach(() => vi.restoreAllMocks());
