@@ -248,6 +248,10 @@ final class CompanionController
 
         $patch = $this->extractDevicePatch($req);
         $patch['status'] = 'active';
+        $apps = $req->get_param('installed_apps');
+        if (is_array($apps)) {
+            $patch['installed_apps'] = wp_json_encode($this->sanitizeInstalledApps($apps));
+        }
         $this->devices->touchSync((int) $device['id'], $patch);
 
         $fresh = $this->devices->findByUuid((string) $device['device_uuid']);
@@ -324,6 +328,45 @@ final class CompanionController
             'settings_locked'            => ['type' => 'boolean'],
             'kiosk_mode'                 => ['type' => 'boolean'],
             'device_shutdown_protection' => ['type' => 'boolean'],
+            'installed_apps'             => ['type' => 'array'],
+        ];
+    }
+
+    // -------------------- companion/blocked-apps (admin) --------------------
+
+    public function setBlockedApps(WP_REST_Request $req): WP_REST_Response|WP_Error
+    {
+        $childId = (int) $req->get_param('child_id');
+        if ($childId <= 0) {
+            return new WP_Error('invalid_payload', 'child_id obrigatório.', ['status' => 422]);
+        }
+        $device = $this->devices->findByChildId($childId);
+        if ($device === null) {
+            return new WP_Error('not_found', 'Dispositivo não pareado.', ['status' => 422]);
+        }
+
+        $apps  = $req->get_param('apps');
+        $clean = [];
+        if (is_array($apps)) {
+            foreach ($apps as $pkg) {
+                $pkg = sanitize_text_field((string) $pkg);
+                if ($pkg !== '') {
+                    $clean[] = $pkg;
+                }
+            }
+        }
+        $clean = array_values(array_unique($clean));
+
+        $this->devices->update((int) $device['id'], ['blocked_apps' => wp_json_encode($clean)]);
+
+        return rest_ensure_response(['blockedApps' => $clean]);
+    }
+
+    public function setBlockedAppsArgs(): array
+    {
+        return [
+            'child_id' => ['type' => 'integer', 'required' => true],
+            'apps'     => ['type' => 'array', 'required' => true],
         ];
     }
 
@@ -541,6 +584,8 @@ final class CompanionController
                 'deviceAdminEnabled'      => false,
                 'playStoreEnabled'        => true,
                 'lastSync'                => null,
+                'installedApps'           => [],
+                'blockedApps'             => [],
             ];
         }
         return [
@@ -555,6 +600,43 @@ final class CompanionController
             'deviceAdminEnabled'      => (int) ($row['device_admin_enabled'] ?? 0) === 1,
             'playStoreEnabled'        => (int) ($row['play_store_enabled'] ?? 1) === 1,
             'lastSync'                => $row['last_sync'] ?? null,
+            'installedApps'           => $this->decodeJsonArray($row['installed_apps'] ?? null),
+            'blockedApps'             => $this->decodeJsonArray($row['blocked_apps'] ?? null),
         ];
+    }
+
+    /**
+     * @param array<int, mixed> $apps
+     * @return array<int, array{packageName:string,label:string}>
+     */
+    private function sanitizeInstalledApps(array $apps): array
+    {
+        $clean = [];
+        foreach ($apps as $a) {
+            if (! is_array($a)) {
+                continue;
+            }
+            $pkg = sanitize_text_field((string) ($a['packageName'] ?? ''));
+            if ($pkg === '') {
+                continue;
+            }
+            $clean[] = [
+                'packageName' => $pkg,
+                'label'       => sanitize_text_field((string) ($a['label'] ?? '')),
+            ];
+        }
+        return $clean;
+    }
+
+    /**
+     * @return array<int, mixed>
+     */
+    private function decodeJsonArray(mixed $raw): array
+    {
+        if (! is_string($raw) || $raw === '') {
+            return [];
+        }
+        $decoded = json_decode($raw, true);
+        return is_array($decoded) ? $decoded : [];
     }
 }

@@ -519,4 +519,65 @@ final class CompanionControllerTest extends TestCase
         self::assertSame('pin_disabled', $res->get_error_code());
         self::assertSame(403, $res->get_error_data()['status']);
     }
+
+    // -------------------- bloqueio por-app --------------------
+
+    public function testSyncPersistsInstalledAppsAndReturnsBlockedApps(): void
+    {
+        $token = str_repeat('5', 64);
+        $this->seedActiveDeviceWithToken($token, 7);
+        $this->wpdb->devices[1]['blocked_apps'] = json_encode(['com.zhiliaoapp.musically']);
+
+        $req = $this->request('/companion/sync', $token);
+        $req->set_param('installed_apps', [
+            ['packageName' => 'com.whatsapp', 'label' => 'WhatsApp'],
+            ['packageName' => 'com.zhiliaoapp.musically', 'label' => 'TikTok'],
+        ]);
+        $data = (new CompanionController())->sync($req)->get_data();
+
+        self::assertSame(['com.zhiliaoapp.musically'], $data['blockedApps']);
+        $stored = json_decode($this->wpdb->devices[1]['installed_apps'], true);
+        self::assertSame('com.whatsapp', $stored[0]['packageName']);
+        self::assertSame('WhatsApp', $stored[0]['label']);
+    }
+
+    public function testDeviceToJsonDefaultsAppsToEmptyArrays(): void
+    {
+        $token = str_repeat('6', 64);
+        $this->seedActiveDeviceWithToken($token, 7);
+
+        $data = (new CompanionController())->sync($this->request('/companion/sync', $token))->get_data();
+
+        self::assertSame([], $data['installedApps']);
+        self::assertSame([], $data['blockedApps']);
+    }
+
+    private function blockedAppsRequest(int $childId, array $apps): WP_REST_Request
+    {
+        $req = $this->request('/companion/blocked-apps');
+        $req->set_param('child_id', $childId);
+        $req->set_param('apps', $apps);
+        return $req;
+    }
+
+    public function testSetBlockedAppsPersistsAndReturnsList(): void
+    {
+        $this->seedActiveDeviceWithToken(str_repeat('7', 64), 7);
+
+        $res = (new CompanionController())->setBlockedApps(
+            $this->blockedAppsRequest(7, ['com.zhiliaoapp.musically', 'com.zhiliaoapp.musically', '  ']),
+        );
+
+        self::assertSame(['com.zhiliaoapp.musically'], $res->get_data()['blockedApps']);
+        self::assertSame(['com.zhiliaoapp.musically'], json_decode($this->wpdb->devices[1]['blocked_apps'], true));
+    }
+
+    public function testSetBlockedApps422WhenNoDevice(): void
+    {
+        $res = (new CompanionController())->setBlockedApps($this->blockedAppsRequest(999, ['x']));
+
+        self::assertInstanceOf(WP_Error::class, $res);
+        self::assertSame('not_found', $res->get_error_code());
+        self::assertSame(422, $res->get_error_data()['status']);
+    }
 }
