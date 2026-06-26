@@ -58,4 +58,17 @@ describe('AppBlocklist', () => {
     wrap(<AppBlocklist childId={3} />);
     expect(await screen.findByText(/aguardando o aparelho reportar/i)).toBeInTheDocument();
   });
+
+  it('avisa quando a Acessibilidade está off no aparelho', async () => {
+    vi.spyOn(api, 'getCompanionStatus').mockResolvedValue({ ...status, accessibilityEnabled: false });
+    wrap(<AppBlocklist childId={3} />);
+    expect(await screen.findByText(/requer acessibilidade ativa/i)).toBeInTheDocument();
+  });
+
+  it('não avisa quando a Acessibilidade está on', async () => {
+    vi.spyOn(api, 'getCompanionStatus').mockResolvedValue({ ...status, accessibilityEnabled: true });
+    wrap(<AppBlocklist childId={3} />);
+    await screen.findByRole('checkbox', { name: /tiktok/i });
+    expect(screen.queryByText(/requer acessibilidade ativa/i)).not.toBeInTheDocument();
+  });
 });
