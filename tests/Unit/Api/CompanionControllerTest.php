@@ -475,4 +475,48 @@ final class CompanionControllerTest extends TestCase
 
         self::assertFalse($block['isBlocked']);
     }
+
+    // -------------------- companion/verify-pin (PIN de emergência) --------------------
+
+    private function verifyPinRequest(string $token, string $pin): WP_REST_Request
+    {
+        $req = $this->request('/companion/verify-pin', $token);
+        $req->set_param('pin', $pin);
+        return $req;
+    }
+
+    public function testVerifyPinOkWithCorrectPin(): void
+    {
+        $token = str_repeat('1', 64);
+        $this->seedActiveDeviceWithToken($token, 7);
+        (new \GuardKids\Auth\ChildPin())->set('1234');
+
+        $res = (new CompanionController())->verifyPin($this->verifyPinRequest($token, '1234'));
+
+        self::assertInstanceOf(WP_REST_Response::class, $res);
+        self::assertTrue($res->get_data()['ok']);
+    }
+
+    public function testVerifyPinFalseWithWrongPin(): void
+    {
+        $token = str_repeat('2', 64);
+        $this->seedActiveDeviceWithToken($token, 7);
+        (new \GuardKids\Auth\ChildPin())->set('1234');
+
+        $res = (new CompanionController())->verifyPin($this->verifyPinRequest($token, '9999'));
+
+        self::assertFalse($res->get_data()['ok']);
+    }
+
+    public function testVerifyPinReturns403WhenPinNotSet(): void
+    {
+        $token = str_repeat('3', 64);
+        $this->seedActiveDeviceWithToken($token, 7);
+
+        $res = (new CompanionController())->verifyPin($this->verifyPinRequest($token, '1234'));
+
+        self::assertInstanceOf(WP_Error::class, $res);
+        self::assertSame('pin_disabled', $res->get_error_code());
+        self::assertSame(403, $res->get_error_data()['status']);
+    }
 }
