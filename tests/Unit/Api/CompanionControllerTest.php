@@ -418,4 +418,61 @@ final class CompanionControllerTest extends TestCase
         self::assertNull($this->wpdb->devices[1]['session_token_hash'], 'sessão antiga deve ser revogada');
         self::assertSame('pending', $this->wpdb->devices[1]['status']);
     }
+
+    // -------------------- sync: veredito de bloqueio --------------------
+
+    private function seedActiveDeviceWithToken(string $token, int $childId): void
+    {
+        $this->seedDevice([
+            'device_uuid'        => 'uuid-blk-' . $childId,
+            'session_token_hash' => hash('sha256', $token),
+            'session_expires_at' => gmdate('Y-m-d H:i:s', time() + 86400),
+            'status'             => 'active',
+            'child_id'           => $childId,
+        ]);
+    }
+
+    public function testSyncVerdictUnblockedInFamilyMode(): void
+    {
+        $token = str_repeat('b', 64);
+        $this->seedActiveDeviceWithToken($token, 7);
+        $this->wpdb->children[7] = ['id' => 7, 'bedtime_enabled' => 1,
+            'bedtime_start' => '00:00:00', 'bedtime_end' => '23:59:59',
+            'allowed_weekdays' => 'YYYYYYY', 'daily_limit_enabled' => 0, 'limit_minutes' => 0];
+        $this->wpdb->settings['protection_mode'] = json_encode('family');
+
+        $block = (new CompanionController())->sync($this->request('/companion/sync', $token))->get_data()['block'];
+
+        self::assertFalse($block['isBlocked']);
+        self::assertSame('family', $block['mode']);
+    }
+
+    public function testSyncVerdictBlocksBedtimeInMaximumMode(): void
+    {
+        $token = str_repeat('c', 64);
+        $this->seedActiveDeviceWithToken($token, 8);
+        // Janela de bedtime cobrindo o dia inteiro → "agora" sempre cai dentro.
+        $this->wpdb->children[8] = ['id' => 8, 'bedtime_enabled' => 1,
+            'bedtime_start' => '00:00:00', 'bedtime_end' => '23:59:59',
+            'allowed_weekdays' => 'YYYYYYY', 'daily_limit_enabled' => 0, 'limit_minutes' => 0];
+        $this->wpdb->settings['protection_mode'] = json_encode('maximum');
+
+        $block = (new CompanionController())->sync($this->request('/companion/sync', $token))->get_data()['block'];
+
+        self::assertTrue($block['isBlocked']);
+        self::assertSame('bedtime', $block['reason']);
+        self::assertSame('maximum', $block['mode']);
+        self::assertNotNull($block['unlockAt']);
+    }
+
+    public function testSyncVerdictFailOpenWhenChildMissing(): void
+    {
+        $token = str_repeat('d', 64);
+        $this->seedActiveDeviceWithToken($token, 999); // sem linha de child 999
+        $this->wpdb->settings['protection_mode'] = json_encode('maximum');
+
+        $block = (new CompanionController())->sync($this->request('/companion/sync', $token))->get_data()['block'];
+
+        self::assertFalse($block['isBlocked']);
+    }
 }
