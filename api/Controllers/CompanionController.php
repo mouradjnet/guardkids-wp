@@ -7,6 +7,8 @@ namespace GuardKids\Api\Controllers;
 use GuardKids\Database\ChildRepository;
 use GuardKids\Database\CompanionDeviceRepository;
 use GuardKids\Database\SettingsRepository;
+use GuardKids\Database\UsageEventRepository;
+use GuardKids\Schedule\ScheduleEvaluator;
 use GuardKids\Security\RateLimiter;
 use WP_Error;
 use WP_REST_Request;
@@ -51,12 +53,16 @@ final class CompanionController
     private readonly CompanionDeviceRepository $devices;
     private readonly ChildRepository $children;
     private readonly SettingsRepository $settings;
+    private readonly UsageEventRepository $events;
+    private readonly ScheduleEvaluator $evaluator;
 
     public function __construct()
     {
-        $this->devices  = new CompanionDeviceRepository();
-        $this->children = new ChildRepository();
-        $this->settings = new SettingsRepository();
+        $this->devices   = new CompanionDeviceRepository();
+        $this->children  = new ChildRepository();
+        $this->settings  = new SettingsRepository();
+        $this->events    = new UsageEventRepository();
+        $this->evaluator = new ScheduleEvaluator();
     }
 
     // -------------------- protection-mode --------------------
@@ -242,7 +248,64 @@ final class CompanionController
         $this->devices->touchSync((int) $device['id'], $patch);
 
         $fresh = $this->devices->findByUuid((string) $device['device_uuid']);
-        return rest_ensure_response($this->deviceToJson($fresh));
+        $payload = $this->deviceToJson($fresh);
+        $payload['block'] = $this->buildBlockVerdict($device);
+
+        return rest_ensure_response($payload);
+    }
+
+    /**
+     * Veredito de bloqueio por tempo para o device. Server-side, fonte da
+     * verdade. Gate de modo global + fail-open em qualquer ausência/erro.
+     *
+     * @param array<string, mixed> $device linha de companion_devices
+     * @return array{isBlocked:bool,reason:?string,unlockAt:?string,nextChangeAt:?string,mode:string}
+     */
+    private function buildBlockVerdict(array $device): array
+    {
+        $mode = $this->settings->get(self::SETTINGS_KEY, 'family');
+        if (! in_array($mode, self::VALID_MODES, true)) {
+            $mode = 'family';
+        }
+
+        $unblocked = [
+            'isBlocked'    => false,
+            'reason'       => null,
+            'unlockAt'     => null,
+            'nextChangeAt' => null,
+            'mode'         => $mode,
+        ];
+
+        if ($mode !== 'maximum') {
+            return $unblocked; // enforcement OFF em family
+        }
+
+        $childId = (int) ($device['child_id'] ?? 0);
+        if ($childId <= 0) {
+            return $unblocked; // fail-open
+        }
+        $child = $this->children->findById($childId);
+        if ($child === null) {
+            return $unblocked; // fail-open
+        }
+
+        $tz  = function_exists('wp_timezone') ? wp_timezone() : new \DateTimeZone('UTC');
+        $now = new \DateTimeImmutable('now', $tz);
+        $utc = new \DateTimeZone('UTC');
+        $startLocal = $now->setTime(0, 0, 0);
+        $fromUtc = $startLocal->setTimezone($utc)->format('Y-m-d H:i:s');
+        $toUtc   = $startLocal->modify('+1 day')->setTimezone($utc)->format('Y-m-d H:i:s');
+        $usedMin = $this->events->minutesUsedInWindow($childId, $fromUtc, $toUtc);
+
+        $verdict = $this->evaluator->evaluate($child, $now, $usedMin);
+
+        return [
+            'isBlocked'    => (bool) $verdict['isBlocked'],
+            'reason'       => $verdict['reason'],
+            'unlockAt'     => $verdict['unlockAt'],
+            'nextChangeAt' => $this->evaluator->nextDeterministicChange($child, $now),
+            'mode'         => $mode,
+        ];
     }
 
     public function syncArgs(): array

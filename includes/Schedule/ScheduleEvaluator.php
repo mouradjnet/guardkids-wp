@@ -124,6 +124,57 @@ final class ScheduleEvaluator
         ];
     }
 
+    /**
+     * Próxima fronteira de relógio determinística (bedtime/weekday), em UTC ISO.
+     *
+     * Candidatos: a próxima meia-noite local (piso — cobre reset de limite e
+     * virada de weekday) e os bedtime_start/bedtime_end de hoje e de amanhã.
+     * Devolve o menor candidato que seja futuro. O boundary do limite diário
+     * NÃO entra (depende de uso, não de relógio) — é capturado por polling.
+     *
+     * @param array{bedtime_enabled?:int|bool|null,bedtime_start?:?string,bedtime_end?:?string} $config
+     */
+    public function nextDeterministicChange(array $config, DateTimeImmutable $now): ?string
+    {
+        $candidates = [$now->modify('+1 day')->setTime(0, 0, 0)]; // meia-noite local
+
+        $enabled = (int) ($config['bedtime_enabled'] ?? 0) === 1;
+        $start   = $config['bedtime_start'] ?? null;
+        $end     = $config['bedtime_end'] ?? null;
+
+        if (
+            $enabled
+            && is_string($start) && preg_match('/^\d{2}:\d{2}:\d{2}$/', $start) === 1
+            && is_string($end) && preg_match('/^\d{2}:\d{2}:\d{2}$/', $end) === 1
+            && $start !== $end
+        ) {
+            foreach ([0, 1] as $offset) {
+                $day = $now->modify("+{$offset} day");
+                $candidates[] = $day->setTime(
+                    (int) substr($start, 0, 2),
+                    (int) substr($start, 3, 2),
+                    (int) substr($start, 6, 2)
+                );
+                $candidates[] = $day->setTime(
+                    (int) substr($end, 0, 2),
+                    (int) substr($end, 3, 2),
+                    (int) substr($end, 6, 2)
+                );
+            }
+        }
+
+        $future = array_values(array_filter(
+            $candidates,
+            static fn (DateTimeImmutable $dt): bool => $dt > $now
+        ));
+        if ($future === []) {
+            return null;
+        }
+        usort($future, static fn (DateTimeImmutable $a, DateTimeImmutable $b): int => $a <=> $b);
+
+        return $this->toUtcIso($future[0]);
+    }
+
     private function nextAllowedMidnightUtc(string $weekdays, DateTimeImmutable $now): ?string
     {
         for ($offset = 1; $offset <= 7; $offset++) {

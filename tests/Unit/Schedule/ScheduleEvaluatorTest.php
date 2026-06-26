@@ -340,4 +340,39 @@ final class ScheduleEvaluatorTest extends TestCase
 
         self::assertFalse($res['isBlocked']);
     }
+
+    public function testNextChangeSemBedtimeEhProximaMeiaNoiteLocal(): void
+    {
+        $now = new DateTimeImmutable('2026-06-26 14:00:00', $this->tz);
+        $next = $this->svc->nextDeterministicChange($this->config(), $now);
+
+        // 2026-06-27 00:00:00 America/Sao_Paulo == 03:00Z
+        self::assertSame('2026-06-27T03:00:00Z', $next);
+    }
+
+    public function testNextChangeApontaInicioDoBedtimeQuandoLiberado(): void
+    {
+        $now = new DateTimeImmutable('2026-06-26 14:00:00', $this->tz);
+        $next = $this->svc->nextDeterministicChange($this->config([
+            'bedtime_enabled' => 1,
+            'bedtime_start'   => '21:00:00',
+            'bedtime_end'     => '07:00:00',
+        ]), $now);
+
+        // 21:00 local == 00:00Z do dia seguinte
+        self::assertSame('2026-06-27T00:00:00Z', $next);
+    }
+
+    public function testNextChangeDuranteBedtimeCaiNaMeiaNoiteLocal(): void
+    {
+        $now = new DateTimeImmutable('2026-06-26 23:00:00', $this->tz);
+        $next = $this->svc->nextDeterministicChange($this->config([
+            'bedtime_enabled' => 1,
+            'bedtime_start'   => '21:00:00',
+            'bedtime_end'     => '07:00:00',
+        ]), $now);
+
+        // start/end de hoje já passaram; menor candidato futuro = meia-noite local (03:00Z)
+        self::assertSame('2026-06-27T03:00:00Z', $next);
+    }
 }
