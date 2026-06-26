@@ -7,6 +7,7 @@ import {
   type ProtectionMode,
 } from '../api/companion';
 import { ApiError } from '../api/client';
+import { AppBlocklist } from '../components/AppBlocklist';
 import { CompanionStatusCard } from '../components/CompanionStatusCard';
 import { CompanionWizard } from '../components/CompanionWizard';
 import { Icon } from '../components/Icon';
@@ -92,6 +93,7 @@ export function ProtectionMode() {
             {childrenQ.data.map((c) => (
               <div key={c.id} className="space-y-3">
                 <CompanionStatusCard childId={c.id} childName={c.name} />
+                <AppBlocklist childId={c.id} />
                 <button
                   type="button"
                   onClick={() => setWizard({ open: true, childId: c.id, childName: c.name })}

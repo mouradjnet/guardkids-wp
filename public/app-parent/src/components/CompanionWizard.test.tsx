@@ -22,7 +22,9 @@ const activeStatus = {
   deviceAdminEnabled: false,
   playStoreEnabled: true,
   lastSync: null,
-} as const;
+  installedApps: [],
+  blockedApps: [],
+};
 
 const pairResponse = {
   token: 't',
