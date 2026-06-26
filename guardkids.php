@@ -19,7 +19,7 @@ declare(strict_types=1);
 defined('ABSPATH') || exit;
 
 define('GUARDKIDS_VERSION', '1.18.0');
-define('GUARDKIDS_DB_VERSION', 12);
+define('GUARDKIDS_DB_VERSION', 13);
 define('GUARDKIDS_FILE', __FILE__);
 define('GUARDKIDS_DIR', plugin_dir_path(__FILE__));
 define('GUARDKIDS_URL', plugin_dir_url(__FILE__));
