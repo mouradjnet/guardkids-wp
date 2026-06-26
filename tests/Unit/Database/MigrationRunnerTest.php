@@ -33,7 +33,12 @@ final class MigrationRunnerTest extends TestCase
             }
         };
 
-        $this->dir = sys_get_temp_dir() . '/gk-migrations-' . uniqid('', true) . '/';
+        // Sandbox sob o cache gitignored do projeto: o LocalWP aponta
+        // sys_get_temp_dir() pra C:\Windows\TEMP, que usuários podem gravar mas
+        // não listar (glob/scandir voltam vazios). O dir do projeto é sempre
+        // gravável e listável, no Windows local e na CI (Linux).
+        $base = dirname(__DIR__, 3) . '/.phpunit.cache';
+        $this->dir = $base . '/gk-migrations-' . uniqid('', true) . '/';
         mkdir($this->dir, 0777, true);
     }
 
