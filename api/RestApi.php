@@ -150,6 +150,13 @@ final class RestApi
             'args'                => $controller->setBlockedAppsArgs(),
         ]);
 
+        register_rest_route(self::NAMESPACE, '/companion/request-site', [
+            'methods'             => \WP_REST_Server::CREATABLE,
+            'callback'            => [$controller, 'requestSite'],
+            'permission_callback' => '__return_true',
+            'args'                => $controller->requestSiteArgs(),
+        ]);
+
         register_rest_route(self::NAMESPACE, '/companion/revoke', [
             'methods'             => \WP_REST_Server::CREATABLE,
             'callback'            => [$controller, 'revoke'],

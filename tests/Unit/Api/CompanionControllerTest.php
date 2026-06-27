@@ -131,6 +131,11 @@ final class CompanionControllerTest extends TestCase
                     $this->settings[(string) $data['setting_key']] = (string) $data['value'];
                     return 1;
                 }
+                if (str_contains((string) $table, 'guardkids_requests')) {
+                    $this->insert_id = count($this->requests) + 1;
+                    $this->requests[$this->insert_id] = array_merge(['id' => $this->insert_id], $data);
+                    return 1;
+                }
                 return 1;
             }
 
@@ -615,5 +620,31 @@ final class CompanionControllerTest extends TestCase
         $data = (new CompanionController())->sync($this->request('/companion/sync', $token))->get_data();
 
         self::assertSame(['canva.com', 'wikipedia.org'], $data['allowedSites']);
+    }
+
+    public function testRequestSiteCreatesPendingRequest(): void
+    {
+        $token = str_repeat('9', 64);
+        $this->seedActiveDeviceWithToken($token, 7);
+
+        $req = $this->request('/companion/request-site', $token);
+        $req->set_param('domain', 'canva.com');
+        $res = (new CompanionController())->requestSite($req);
+
+        self::assertTrue($res->get_data()['ok']);
+        $last = $this->wpdb->requests[array_key_last($this->wpdb->requests)];
+        self::assertSame('unblock_site', $last['kind']);
+        self::assertSame('canva.com', $last['highlight']);
+        self::assertSame(7, (int) $last['child_id']);
+        self::assertSame('pending', $last['status']);
+    }
+
+    public function testRequestSiteRequiresToken(): void
+    {
+        $req = new WP_REST_Request('POST', '/companion/request-site');
+        $req->set_param('domain', 'canva.com');
+        $res = (new CompanionController())->requestSite($req);
+        self::assertInstanceOf(WP_Error::class, $res);
+        self::assertSame(401, $res->get_error_data()['status']);
     }
 }
