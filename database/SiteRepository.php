@@ -18,4 +18,17 @@ final class SiteRepository extends Repository
     {
         return $this->findWhere(['list_type' => $listType], 'domain', 'ASC');
     }
+
+    /** Adiciona um domínio ao whitelist (idempotente). */
+    public function allowDomain(string $domain): void
+    {
+        $domain = trim($domain);
+        if ($domain === '') {
+            return;
+        }
+        if ($this->findWhere(['domain' => $domain, 'list_type' => 'whitelist']) !== []) {
+            return;
+        }
+        $this->insert(['domain' => $domain, 'list_type' => 'whitelist']);
+    }
 }
