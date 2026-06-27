@@ -19,11 +19,23 @@ final class RequestControllerTest extends TestCase
         $GLOBALS['gk_current_user_id'] = 7;
         $this->wpdb = new class () extends \wpdb {
             public string $prefix = 'wp_';
-            /** @var array<int, array<string, mixed>> */
+            public int $insert_id = 0;
+            /** @var array<int, array<string, mixed>> requests */
             public array $rows = [];
+            /** @var array<int, array<string, mixed>> sites (whitelist/blacklist) */
+            public array $sites = [];
 
             public function __construct()
             {
+            }
+
+            public function insert($table, $data, $format = null)
+            {
+                if (str_contains((string) $table, 'guardkids_sites')) {
+                    $this->insert_id = count($this->sites) + 1;
+                    $this->sites[$this->insert_id] = $data;
+                }
+                return 1;
             }
 
             public function prepare($query, ...$args)
@@ -45,6 +57,21 @@ final class RequestControllerTest extends TestCase
 
             public function get_results($sql, $output = OBJECT)
             {
+                if (str_contains((string) $sql, 'guardkids_sites')) {
+                    $domain = null;
+                    $list   = null;
+                    if (preg_match("/domain = '([^']+)'/", (string) $sql, $m) === 1) {
+                        $domain = $m[1];
+                    }
+                    if (preg_match("/list_type = '([^']+)'/", (string) $sql, $m) === 1) {
+                        $list = $m[1];
+                    }
+                    return array_values(array_filter(
+                        $this->sites,
+                        static fn ($s) => ($domain === null || ($s['domain'] ?? '') === $domain)
+                            && ($list === null || ($s['list_type'] ?? '') === $list),
+                    ));
+                }
                 return array_values($this->rows);
             }
 
@@ -85,6 +112,38 @@ final class RequestControllerTest extends TestCase
         self::assertInstanceOf(WP_REST_Response::class, $res);
         self::assertSame('approved', $res->get_data()['status']);
         self::assertSame(7, $res->get_data()['decidedBy']);
+    }
+
+    public function testApproveUnblockSiteAddsDomainToWhitelist(): void
+    {
+        $this->wpdb->rows[10] = [
+            'id' => 10, 'child_id' => 1, 'kind' => 'unblock_site',
+            'highlight' => 'canva.com', 'status' => 'pending',
+        ];
+
+        $req = new WP_REST_Request('POST', '/requests/10/approve');
+        $req['id'] = 10;
+        (new RequestController())->approve($req);
+
+        $domains = array_map(static fn ($s) => $s['domain'], $this->wpdb->sites);
+        self::assertContains('canva.com', $domains);
+        $last = $this->wpdb->sites[array_key_last($this->wpdb->sites)];
+        self::assertSame('whitelist', $last['list_type']);
+    }
+
+    public function testApproveUnblockSiteDoesNotDuplicate(): void
+    {
+        $this->wpdb->sites = [1 => ['domain' => 'canva.com', 'list_type' => 'whitelist']];
+        $this->wpdb->rows[11] = [
+            'id' => 11, 'child_id' => 1, 'kind' => 'unblock_site',
+            'highlight' => 'canva.com', 'status' => 'pending',
+        ];
+
+        $req = new WP_REST_Request('POST', '/requests/11/approve');
+        $req['id'] = 11;
+        (new RequestController())->approve($req);
+
+        self::assertCount(1, $this->wpdb->sites);
     }
 
     public function testDenyMarksAsDenied(): void

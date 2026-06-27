@@ -7,7 +7,9 @@ namespace GuardKids\Api\Controllers;
 use GuardKids\Auth\ChildPin;
 use GuardKids\Database\ChildRepository;
 use GuardKids\Database\CompanionDeviceRepository;
+use GuardKids\Database\RequestRepository;
 use GuardKids\Database\SettingsRepository;
+use GuardKids\Database\SiteRepository;
 use GuardKids\Database\UsageEventRepository;
 use GuardKids\Schedule\ScheduleEvaluator;
 use GuardKids\Security\RateLimiter;
@@ -57,6 +59,8 @@ final class CompanionController
     private readonly UsageEventRepository $events;
     private readonly ScheduleEvaluator $evaluator;
     private readonly ChildPin $pin;
+    private readonly SiteRepository $sites;
+    private readonly RequestRepository $requests;
 
     public function __construct()
     {
@@ -66,6 +70,8 @@ final class CompanionController
         $this->events    = new UsageEventRepository();
         $this->evaluator = new ScheduleEvaluator();
         $this->pin       = new ChildPin();
+        $this->sites     = new SiteRepository();
+        $this->requests  = new RequestRepository();
     }
 
     // -------------------- protection-mode --------------------
@@ -257,6 +263,10 @@ final class CompanionController
         $fresh = $this->devices->findByUuid((string) $device['device_uuid']);
         $payload = $this->deviceToJson($fresh);
         $payload['block'] = $this->buildBlockVerdict($device);
+        $payload['allowedSites'] = array_values(array_map(
+            static fn (array $s): string => (string) $s['domain'],
+            $this->sites->findByList('whitelist'),
+        ));
 
         return rest_ensure_response($payload);
     }
@@ -396,6 +406,45 @@ final class CompanionController
     {
         return [
             'pin' => [
+                'type'              => 'string',
+                'required'          => true,
+                'sanitize_callback' => 'sanitize_text_field',
+            ],
+        ];
+    }
+
+    // -------------------- companion/request-site --------------------
+
+    /** A criança pede a liberação de um site no navegador filtrado. */
+    public function requestSite(WP_REST_Request $req): WP_REST_Response|WP_Error
+    {
+        $device = $this->authenticateSession($req);
+        if ($device instanceof WP_Error) {
+            return $device;
+        }
+        if (($limited = $this->rateLimited('companion_request_site', (int) $device['id'])) !== null) {
+            return $limited;
+        }
+        $domain = sanitize_text_field((string) $req->get_param('domain'));
+        if ($domain === '') {
+            return new WP_Error('invalid_payload', 'domínio obrigatório.', ['status' => 422]);
+        }
+
+        $this->requests->insert([
+            'child_id'    => (int) $device['child_id'],
+            'kind'        => 'unblock_site',
+            'description' => 'Liberar site',
+            'highlight'   => $domain,
+            'status'      => 'pending',
+        ]);
+
+        return rest_ensure_response(['ok' => true]);
+    }
+
+    public function requestSiteArgs(): array
+    {
+        return [
+            'domain' => [
                 'type'              => 'string',
                 'required'          => true,
                 'sanitize_callback' => 'sanitize_text_field',

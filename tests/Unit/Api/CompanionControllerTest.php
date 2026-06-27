@@ -33,11 +33,31 @@ final class CompanionControllerTest extends TestCase
             public array $devices = [];
             /** @var array<int, array<string, mixed>> id => child row */
             public array $children = [];
+            /** @var array<int, array<string, mixed>> linhas de sites (whitelist/blacklist) */
+            public array $sites = [];
+            /** @var array<int, array<string, mixed>> id => request row */
+            public array $requests = [];
             /** @var list<string> chaves de settings deletadas */
             public array $deletedKeys = [];
 
             public function __construct()
             {
+            }
+
+            public function get_results($sql, $output = ARRAY_A)
+            {
+                $sql = (string) $sql;
+                if (str_contains($sql, 'guardkids_sites')) {
+                    $list = null;
+                    if (preg_match("/list_type = '([^']+)'/", $sql, $m) === 1) {
+                        $list = $m[1];
+                    }
+                    return array_values(array_filter(
+                        $this->sites,
+                        static fn ($s) => $list === null || ($s['list_type'] ?? '') === $list,
+                    ));
+                }
+                return [];
             }
 
             public function prepare($query, ...$args)
@@ -109,6 +129,11 @@ final class CompanionControllerTest extends TestCase
                 }
                 if (str_contains((string) $table, 'settings')) {
                     $this->settings[(string) $data['setting_key']] = (string) $data['value'];
+                    return 1;
+                }
+                if (str_contains((string) $table, 'guardkids_requests')) {
+                    $this->insert_id = count($this->requests) + 1;
+                    $this->requests[$this->insert_id] = array_merge(['id' => $this->insert_id], $data);
                     return 1;
                 }
                 return 1;
@@ -579,5 +604,47 @@ final class CompanionControllerTest extends TestCase
         self::assertInstanceOf(WP_Error::class, $res);
         self::assertSame('not_found', $res->get_error_code());
         self::assertSame(422, $res->get_error_data()['status']);
+    }
+
+    // -------------------- navegador filtrado (allowedSites / request-site) --------------------
+
+    public function testSyncReturnsAllowedSites(): void
+    {
+        $token = str_repeat('8', 64);
+        $this->seedActiveDeviceWithToken($token, 7);
+        $this->wpdb->sites = [
+            ['domain' => 'canva.com', 'list_type' => 'whitelist'],
+            ['domain' => 'wikipedia.org', 'list_type' => 'whitelist'],
+        ];
+
+        $data = (new CompanionController())->sync($this->request('/companion/sync', $token))->get_data();
+
+        self::assertSame(['canva.com', 'wikipedia.org'], $data['allowedSites']);
+    }
+
+    public function testRequestSiteCreatesPendingRequest(): void
+    {
+        $token = str_repeat('9', 64);
+        $this->seedActiveDeviceWithToken($token, 7);
+
+        $req = $this->request('/companion/request-site', $token);
+        $req->set_param('domain', 'canva.com');
+        $res = (new CompanionController())->requestSite($req);
+
+        self::assertTrue($res->get_data()['ok']);
+        $last = $this->wpdb->requests[array_key_last($this->wpdb->requests)];
+        self::assertSame('unblock_site', $last['kind']);
+        self::assertSame('canva.com', $last['highlight']);
+        self::assertSame(7, (int) $last['child_id']);
+        self::assertSame('pending', $last['status']);
+    }
+
+    public function testRequestSiteRequiresToken(): void
+    {
+        $req = new WP_REST_Request('POST', '/companion/request-site');
+        $req->set_param('domain', 'canva.com');
+        $res = (new CompanionController())->requestSite($req);
+        self::assertInstanceOf(WP_Error::class, $res);
+        self::assertSame(401, $res->get_error_data()['status']);
     }
 }

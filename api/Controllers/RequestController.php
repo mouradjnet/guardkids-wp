@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace GuardKids\Api\Controllers;
 
 use GuardKids\Database\RequestRepository;
+use GuardKids\Database\SiteRepository;
 use WP_Error;
 use WP_REST_Request;
 use WP_REST_Response;
@@ -12,10 +13,12 @@ use WP_REST_Response;
 final class RequestController
 {
     private readonly RequestRepository $repo;
+    private readonly SiteRepository $sites;
 
     public function __construct()
     {
-        $this->repo = new RequestRepository();
+        $this->repo  = new RequestRepository();
+        $this->sites = new SiteRepository();
     }
 
     public function index(WP_REST_Request $req): WP_REST_Response
@@ -48,6 +51,13 @@ final class RequestController
         }
         if (! $this->repo->decide($id, $decision, get_current_user_id())) {
             return new WP_Error('db_error', 'Falha ao salvar.', ['status' => 500]);
+        }
+        if (
+            $decision === 'approved'
+            && ($row['kind'] ?? '') === 'unblock_site'
+            && is_string($row['highlight'] ?? null) && $row['highlight'] !== ''
+        ) {
+            $this->sites->allowDomain(sanitize_text_field((string) $row['highlight']));
         }
         return rest_ensure_response($this->toJson($this->repo->findById($id) ?? []));
     }
