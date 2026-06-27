@@ -8,6 +8,7 @@ use GuardKids\Auth\ChildPin;
 use GuardKids\Database\ChildRepository;
 use GuardKids\Database\CompanionDeviceRepository;
 use GuardKids\Database\SettingsRepository;
+use GuardKids\Database\SiteRepository;
 use GuardKids\Database\UsageEventRepository;
 use GuardKids\Schedule\ScheduleEvaluator;
 use GuardKids\Security\RateLimiter;
@@ -57,6 +58,7 @@ final class CompanionController
     private readonly UsageEventRepository $events;
     private readonly ScheduleEvaluator $evaluator;
     private readonly ChildPin $pin;
+    private readonly SiteRepository $sites;
 
     public function __construct()
     {
@@ -66,6 +68,7 @@ final class CompanionController
         $this->events    = new UsageEventRepository();
         $this->evaluator = new ScheduleEvaluator();
         $this->pin       = new ChildPin();
+        $this->sites     = new SiteRepository();
     }
 
     // -------------------- protection-mode --------------------
@@ -257,6 +260,10 @@ final class CompanionController
         $fresh = $this->devices->findByUuid((string) $device['device_uuid']);
         $payload = $this->deviceToJson($fresh);
         $payload['block'] = $this->buildBlockVerdict($device);
+        $payload['allowedSites'] = array_values(array_map(
+            static fn (array $s): string => (string) $s['domain'],
+            $this->sites->findByList('whitelist'),
+        ));
 
         return rest_ensure_response($payload);
     }
