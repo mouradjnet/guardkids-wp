@@ -11,6 +11,7 @@ import { Blocked } from './pages/Blocked';
 import { Browser } from './pages/Browser';
 import { Home } from './pages/Home';
 import { Localizacao } from './pages/Localizacao';
+import { Mundo } from './pages/Mundo';
 import { PairScreen } from './pages/PairScreen';
 import { Requests } from './pages/Requests';
 import type { PageId } from './data/mockData';
@@ -145,6 +146,8 @@ function PageRenderer({
   onNavigate: (page: PageId) => void;
 }) {
   switch (page) {
+    case 'mundo':
+      return <Mundo />;
     case 'browser':
       return <Browser onNavigate={onNavigate} />;
     case 'requests':
