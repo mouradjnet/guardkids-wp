@@ -23,6 +23,17 @@ export type Child = {
   schedule?: ChildSchedule;
   /** PIN dos pais disponível pra destravar o ambiente seguro neste aparelho. */
   pinUnlockEnabled?: boolean;
+  /** Quantidade de notificações não-lidas (alimenta o badge). */
+  unreadNotifications?: number;
+};
+
+export type Notification = {
+  id: number;
+  type: string;
+  title: string;
+  body: string | null;
+  read: boolean;
+  createdAt: string | null;
 };
 
 export type MyRequestStatus = 'pending' | 'approved' | 'denied';

@@ -1,5 +1,5 @@
 import { apiFetch, apiFetchWithToken } from './client';
-import type { AllowedSite, Child, CreateRequestInput, MyRequest } from './types';
+import type { AllowedSite, Child, CreateRequestInput, MyRequest, Notification } from './types';
 
 export function getMe(): Promise<Child> {
   return apiFetch<Child>('/child/me');
@@ -17,6 +17,16 @@ export function listMyRequests(): Promise<MyRequest[]> {
 /** Sites liberados (whitelist) pro navegador seguro. */
 export function listAllowedSites(): Promise<AllowedSite[]> {
   return apiFetch<AllowedSite[]>('/child/sites');
+}
+
+/** Notificações in-app do filho (mais recentes primeiro). */
+export function listNotifications(): Promise<Notification[]> {
+  return apiFetch<Notification[]>('/child/notifications');
+}
+
+/** Marca todas as notificações como lidas. */
+export function markNotificationsRead(): Promise<{ updated: number }> {
+  return apiFetch<{ updated: number }>('/child/notifications/read', { method: 'POST' });
 }
 
 export function createRequest(input: CreateRequestInput): Promise<MyRequest> {
