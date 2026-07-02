@@ -24,8 +24,12 @@ export function Home({ onNavigate }: HomeProps) {
   }
 
   if (meQuery.error) {
-    if (meQuery.error instanceof ApiError && meQuery.error.status === 401) {
-      // Token vencido/invalidado pelo lado parent → força re-pareamento
+    if (
+      meQuery.error instanceof ApiError &&
+      (meQuery.error.status === 401 || meQuery.error.status === 404)
+    ) {
+      // 401 = token vencido/invalidado; 404 = filho deletado pelo lado parent.
+      // Ambos deixam o token inutilizável → limpa e força re-pareamento.
       clearStoredToken();
       window.location.reload();
       return null;
