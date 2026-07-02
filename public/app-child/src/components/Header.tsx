@@ -1,4 +1,8 @@
+import { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { getMe } from '../api/child';
 import { Icon } from './Icon';
+import { ProfileSheet } from './ProfileSheet';
 import type { PageId } from '../data/mockData';
 
 const titles: Record<PageId, string> = {
@@ -18,6 +22,8 @@ type HeaderProps = {
 export function Header({ activePage, onNavigate }: HeaderProps) {
   const isHome = activePage === 'home';
   const title = titles[activePage];
+  const [profileOpen, setProfileOpen] = useState(false);
+  const meQuery = useQuery({ queryKey: ['child', 'me'], queryFn: getMe });
 
   return (
     <header className="sticky top-0 z-40 flex h-16 w-full items-center justify-between border-b border-outline-variant bg-surface/80 px-container-padding-mobile shadow-sm backdrop-blur-md">
@@ -58,12 +64,17 @@ export function Header({ activePage, onNavigate }: HeaderProps) {
         </button>
         <button
           type="button"
+          onClick={() => setProfileOpen(true)}
           className="rounded-full p-2 text-on-surface-variant transition-colors hover:bg-surface-variant/50"
           aria-label="Perfil"
         >
           <Icon name="account_circle" />
         </button>
       </div>
+
+      {profileOpen && meQuery.data && (
+        <ProfileSheet child={meQuery.data} onClose={() => setProfileOpen(false)} />
+      )}
     </header>
   );
 }
