@@ -6,6 +6,7 @@ namespace GuardKids\Api\Controllers;
 
 use GuardKids\Database\RequestRepository;
 use GuardKids\Database\SiteRepository;
+use GuardKids\Notifications\Notifier;
 use WP_Error;
 use WP_REST_Request;
 use WP_REST_Response;
@@ -14,11 +15,13 @@ final class RequestController
 {
     private readonly RequestRepository $repo;
     private readonly SiteRepository $sites;
+    private readonly Notifier $notifier;
 
     public function __construct()
     {
-        $this->repo  = new RequestRepository();
-        $this->sites = new SiteRepository();
+        $this->repo     = new RequestRepository();
+        $this->sites    = new SiteRepository();
+        $this->notifier = new Notifier();
     }
 
     public function index(WP_REST_Request $req): WP_REST_Response
@@ -59,6 +62,7 @@ final class RequestController
         ) {
             $this->sites->allowDomain(sanitize_text_field((string) $row['highlight']));
         }
+        $this->notifier->notifyRequestDecided($row, $decision);
         return rest_ensure_response($this->toJson($this->repo->findById($id) ?? []));
     }
 
