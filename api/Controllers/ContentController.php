@@ -12,6 +12,7 @@ use GuardKids\Database\ContentRepository;
 use GuardKids\Database\FavoriteRepository;
 use GuardKids\Database\HistoryRepository;
 use GuardKids\Database\RecommendationRepository;
+use GuardKids\Progression\Progression;
 use WP_Error;
 use WP_REST_Request;
 use WP_REST_Response;
@@ -157,6 +158,16 @@ final class ContentController
         $action = in_array($action, ['open', 'close'], true) ? $action : 'open';
         $duration = (int) $req->get_param('duration_seconds');
         $this->history->record($childId, $contentId, $action, max(0, $duration));
+
+        if ($action === 'open') {
+            try {
+                $tz = function_exists('wp_timezone') ? wp_timezone() : new \DateTimeZone('UTC');
+                (new Progression())->awardForOpen($childId, $contentId, new \DateTimeImmutable('now', $tz));
+            } catch (\Throwable $e) {
+                error_log('[GuardKids] award falhou: ' . $e->getMessage());
+            }
+        }
+
         return new WP_REST_Response(['ok' => true], 201);
     }
 

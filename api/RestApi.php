@@ -22,6 +22,7 @@ use GuardKids\Api\Controllers\TwoFactorController;
 use GuardKids\Api\Controllers\MeController;
 use GuardKids\Api\Controllers\PrivacyController;
 use GuardKids\Api\Controllers\ContentController;
+use GuardKids\Api\Controllers\GamificationController;
 use GuardKids\Auth\ChildAuth;
 use GuardKids\Auth\GuardianAuth;
 
@@ -60,6 +61,24 @@ final class RestApi
         $this->registerPrivacyRoutes();
         $this->registerCompanionRoutes();
         $this->registerContentRoutes();
+        $this->registerGamificationRoutes();
+    }
+
+    private function registerGamificationRoutes(): void
+    {
+        $controller = new GamificationController();
+
+        register_rest_route(self::NAMESPACE, '/child/progression', [
+            'methods'             => \WP_REST_Server::READABLE,
+            'callback'            => [$controller, 'childProgression'],
+            'permission_callback' => (new ChildAuth())->requireToken(),
+        ]);
+
+        register_rest_route(self::NAMESPACE, '/progression', [
+            'methods'             => \WP_REST_Server::READABLE,
+            'callback'            => [$controller, 'progression'],
+            'permission_callback' => [self::class, 'requireAdmin'],
+        ]);
     }
 
     private function registerContentRoutes(): void
