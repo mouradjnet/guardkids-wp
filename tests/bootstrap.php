@@ -551,3 +551,25 @@ if (! class_exists('WP_REST_Server')) {
         public const DELETABLE = 'DELETE';
     }
 }
+
+// Stubs de HTTP pro Web Push (PushSender). Gravam a última request em
+// $GLOBALS['gk_http'] e devolvem $GLOBALS['gk_http_status'].
+if (! function_exists('wp_remote_post')) {
+    function wp_remote_post($url, $args = [])
+    {
+        $GLOBALS['gk_http'][] = ['url' => $url, 'args' => $args];
+        return ['response' => ['code' => $GLOBALS['gk_http_status'] ?? 201]];
+    }
+}
+if (! function_exists('wp_remote_retrieve_response_code')) {
+    function wp_remote_retrieve_response_code($resp)
+    {
+        return is_array($resp) ? ($resp['response']['code'] ?? 0) : 0;
+    }
+}
+if (! function_exists('is_wp_error')) {
+    function is_wp_error($thing)
+    {
+        return $thing instanceof \WP_Error;
+    }
+}
