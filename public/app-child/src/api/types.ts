@@ -27,6 +27,34 @@ export type Child = {
   unreadNotifications?: number;
 };
 
+export type ContentCategory = {
+  id: number;
+  slug: string;
+  name: string;
+  icon: string | null;
+  description: string | null;
+};
+
+export type Content = {
+  id: number;
+  categoryId: number | null;
+  title: string;
+  description: string | null;
+  url: string | null;
+  type: string;
+  thumbnail: string | null;
+};
+
+export type Favorite = { id: number; childId: number; contentId: number; createdAt: string | null };
+
+export type Recommendation = {
+  id: number;
+  childId: number;
+  contentId: number;
+  note: string | null;
+  createdAt: string | null;
+};
+
 export type Notification = {
   id: number;
   type: string;

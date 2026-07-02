@@ -1,4 +1,4 @@
-export type PageId = 'home' | 'browser' | 'requests' | 'blocked' | 'alerts' | 'location';
+export type PageId = 'home' | 'mundo' | 'browser' | 'requests' | 'blocked' | 'alerts' | 'location';
 
 export const child = {
   name: 'Lucas',

@@ -26,6 +26,11 @@ $tables = [
     $wpdb->prefix . 'guardkids_companion_devices',
     $wpdb->prefix . 'guardkids_notifications',
     $wpdb->prefix . 'guardkids_push_subscriptions',
+    $wpdb->prefix . 'guardkids_content_categories',
+    $wpdb->prefix . 'guardkids_content_items',
+    $wpdb->prefix . 'guardkids_content_favorites',
+    $wpdb->prefix . 'guardkids_content_recommendations',
+    $wpdb->prefix . 'guardkids_content_history',
 ];
 
 foreach ($tables as $table) {

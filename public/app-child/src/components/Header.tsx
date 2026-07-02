@@ -7,6 +7,7 @@ import type { PageId } from '../data/mockData';
 
 const titles: Record<PageId, string> = {
   home: 'GuardKids WP',
+  mundo: 'Mundo Guardião',
   browser: 'Navegador Seguro',
   requests: 'Minhas Solicitações',
   alerts: 'Avisos',

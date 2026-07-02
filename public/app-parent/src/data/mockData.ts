@@ -55,6 +55,7 @@ export type PageId =
   | 'safe-zones'
   | 'approvals'
   | 'sites-rules'
+  | 'content'
   | 'time'
   | 'reports'
   | 'settings'
@@ -261,6 +262,7 @@ export const navItems = [
   { id: 'safe-zones' as PageId, label: 'Zonas Seguras', icon: 'shield' },
   { id: 'approvals' as PageId, label: 'Aprovações', icon: 'task_alt', badge: 2 },
   { id: 'sites-rules' as PageId, label: 'Sites & Regras', icon: 'app_blocking' },
+  { id: 'content' as PageId, label: 'Conteúdo Infantil', icon: 'auto_stories' },
   { id: 'time' as PageId, label: 'Limites de Tempo', icon: 'timer' },
   { id: 'reports' as PageId, label: 'Relatórios', icon: 'monitoring' },
   { id: 'settings' as PageId, label: 'Configurações', icon: 'settings' },
