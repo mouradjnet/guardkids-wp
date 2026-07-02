@@ -4,6 +4,7 @@ import { createRequest, listMyRequests } from '../api/child';
 import { ApiError } from '../api/client';
 import type { CreateRequestInput, MyRequest, MyRequestStatus } from '../api/types';
 import { Icon } from '../components/Icon';
+import { normalizeHost } from '../lib/domain';
 
 type FormKind = 'none' | 'time' | 'site';
 const TIME_PRESETS = [15, 30, 45];
@@ -331,7 +332,7 @@ function SiteRequestForm({
 
   function submit(e: FormEvent) {
     e.preventDefault();
-    const domain = site.trim().toLowerCase();
+    const domain = normalizeHost(site);
     if (!domain) return;
     onSubmit({
       kind: 'unblock_site',

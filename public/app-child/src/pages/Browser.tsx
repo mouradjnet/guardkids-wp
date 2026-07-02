@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { listAllowedSites } from '../api/child';
 import type { AllowedSite } from '../api/types';
 import { Icon } from '../components/Icon';
+import { normalizeHost } from '../lib/domain';
 import { getActiveTracker } from '../lib/usageTracker';
 import type { PageId } from '../data/mockData';
 
@@ -21,15 +22,6 @@ function toUrl(domain: string): string {
   return /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
 }
 
-/** Reduz o que a criança digita (ou o domínio salvo) a um host comparável. */
-function normalizeHost(input: string): string {
-  return input
-    .trim()
-    .toLowerCase()
-    .replace(/^https?:\/\//, '')
-    .replace(/^www\./, '')
-    .replace(/\/.*$/, '');
-}
 
 export function Browser({ onNavigate }: BrowserProps) {
   const [query, setQuery] = useState('');

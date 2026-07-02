@@ -57,4 +57,30 @@ final class SiteRepositoryTest extends TestCase
 
         self::assertStringContainsString("list_type = 'blacklist'", $this->wpdb->sqls[0]);
     }
+
+    /**
+     * @dataProvider normalizeCases
+     */
+    public function testNormalizeDomainStripsProtocolWwwPathAndCase(string $input, string $expected): void
+    {
+        self::assertSame($expected, SiteRepository::normalizeDomain($input));
+    }
+
+    /**
+     * @return array<string, array{string, string}>
+     */
+    public static function normalizeCases(): array
+    {
+        return [
+            'já limpo'       => ['youtube.com', 'youtube.com'],
+            'com https'      => ['https://youtube.com', 'youtube.com'],
+            'com http'       => ['http://exemplo.com', 'exemplo.com'],
+            'com www'        => ['www.roblox.com', 'roblox.com'],
+            'https + www'    => ['https://www.canva.com', 'canva.com'],
+            'com caminho'    => ['https://canva.com/design/play', 'canva.com'],
+            'maiúsculas'     => ['YouTube.COM', 'youtube.com'],
+            'espaços'        => ['  youtube.com  ', 'youtube.com'],
+            'vazio'          => ['', ''],
+        ];
+    }
 }
