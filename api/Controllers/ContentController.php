@@ -6,6 +6,7 @@ namespace GuardKids\Api\Controllers;
 
 use GuardKids\Auth\ChildAuth;
 use GuardKids\Content\ContentAnalytics;
+use GuardKids\Database\ChildRepository;
 use GuardKids\Database\ContentCategoryRepository;
 use GuardKids\Database\ContentRepository;
 use GuardKids\Database\FavoriteRepository;
@@ -26,6 +27,7 @@ final class ContentController
     private readonly FavoriteRepository $favorites;
     private readonly RecommendationRepository $recommendations;
     private readonly HistoryRepository $history;
+    private readonly ChildRepository $children;
     private readonly ChildAuth $auth;
 
     public function __construct()
@@ -35,7 +37,127 @@ final class ContentController
         $this->favorites       = new FavoriteRepository();
         $this->recommendations = new RecommendationRepository();
         $this->history         = new HistoryRepository();
+        $this->children        = new ChildRepository();
         $this->auth            = new ChildAuth();
+    }
+
+    private function childAge(int $childId): ?int
+    {
+        $row = $this->children->findById($childId);
+        return $row !== null && isset($row['age']) ? (int) $row['age'] : null;
+    }
+
+    public function childLibrary(WP_REST_Request $req): WP_REST_Response|WP_Error
+    {
+        $childId = $this->auth->resolveChildId($req);
+        if ($childId === null) {
+            return new WP_Error('child_auth_required', 'Token inválido.', ['status' => 401]);
+        }
+        $category = $req->get_param('category');
+        $search   = $req->get_param('search');
+        $rows = $this->contentRepo->search(
+            is_numeric($category) ? (int) $category : null,
+            is_string($search) ? $search : null,
+            $this->childAge($childId),
+        );
+        $favIds = $this->favorites->contentIdsOf($childId);
+        return rest_ensure_response(array_map(function (array $r) use ($favIds): array {
+            return $this->contentToJson($r) + ['favorited' => in_array((int) $r['id'], $favIds, true)];
+        }, $rows));
+    }
+
+    public function childLibraryCategories(WP_REST_Request $req): WP_REST_Response|WP_Error
+    {
+        $childId = $this->auth->resolveChildId($req);
+        if ($childId === null) {
+            return new WP_Error('child_auth_required', 'Token inválido.', ['status' => 401]);
+        }
+        $items = $this->contentRepo->search(null, null, $this->childAge($childId));
+        $countByCat = [];
+        foreach ($items as $it) {
+            $c = isset($it['category_id']) ? (int) $it['category_id'] : 0;
+            $countByCat[$c] = ($countByCat[$c] ?? 0) + 1;
+        }
+        return rest_ensure_response(array_map(static fn (array $c): array => [
+            'id'    => (int) $c['id'],
+            'slug'  => (string) ($c['slug'] ?? ''),
+            'name'  => (string) ($c['name'] ?? ''),
+            'icon'  => $c['icon'] ?? null,
+            'count' => $countByCat[(int) $c['id']] ?? 0,
+        ], $this->categoriesRepo->all()));
+    }
+
+    public function childRecommendations(WP_REST_Request $req): WP_REST_Response|WP_Error
+    {
+        $childId = $this->auth->resolveChildId($req);
+        if ($childId === null) {
+            return new WP_Error('child_auth_required', 'Token inválido.', ['status' => 401]);
+        }
+        $out = [];
+        foreach ($this->recommendations->findByChildOrdered($childId) as $rec) {
+            $content = $this->contentRepo->findById((int) ($rec['content_id'] ?? 0));
+            if ($content !== null) {
+                $out[] = ['id' => (int) $rec['id'], 'note' => $rec['note'] ?? null, 'content' => $this->contentToJson($content)];
+            }
+        }
+        return rest_ensure_response($out);
+    }
+
+    public function childFavorites(WP_REST_Request $req): WP_REST_Response|WP_Error
+    {
+        $childId = $this->auth->resolveChildId($req);
+        if ($childId === null) {
+            return new WP_Error('child_auth_required', 'Token inválido.', ['status' => 401]);
+        }
+        $out = [];
+        foreach ($this->favorites->contentIdsOf($childId) as $cid) {
+            $content = $this->contentRepo->findById($cid);
+            if ($content !== null) {
+                $out[] = $this->contentToJson($content) + ['favorited' => true];
+            }
+        }
+        return rest_ensure_response($out);
+    }
+
+    public function childAddFavorite(WP_REST_Request $req): WP_REST_Response|WP_Error
+    {
+        $childId = $this->auth->resolveChildId($req);
+        if ($childId === null) {
+            return new WP_Error('child_auth_required', 'Token inválido.', ['status' => 401]);
+        }
+        $contentId = (int) $req->get_param('content_id');
+        if ($contentId === 0) {
+            return new WP_Error('invalid_payload', 'content_id obrigatório.', ['status' => 422]);
+        }
+        $this->favorites->add($childId, $contentId);
+        return new WP_REST_Response(['ok' => true], 201);
+    }
+
+    public function childRemoveFavorite(WP_REST_Request $req): WP_REST_Response|WP_Error
+    {
+        $childId = $this->auth->resolveChildId($req);
+        if ($childId === null) {
+            return new WP_Error('child_auth_required', 'Token inválido.', ['status' => 401]);
+        }
+        $this->favorites->remove($childId, (int) $req['contentId']);
+        return rest_ensure_response(['ok' => true]);
+    }
+
+    public function childHistory(WP_REST_Request $req): WP_REST_Response|WP_Error
+    {
+        $childId = $this->auth->resolveChildId($req);
+        if ($childId === null) {
+            return new WP_Error('child_auth_required', 'Token inválido.', ['status' => 401]);
+        }
+        $contentId = (int) $req->get_param('content_id');
+        if ($contentId === 0) {
+            return new WP_Error('invalid_payload', 'content_id obrigatório.', ['status' => 422]);
+        }
+        $action = (string) $req->get_param('action');
+        $action = in_array($action, ['open', 'close'], true) ? $action : 'open';
+        $duration = (int) $req->get_param('duration_seconds');
+        $this->history->record($childId, $contentId, $action, max(0, $duration));
+        return new WP_REST_Response(['ok' => true], 201);
     }
 
     public function categories(WP_REST_Request $req): WP_REST_Response

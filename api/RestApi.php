@@ -126,6 +126,27 @@ final class RestApi
             'callback'            => [$controller, 'addFavorite'],
             'permission_callback' => (new ChildAuth())->requireToken(),
         ]);
+
+        $token = (new ChildAuth())->requireToken();
+        register_rest_route(self::NAMESPACE, '/child/library', [
+            'methods' => \WP_REST_Server::READABLE, 'callback' => [$controller, 'childLibrary'], 'permission_callback' => $token,
+        ]);
+        register_rest_route(self::NAMESPACE, '/child/library/categories', [
+            'methods' => \WP_REST_Server::READABLE, 'callback' => [$controller, 'childLibraryCategories'], 'permission_callback' => $token,
+        ]);
+        register_rest_route(self::NAMESPACE, '/child/library/recommendations', [
+            'methods' => \WP_REST_Server::READABLE, 'callback' => [$controller, 'childRecommendations'], 'permission_callback' => $token,
+        ]);
+        register_rest_route(self::NAMESPACE, '/child/library/favorites', [
+            ['methods' => \WP_REST_Server::READABLE, 'callback' => [$controller, 'childFavorites'], 'permission_callback' => $token],
+            ['methods' => \WP_REST_Server::CREATABLE, 'callback' => [$controller, 'childAddFavorite'], 'permission_callback' => $token],
+        ]);
+        register_rest_route(self::NAMESPACE, '/child/library/favorites/(?P<contentId>\d+)', [
+            'methods' => \WP_REST_Server::DELETABLE, 'callback' => [$controller, 'childRemoveFavorite'], 'permission_callback' => $token,
+        ]);
+        register_rest_route(self::NAMESPACE, '/child/library/history', [
+            'methods' => \WP_REST_Server::CREATABLE, 'callback' => [$controller, 'childHistory'], 'permission_callback' => $token,
+        ]);
     }
 
     private function registerPrivacyRoutes(): void
