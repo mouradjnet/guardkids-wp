@@ -24,6 +24,8 @@ final class RequestControllerTest extends TestCase
             public array $rows = [];
             /** @var array<int, array<string, mixed>> sites (whitelist/blacklist) */
             public array $sites = [];
+            /** @var array<int, array<string, mixed>> notifications */
+            public array $notifications = [];
 
             public function __construct()
             {
@@ -34,6 +36,10 @@ final class RequestControllerTest extends TestCase
                 if (str_contains((string) $table, 'guardkids_sites')) {
                     $this->insert_id = count($this->sites) + 1;
                     $this->sites[$this->insert_id] = $data;
+                }
+                if (str_contains((string) $table, 'guardkids_notifications')) {
+                    $id = count($this->notifications) + 1;
+                    $this->notifications[$id] = array_merge(['id' => $id], $data);
                 }
                 return 1;
             }
@@ -71,6 +77,22 @@ final class RequestControllerTest extends TestCase
                         static fn ($s) => ($domain === null || ($s['domain'] ?? '') === $domain)
                             && ($list === null || ($s['list_type'] ?? '') === $list),
                     ));
+                }
+                if (str_contains((string) $sql, 'guardkids_notifications')) {
+                    $out = $this->notifications;
+                    if (preg_match('/child_id = (\d+)/', (string) $sql, $m) === 1) {
+                        $out = array_values(array_filter(
+                            $out,
+                            static fn (array $r): bool => (int) $r['child_id'] === (int) $m[1],
+                        ));
+                    }
+                    if (preg_match("/dedup_key = '([^']*)'/", (string) $sql, $d) === 1) {
+                        $out = array_values(array_filter(
+                            $out,
+                            static fn (array $r): bool => (string) ($r['dedup_key'] ?? '') === $d[1],
+                        ));
+                    }
+                    return $out;
                 }
                 return array_values($this->rows);
             }
@@ -144,6 +166,22 @@ final class RequestControllerTest extends TestCase
         (new RequestController())->approve($req);
 
         self::assertCount(1, $this->wpdb->sites);
+    }
+
+    public function testApproveCreatesNotificationForChild(): void
+    {
+        $this->wpdb->rows[5] = [
+            'id' => 5, 'child_id' => 1, 'kind' => 'extra_time',
+            'description' => 'Mais tempo', 'highlight' => '+30 min', 'status' => 'pending',
+        ];
+        $req = new WP_REST_Request('POST', '/requests/5/approve');
+        $req['id'] = 5;
+        (new RequestController())->approve($req);
+
+        self::assertNotEmpty($this->wpdb->notifications);
+        $last = $this->wpdb->notifications[array_key_last($this->wpdb->notifications)];
+        self::assertSame('request_approved', $last['type']);
+        self::assertSame(1, (int) $last['child_id']);
     }
 
     public function testDenyMarksAsDenied(): void
