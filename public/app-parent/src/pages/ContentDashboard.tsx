@@ -52,7 +52,7 @@ export function ContentDashboard() {
   const list = contents.data ?? [];
 
   return (
-    <main className="flex-1 space-y-6 p-6">
+    <main className="mx-auto w-full max-w-[1440px] flex-1 space-y-6 p-container-padding-mobile pb-24 md:ml-64 md:p-container-padding-desktop md:pb-container-padding-desktop">
       <div className="flex items-center justify-between">
         <h1 className="font-display text-headline-lg text-on-background">Conteúdo Infantil</h1>
         <button type="button" onClick={() => { setEditing(null); setCreating(true); }} className="rounded-xl bg-primary px-5 py-2.5 text-label-md font-semibold text-white">

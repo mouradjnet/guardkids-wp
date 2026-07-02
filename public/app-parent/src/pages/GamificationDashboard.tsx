@@ -36,7 +36,7 @@ export function GamificationDashboard() {
   const list = children.data ?? [];
 
   return (
-    <main className="flex-1 space-y-6 p-6">
+    <main className="mx-auto w-full max-w-[1440px] flex-1 space-y-6 p-container-padding-mobile pb-24 md:ml-64 md:p-container-padding-desktop md:pb-container-padding-desktop">
       <div>
         <h1 className="font-display text-headline-lg text-on-background">Gamificação</h1>
         <p className="text-body-md text-on-surface-variant">
