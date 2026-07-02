@@ -5,6 +5,7 @@ import { SideNav } from './components/SideNav';
 import { TopNav } from './components/TopNav';
 import { Approvals } from './pages/Approvals';
 import { Children } from './pages/Children';
+import { ContentDashboard } from './pages/ContentDashboard';
 import { Dashboard } from './pages/Dashboard';
 import { License } from './pages/License';
 import { Localizacao } from './pages/Localizacao';
@@ -43,6 +44,8 @@ function PageRenderer({ page }: { page: PageId }) {
       return <Approvals />;
     case 'sites-rules':
       return <SitesRules />;
+    case 'content':
+      return <ContentDashboard />;
     case 'time':
       return <TimeLimits />;
     case 'reports':
