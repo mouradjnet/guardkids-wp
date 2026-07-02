@@ -21,6 +21,7 @@ use GuardKids\Api\Controllers\SessionsController;
 use GuardKids\Api\Controllers\TwoFactorController;
 use GuardKids\Api\Controllers\MeController;
 use GuardKids\Api\Controllers\PrivacyController;
+use GuardKids\Api\Controllers\ContentController;
 use GuardKids\Auth\ChildAuth;
 use GuardKids\Auth\GuardianAuth;
 
@@ -58,6 +59,35 @@ final class RestApi
         $this->registerMeRoute();
         $this->registerPrivacyRoutes();
         $this->registerCompanionRoutes();
+        $this->registerContentRoutes();
+    }
+
+    private function registerContentRoutes(): void
+    {
+        $controller = new ContentController();
+
+        $adminGet = static fn (string $path, string $cb) => register_rest_route(self::NAMESPACE, $path, [
+            'methods'             => \WP_REST_Server::READABLE,
+            'callback'            => [$controller, $cb],
+            'permission_callback' => [self::class, 'requireAdmin'],
+        ]);
+        $adminGet('/content/categories', 'categories');
+        $adminGet('/content', 'contents');
+        $adminGet('/content/favorites', 'favoritesList');
+        $adminGet('/content/recommendations', 'recommendationsList');
+        $adminGet('/content/summary', 'summary');
+
+        register_rest_route(self::NAMESPACE, '/content/recommendations', [
+            'methods'             => \WP_REST_Server::CREATABLE,
+            'callback'            => [$controller, 'createRecommendation'],
+            'permission_callback' => [self::class, 'requireAdmin'],
+        ]);
+
+        register_rest_route(self::NAMESPACE, '/content/favorites', [
+            'methods'             => \WP_REST_Server::CREATABLE,
+            'callback'            => [$controller, 'addFavorite'],
+            'permission_callback' => (new ChildAuth())->requireToken(),
+        ]);
     }
 
     private function registerPrivacyRoutes(): void
