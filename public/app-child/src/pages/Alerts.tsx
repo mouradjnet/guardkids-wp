@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { listNotifications, markNotificationsRead } from '../api/child';
 import type { Notification } from '../api/types';
+import { EnableAlertsCard } from '../components/EnableAlertsCard';
 import { Icon } from '../components/Icon';
 
 function relative(iso: string | null): string {
@@ -39,6 +40,7 @@ export function Alerts() {
 
   return (
     <main className="flex flex-1 flex-col gap-stack-md px-container-padding-mobile py-stack-md">
+      <EnableAlertsCard />
       <p className="px-1 text-label-md text-on-surface-variant">
         Avisos novinhos pra você.
       </p>

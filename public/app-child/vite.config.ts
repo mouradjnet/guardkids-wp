@@ -46,30 +46,13 @@ export default defineConfig(({ mode }) => {
             },
           ],
         },
-        workbox: {
-          // Precacheia tudo do build (JS/CSS/HTML/ícones)
+        // SW customizado (push + notificationclick) em src/sw.ts. O Workbox
+        // injeta o manifesto de precache; runtime caching mora no próprio SW.
+        strategies: 'injectManifest',
+        srcDir: 'src',
+        filename: 'sw.ts',
+        injectManifest: {
           globPatterns: ['**/*.{js,css,html,ico,png,svg,webmanifest}'],
-          // Fonts do Google são cache-first em runtime
-          runtimeCaching: [
-            {
-              urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,
-              handler: 'CacheFirst',
-              options: {
-                cacheName: 'gfonts-stylesheets',
-                expiration: { maxEntries: 10, maxAgeSeconds: 60 * 60 * 24 * 365 },
-              },
-            },
-            {
-              urlPattern: /^https:\/\/fonts\.gstatic\.com\/.*/i,
-              handler: 'CacheFirst',
-              options: {
-                cacheName: 'gfonts-webfonts',
-                expiration: { maxEntries: 30, maxAgeSeconds: 60 * 60 * 24 * 365 },
-              },
-            },
-          ],
-          // API REST do plugin nunca entra no SW — sempre rede.
-          navigateFallback: null,
         },
         devOptions: {
           enabled: false,

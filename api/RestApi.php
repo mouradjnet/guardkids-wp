@@ -373,6 +373,24 @@ final class RestApi
             'permission_callback' => $requireToken,
         ]);
 
+        register_rest_route(self::NAMESPACE, '/child/push/key', [
+            'methods'             => \WP_REST_Server::READABLE,
+            'callback'            => [$controller, 'pushKey'],
+            'permission_callback' => $requireToken,
+        ]);
+
+        register_rest_route(self::NAMESPACE, '/child/push/subscribe', [
+            'methods'             => \WP_REST_Server::CREATABLE,
+            'callback'            => [$controller, 'pushSubscribe'],
+            'permission_callback' => $requireToken,
+        ]);
+
+        register_rest_route(self::NAMESPACE, '/child/push/unsubscribe', [
+            'methods'             => \WP_REST_Server::CREATABLE,
+            'callback'            => [$controller, 'pushUnsubscribe'],
+            'permission_callback' => $requireToken,
+        ]);
+
         register_rest_route(self::NAMESPACE, '/child/events', [
             'methods'             => \WP_REST_Server::CREATABLE,
             'callback'            => [$controller, 'eventsCreate'],
