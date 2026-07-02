@@ -34,6 +34,8 @@ final class ChildSelfControllerTest extends TestCase
             public array $requests = [];
             /** @var array<int, array<string, mixed>> */
             public array $sites = [];
+            /** @var array<int, array<string, mixed>> */
+            public array $notifications = [];
 
             public function __construct()
             {
@@ -55,6 +57,14 @@ final class ChildSelfControllerTest extends TestCase
                         return isset($this->settings[$m[1]]) ? '1' : null;
                     }
                     return $this->settings[$m[1]] ?? null;
+                }
+                if (str_contains((string) $sql, 'guardkids_notifications')
+                    && preg_match('/child_id = (\d+)/', (string) $sql, $m) === 1) {
+                    return (string) count(array_filter(
+                        $this->notifications,
+                        static fn (array $r): bool => (int) $r['child_id'] === (int) $m[1]
+                            && ($r['read_at'] ?? null) === null,
+                    ));
                 }
                 return null;
             }
@@ -80,6 +90,22 @@ final class ChildSelfControllerTest extends TestCase
                 if (str_contains((string) $sql, 'guardkids_sites')) {
                     return array_values($this->sites);
                 }
+                if (str_contains((string) $sql, 'guardkids_notifications')) {
+                    $out = $this->notifications;
+                    if (preg_match('/child_id = (\d+)/', (string) $sql, $m) === 1) {
+                        $out = array_values(array_filter(
+                            $out,
+                            static fn (array $r): bool => (int) $r['child_id'] === (int) $m[1],
+                        ));
+                    }
+                    if (preg_match("/dedup_key = '([^']*)'/", (string) $sql, $d) === 1) {
+                        $out = array_values(array_filter(
+                            $out,
+                            static fn (array $r): bool => (string) ($r['dedup_key'] ?? '') === $d[1],
+                        ));
+                    }
+                    return $out;
+                }
                 return [];
             }
 
@@ -98,12 +124,33 @@ final class ChildSelfControllerTest extends TestCase
                     $this->insert_id = 12345;
                     return 1;
                 }
+                if (str_contains((string) $table, 'guardkids_notifications')) {
+                    $id = count($this->notifications) + 1;
+                    $this->notifications[$id] = array_merge(['id' => $id], $data);
+                    return 1;
+                }
                 return 0;
             }
 
             public function update($table, $data, $where, $format = null, $where_format = null)
             {
                 return 1;
+            }
+
+            public function query($sql)
+            {
+                if (str_contains((string) $sql, 'guardkids_notifications')
+                    && preg_match('/child_id = (\d+)/', (string) $sql, $m) === 1) {
+                    $n = 0;
+                    foreach ($this->notifications as &$r) {
+                        if ((int) $r['child_id'] === (int) $m[1] && ($r['read_at'] ?? null) === null) {
+                            $r['read_at'] = '2026-07-02 00:00:00';
+                            $n++;
+                        }
+                    }
+                    return $n;
+                }
+                return 0;
             }
         };
         $GLOBALS['wpdb'] = $this->wpdb;
@@ -184,6 +231,47 @@ final class ChildSelfControllerTest extends TestCase
         $res = (new ChildSelfController())->sitesIndex($req);
         self::assertInstanceOf(WP_Error::class, $res);
         self::assertSame(401, $res->get_error_data()['status']);
+    }
+
+    public function testNotificationsIndexFiltersByChildId(): void
+    {
+        $this->wpdb->notifications = [
+            1 => ['id' => 1, 'child_id' => 1, 'type' => 'blocked', 'title' => 'x', 'body' => null, 'read_at' => null, 'created_at' => '2026-07-02 10:00:00'],
+            2 => ['id' => 2, 'child_id' => 2, 'type' => 'blocked', 'title' => 'y', 'body' => null, 'read_at' => null, 'created_at' => '2026-07-02 10:00:00'],
+        ];
+        $res = (new ChildSelfController())->notificationsIndex($this->authedRequest('GET', '/child/notifications'));
+        self::assertInstanceOf(WP_REST_Response::class, $res);
+        $data = $res->get_data();
+        self::assertCount(1, $data);
+        self::assertSame('blocked', $data[0]['type']);
+        self::assertFalse($data[0]['read']);
+    }
+
+    public function testNotificationsIndexReturns401WithoutToken(): void
+    {
+        $res = (new ChildSelfController())->notificationsIndex(new WP_REST_Request('GET', '/child/notifications'));
+        self::assertInstanceOf(WP_Error::class, $res);
+        self::assertSame(401, $res->get_error_data()['status']);
+    }
+
+    public function testNotificationsReadMarksAll(): void
+    {
+        $this->wpdb->notifications = [
+            1 => ['id' => 1, 'child_id' => 1, 'read_at' => null],
+            2 => ['id' => 2, 'child_id' => 1, 'read_at' => null],
+        ];
+        $res = (new ChildSelfController())->notificationsRead($this->authedRequest('POST', '/child/notifications/read'));
+        self::assertSame(2, $res->get_data()['updated']);
+    }
+
+    public function testMeIncludesUnreadNotifications(): void
+    {
+        $this->wpdb->notifications = [
+            1 => ['id' => 1, 'child_id' => 1, 'read_at' => null],
+        ];
+        $res = (new ChildSelfController())->me($this->authedRequest('GET', '/child/me'));
+        self::assertInstanceOf(WP_REST_Response::class, $res);
+        self::assertSame(1, $res->get_data()['unreadNotifications']);
     }
 
     public function testRequestsCreateInsertsPendingWithChildIdFromToken(): void

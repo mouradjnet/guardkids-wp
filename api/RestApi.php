@@ -361,6 +361,18 @@ final class RestApi
             'permission_callback' => $requireToken,
         ]);
 
+        register_rest_route(self::NAMESPACE, '/child/notifications', [
+            'methods'             => \WP_REST_Server::READABLE,
+            'callback'            => [$controller, 'notificationsIndex'],
+            'permission_callback' => $requireToken,
+        ]);
+
+        register_rest_route(self::NAMESPACE, '/child/notifications/read', [
+            'methods'             => \WP_REST_Server::CREATABLE,
+            'callback'            => [$controller, 'notificationsRead'],
+            'permission_callback' => $requireToken,
+        ]);
+
         register_rest_route(self::NAMESPACE, '/child/events', [
             'methods'             => \WP_REST_Server::CREATABLE,
             'callback'            => [$controller, 'eventsCreate'],

@@ -8,10 +8,12 @@ use GuardKids\Auth\ChildAuth;
 use GuardKids\Auth\ChildPin;
 use GuardKids\Database\ChildRepository;
 use GuardKids\Database\LocationRepository;
+use GuardKids\Database\NotificationRepository;
 use GuardKids\Database\RequestRepository;
 use GuardKids\Database\SettingsRepository;
 use GuardKids\Database\SiteRepository;
 use GuardKids\Database\UsageEventRepository;
+use GuardKids\Notifications\Notifier;
 use GuardKids\Schedule\ScheduleEvaluator;
 use GuardKids\Security\RateLimiter;
 use WP_Error;
@@ -31,6 +33,8 @@ final class ChildSelfController
     private readonly LocationRepository $locations;
     private readonly SettingsRepository $settings;
     private readonly SiteRepository $sites;
+    private readonly NotificationRepository $notifications;
+    private readonly Notifier $notifier;
     private readonly ScheduleEvaluator $evaluator;
     private readonly RateLimiter $limiter;
     private readonly ChildPin $pin;
@@ -44,6 +48,8 @@ final class ChildSelfController
         $this->locations = new LocationRepository();
         $this->settings  = new SettingsRepository();
         $this->sites     = new SiteRepository();
+        $this->notifications = new NotificationRepository();
+        $this->notifier      = new Notifier();
         $this->evaluator = new ScheduleEvaluator();
         $this->limiter   = $limiter ?? new RateLimiter();
         $this->pin       = $pin ?? new ChildPin();
@@ -72,10 +78,15 @@ final class ChildSelfController
 
         $schedule = $this->evaluator->evaluate($row, $now, $usedMin);
 
+        if ($schedule['isBlocked'] === false) {
+            $this->notifier->persistWarnings($childId, $now, $row, $usedMin);
+        }
+
         return rest_ensure_response(
             $this->childToJson($row) + [
-                'schedule'         => $schedule,
-                'pinUnlockEnabled' => $this->pinUnlockEnabled(),
+                'schedule'            => $schedule,
+                'pinUnlockEnabled'    => $this->pinUnlockEnabled(),
+                'unreadNotifications' => $this->notifications->unreadCount($childId),
             ]
         );
     }
@@ -146,6 +157,41 @@ final class ChildSelfController
             ],
             $this->sites->findByList('whitelist'),
         ));
+    }
+
+    public function notificationsIndex(WP_REST_Request $req): WP_REST_Response|WP_Error
+    {
+        $childId = $this->auth->resolveChildId($req);
+        if ($childId === null) {
+            return new WP_Error('child_auth_required', 'Token inválido.', ['status' => 401]);
+        }
+        $rows = $this->notifications->findByChild($childId);
+        return rest_ensure_response(array_map([$this, 'notificationToJson'], $rows));
+    }
+
+    public function notificationsRead(WP_REST_Request $req): WP_REST_Response|WP_Error
+    {
+        $childId = $this->auth->resolveChildId($req);
+        if ($childId === null) {
+            return new WP_Error('child_auth_required', 'Token inválido.', ['status' => 401]);
+        }
+        return rest_ensure_response(['updated' => $this->notifications->markAllRead($childId)]);
+    }
+
+    /**
+     * @param array<string, mixed> $row
+     * @return array<string, mixed>
+     */
+    private function notificationToJson(array $row): array
+    {
+        return [
+            'id'        => (int) ($row['id'] ?? 0),
+            'type'      => (string) ($row['type'] ?? ''),
+            'title'     => (string) ($row['title'] ?? ''),
+            'body'      => $row['body'] ?? null,
+            'read'      => ($row['read_at'] ?? null) !== null,
+            'createdAt' => $row['created_at'] ?? null,
+        ];
     }
 
     public function requestsCreate(WP_REST_Request $req): WP_REST_Response|WP_Error
@@ -232,6 +278,10 @@ final class ChildSelfController
         ]);
         if ($id === 0) {
             return new WP_Error('db_error', 'Não foi possível salvar.', ['status' => 500]);
+        }
+
+        if ($type === 'schedule_block' && $detail !== null) {
+            $this->notifier->notifyBlocked($childId, $detail);
         }
 
         return new WP_REST_Response([
