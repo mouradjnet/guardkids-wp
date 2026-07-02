@@ -93,7 +93,7 @@ describe('Requests', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /pedir site/i }));
     fireEvent.change(screen.getByPlaceholderText(/ex: coolmathgames\.com/i), {
-      target: { value: '  CoolMathGames.com  ' },
+      target: { value: 'https://www.CoolMathGames.com/games ' },
     });
     fireEvent.change(screen.getByPlaceholderText(/tem jogos pra aprender/i), {
       target: { value: 'Tarefa de matemática.' },

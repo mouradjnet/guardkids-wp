@@ -271,8 +271,9 @@ final class GuardianControllerTest extends ControllerIntegrationTestCase
         $this->assertNotNull($row);
         $this->assertSame((int) $created['id'], (int) $row['id']);
 
-        // Token errado nao acha.
-        $bad = (new GuardianRepository())->findByInviteTokenHash(InviteToken::hash('00' . substr($token, 2)));
+        // Token errado nao acha. (Sufixo garante hash diferente — o antigo
+        // '00'.substr(token,2) colidia quando o token começava com "00".)
+        $bad = (new GuardianRepository())->findByInviteTokenHash(InviteToken::hash($token . '-wrong'));
         $this->assertNull($bad);
     }
 
