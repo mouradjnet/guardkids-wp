@@ -25,6 +25,8 @@ final class ContentControllerTest extends TestCase
             public array $settings = [];
             /** @var array<string, array<int, array<string, mixed>>> */
             public array $t = [];
+            /** @var array<int, array<string, mixed>> */
+            public array $children = [];
 
             public function __construct()
             {
@@ -73,6 +75,42 @@ final class ContentControllerTest extends TestCase
                     $this->insert_id = $id;
                     $this->t[$m[1]][$id] = array_merge(['id' => $id], $data);
                     return 1;
+                }
+                return 0;
+            }
+
+            public function get_row($sql, $output = OBJECT, $y = 0)
+            {
+                if (preg_match('/guardkids_(content_[a-z_]+).*WHERE id = (\d+)/s', (string) $sql, $m) === 1) {
+                    return $this->t[$m[1]][(int) $m[2]] ?? null;
+                }
+                if (str_contains((string) $sql, 'guardkids_children') &&
+                    preg_match('/WHERE id = (\d+)/', (string) $sql, $m) === 1) {
+                    return $this->children[(int) $m[1]] ?? null;
+                }
+                return null;
+            }
+
+            public function update($table, $data, $where, $format = null, $where_format = null)
+            {
+                if (preg_match('/guardkids_(content_[a-z_]+)/', (string) $table, $m) === 1) {
+                    $id = (int) ($where['id'] ?? 0);
+                    if (isset($this->t[$m[1]][$id])) {
+                        $this->t[$m[1]][$id] = array_merge($this->t[$m[1]][$id], $data);
+                    }
+                }
+                return 1;
+            }
+
+            public function delete($table, $where, $where_format = null)
+            {
+                if (preg_match('/guardkids_(content_[a-z_]+)/', (string) $table, $m) === 1) {
+                    $id = (int) ($where['id'] ?? 0);
+                    if (isset($this->t[$m[1]][$id])) {
+                        unset($this->t[$m[1]][$id]);
+                        return 1;
+                    }
+                    return 0;
                 }
                 return 0;
             }
@@ -136,5 +174,67 @@ final class ContentControllerTest extends TestCase
         $res = (new ContentController())->addFavorite($req);
         self::assertInstanceOf(WP_Error::class, $res);
         self::assertSame(401, $res->get_error_data()['status']);
+    }
+
+    public function testCreateContentPersistsFields(): void
+    {
+        $req = new WP_REST_Request('POST', '/content');
+        $req->set_param('title', 'Roblox');
+        $req->set_param('categoryId', 1);
+        $req->set_param('ageMin', 7);
+        $req->set_param('ageMax', 9);
+        $req->set_param('url', 'https://roblox.com');
+        $req->set_param('tags', 'jogo, online');
+        $res = (new ContentController())->createContent($req);
+        self::assertSame(201, $res->get_status());
+        $row = $this->wpdb->t['content_items'][1];
+        self::assertSame('Roblox', $row['title']);
+        self::assertSame(7, (int) $row['age_min']);
+    }
+
+    public function testCreateContent422WithoutTitle(): void
+    {
+        $res = (new ContentController())->createContent(new WP_REST_Request('POST', '/content'));
+        self::assertInstanceOf(WP_Error::class, $res);
+        self::assertSame(422, $res->get_error_data()['status']);
+    }
+
+    public function testUpdateAndDeleteContent(): void
+    {
+        $this->wpdb->t['content_items'] = [1 => ['id' => 1, 'title' => 'A']];
+        $up = new WP_REST_Request('PUT', '/content/1');
+        $up['id'] = 1;
+        $up->set_param('title', 'B');
+        (new ContentController())->updateContent($up);
+        self::assertSame('B', $this->wpdb->t['content_items'][1]['title']);
+
+        $del = new WP_REST_Request('DELETE', '/content/1');
+        $del['id'] = 1;
+        $res = (new ContentController())->deleteContent($del);
+        self::assertTrue($res->get_data()['deleted']);
+        self::assertArrayNotHasKey(1, $this->wpdb->t['content_items']);
+    }
+
+    public function testAnalyticsShape(): void
+    {
+        $res = (new ContentController())->analytics(new WP_REST_Request('GET', '/content/analytics'));
+        $data = $res->get_data();
+        self::assertArrayHasKey('mostAccessed', $data);
+        self::assertArrayHasKey('favoriteCategories', $data);
+        self::assertArrayHasKey('timePerCategory', $data);
+    }
+
+    public function testReorderRecommendations(): void
+    {
+        $this->wpdb->t['content_recommendations'] = [
+            1 => ['id' => 1, 'child_id' => 1, 'sort_order' => 0],
+            2 => ['id' => 2, 'child_id' => 1, 'sort_order' => 1],
+        ];
+        $req = new WP_REST_Request('POST', '/content/recommendations/reorder');
+        $req->set_param('child_id', 1);
+        $req->set_param('ids', [2, 1]);
+        $res = (new ContentController())->reorderRecommendations($req);
+        self::assertTrue($res->get_data()['ok']);
+        self::assertSame(0, (int) $this->wpdb->t['content_recommendations'][2]['sort_order']);
     }
 }
