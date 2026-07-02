@@ -355,6 +355,12 @@ final class RestApi
             ],
         ]);
 
+        register_rest_route(self::NAMESPACE, '/child/sites', [
+            'methods'             => \WP_REST_Server::READABLE,
+            'callback'            => [$controller, 'sitesIndex'],
+            'permission_callback' => $requireToken,
+        ]);
+
         register_rest_route(self::NAMESPACE, '/child/events', [
             'methods'             => \WP_REST_Server::CREATABLE,
             'callback'            => [$controller, 'eventsCreate'],

@@ -37,6 +37,22 @@ test.describe('Phase 5 wire-up — usageTracker no PWA real', () => {
         body: JSON.stringify(ME_RESPONSE),
       }),
     );
+
+    // QuickActions (na Home) consome /child/requests; Browser consome /child/sites.
+    await page.route('**/wp-json/guardkids/v1/child/requests**', (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify([]),
+      }),
+    );
+    await page.route('**/wp-json/guardkids/v1/child/sites**', (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify([{ domain: 'khanacademy.org', category: 'Educação' }]),
+      }),
+    );
   });
 
   test('heartbeat POST dispara apos 60s com aba visivel', async ({ page }) => {
@@ -121,8 +137,8 @@ test.describe('Phase 5 wire-up — usageTracker no PWA real', () => {
     // Tab Navegar no BottomNav (exact: 'Começar a Navegar' tambem existe na Home)
     await page.getByRole('button', { name: 'Navegar', exact: true }).click();
 
-    // Primeiro shortcut: Khan Academy → khanacademy.org
-    await page.locator('button:has-text("Khan Academy")').click();
+    // Primeiro shortcut: card mostra o domínio da whitelist real (stub /child/sites)
+    await page.locator('button:has-text("khanacademy.org")').click();
 
     await expect.poll(() => hits.length, { timeout: 3_000 }).toBe(1);
     expect(hits[0]).toEqual({

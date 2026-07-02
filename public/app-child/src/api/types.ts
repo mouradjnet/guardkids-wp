@@ -39,6 +39,11 @@ export type MyRequest = {
   createdAt: string | null;
 };
 
+export type AllowedSite = {
+  domain: string;
+  category: string | null;
+};
+
 export type CreateRequestInput = {
   kind: 'extra_time' | 'unblock_site' | 'other';
   description?: string;

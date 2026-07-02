@@ -10,6 +10,7 @@ use GuardKids\Database\ChildRepository;
 use GuardKids\Database\LocationRepository;
 use GuardKids\Database\RequestRepository;
 use GuardKids\Database\SettingsRepository;
+use GuardKids\Database\SiteRepository;
 use GuardKids\Database\UsageEventRepository;
 use GuardKids\Schedule\ScheduleEvaluator;
 use GuardKids\Security\RateLimiter;
@@ -29,6 +30,7 @@ final class ChildSelfController
     private readonly UsageEventRepository $events;
     private readonly LocationRepository $locations;
     private readonly SettingsRepository $settings;
+    private readonly SiteRepository $sites;
     private readonly ScheduleEvaluator $evaluator;
     private readonly RateLimiter $limiter;
     private readonly ChildPin $pin;
@@ -41,6 +43,7 @@ final class ChildSelfController
         $this->events    = new UsageEventRepository();
         $this->locations = new LocationRepository();
         $this->settings  = new SettingsRepository();
+        $this->sites     = new SiteRepository();
         $this->evaluator = new ScheduleEvaluator();
         $this->limiter   = $limiter ?? new RateLimiter();
         $this->pin       = $pin ?? new ChildPin();
@@ -123,6 +126,26 @@ final class ChildSelfController
         }
         $rows = $this->requests->findByChild($childId);
         return rest_ensure_response(array_map([$this, 'requestToJson'], $rows));
+    }
+
+    /**
+     * Sites liberados (whitelist) pro navegador seguro da criança. Mesma fonte
+     * que o Companion consome; a tabela só guarda domain + category.
+     */
+    public function sitesIndex(WP_REST_Request $req): WP_REST_Response|WP_Error
+    {
+        $childId = $this->auth->resolveChildId($req);
+        if ($childId === null) {
+            return new WP_Error('child_auth_required', 'Token inválido.', ['status' => 401]);
+        }
+
+        return rest_ensure_response(array_map(
+            static fn (array $s): array => [
+                'domain'   => (string) ($s['domain'] ?? ''),
+                'category' => isset($s['category']) && is_string($s['category']) ? $s['category'] : null,
+            ],
+            $this->sites->findByList('whitelist'),
+        ));
     }
 
     public function requestsCreate(WP_REST_Request $req): WP_REST_Response|WP_Error

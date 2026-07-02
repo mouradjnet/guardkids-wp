@@ -32,6 +32,8 @@ final class ChildSelfControllerTest extends TestCase
             public array $children = [];
             /** @var array<int, array<string, mixed>> */
             public array $requests = [];
+            /** @var array<int, array<string, mixed>> */
+            public array $sites = [];
 
             public function __construct()
             {
@@ -74,6 +76,9 @@ final class ChildSelfControllerTest extends TestCase
             {
                 if (str_contains((string) $sql, 'guardkids_requests')) {
                     return array_values($this->requests);
+                }
+                if (str_contains((string) $sql, 'guardkids_sites')) {
+                    return array_values($this->sites);
                 }
                 return [];
             }
@@ -155,6 +160,30 @@ final class ChildSelfControllerTest extends TestCase
         // Validamos o SQL filtrou — fake retorna tudo, mas o método filtra logic deveria ter passado pelo findByChild
         // Verificar via método chamado seria overkill — basta confirmar 200 + array
         self::assertIsArray($res->get_data());
+    }
+
+    public function testSitesIndexReturnsWhitelistDomains(): void
+    {
+        $this->wpdb->sites = [
+            1 => ['id' => 1, 'domain' => 'khanacademy.org', 'category' => 'educação', 'list_type' => 'whitelist'],
+            2 => ['id' => 2, 'domain' => 'duolingo.com', 'category' => null, 'list_type' => 'whitelist'],
+        ];
+
+        $res = (new ChildSelfController())->sitesIndex($this->authedRequest('GET', '/child/sites'));
+        self::assertInstanceOf(WP_REST_Response::class, $res);
+        $data = $res->get_data();
+        self::assertCount(2, $data);
+        self::assertSame('khanacademy.org', $data[0]['domain']);
+        self::assertSame('educação', $data[0]['category']);
+        self::assertNull($data[1]['category']);
+    }
+
+    public function testSitesIndexReturns401WithoutToken(): void
+    {
+        $req = new WP_REST_Request('GET', '/child/sites');
+        $res = (new ChildSelfController())->sitesIndex($req);
+        self::assertInstanceOf(WP_Error::class, $res);
+        self::assertSame(401, $res->get_error_data()['status']);
     }
 
     public function testRequestsCreateInsertsPendingWithChildIdFromToken(): void

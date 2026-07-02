@@ -1,9 +1,27 @@
-import { lastRequest, type PageId } from '../data/mockData';
+import { useQuery } from '@tanstack/react-query';
+import { listMyRequests } from '../api/child';
+import type { MyRequest } from '../api/types';
+import type { PageId } from '../data/mockData';
 import { Icon } from './Icon';
 
 type QuickActionsProps = { onNavigate: (page: PageId) => void };
 
+/** Último pedido aprovado (mais recente por data de decisão/criação), se houver. */
+function latestApproved(requests: MyRequest[]): MyRequest | null {
+  return (
+    requests
+      .filter((r) => r.status === 'approved')
+      .sort((a, b) => (b.decidedAt ?? b.createdAt ?? '').localeCompare(a.decidedAt ?? a.createdAt ?? ''))[0] ?? null
+  );
+}
+
 export function QuickActions({ onNavigate }: QuickActionsProps) {
+  const requestsQuery = useQuery({ queryKey: ['child', 'requests'], queryFn: listMyRequests });
+  const approved = requestsQuery.data ? latestApproved(requestsQuery.data) : null;
+  const approvedLabel = approved
+    ? `${approved.description ?? approved.kind}${approved.highlight ? ` ${approved.highlight}` : ''}`.trim()
+    : null;
+
   return (
     <section className="flex flex-col gap-stack-sm">
       <h3 className="px-1 font-display text-headline-md text-primary">Ações Rápidas</h3>
@@ -34,20 +52,22 @@ export function QuickActions({ onNavigate }: QuickActionsProps) {
         />
       </div>
 
-      <button
-        type="button"
-        onClick={() => onNavigate('requests')}
-        className="mt-2 flex items-center gap-3 rounded-lg border border-outline-variant bg-surface-container p-3 text-left transition-colors hover:bg-surface-container-high"
-      >
-        <div className="shrink-0 rounded-full bg-mint-success/20 p-2 text-mint-success">
-          <Icon name="check_circle" className="text-sm" filled />
-        </div>
-        <div className="flex-1">
-          <p className="text-label-sm text-on-surface">{lastRequest.label}</p>
-          <p className="text-xs font-semibold text-mint-success">Aprovado!</p>
-        </div>
-        <Icon name="chevron_right" className="text-on-surface-variant" />
-      </button>
+      {approvedLabel && (
+        <button
+          type="button"
+          onClick={() => onNavigate('requests')}
+          className="mt-2 flex items-center gap-3 rounded-lg border border-outline-variant bg-surface-container p-3 text-left transition-colors hover:bg-surface-container-high"
+        >
+          <div className="shrink-0 rounded-full bg-mint-success/20 p-2 text-mint-success">
+            <Icon name="check_circle" className="text-sm" filled />
+          </div>
+          <div className="flex-1">
+            <p className="text-label-sm text-on-surface">{approvedLabel}</p>
+            <p className="text-xs font-semibold text-mint-success">Aprovado!</p>
+          </div>
+          <Icon name="chevron_right" className="text-on-surface-variant" />
+        </button>
+      )}
     </section>
   );
 }

@@ -10,6 +10,7 @@ const clearStoredToken = vi.fn();
 
 vi.mock('../api/child', () => ({
   getMe: () => getMe(),
+  listMyRequests: () => Promise.resolve([]),
 }));
 
 vi.mock('../api/token', () => ({
