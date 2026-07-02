@@ -1,4 +1,4 @@
-import { fireEvent, screen } from '@testing-library/react';
+import { fireEvent, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { AllowedSite } from '../api/types';
 import { renderWithClient } from '../test/queryClient';
@@ -25,18 +25,18 @@ describe('Browser', () => {
     trackSiteOpen.mockClear();
   });
 
-  it('renderiza a barra de endereço com a URL inicial', () => {
+  it('a barra de endereço começa vazia', () => {
     listAllowedSites.mockResolvedValueOnce([]);
     renderWithClient(<Browser onNavigate={() => {}} />);
-    expect(screen.getByLabelText('Endereço')).toHaveValue('guardkids://inicio');
+    expect(screen.getByLabelText('Endereço')).toHaveValue('');
   });
 
-  it('atualiza a URL quando o usuário digita', () => {
+  it('atualiza o texto quando o usuário digita', () => {
     listAllowedSites.mockResolvedValueOnce([]);
     renderWithClient(<Browser onNavigate={() => {}} />);
     const input = screen.getByLabelText('Endereço');
-    fireEvent.change(input, { target: { value: 'guardkids://khan' } });
-    expect(input).toHaveValue('guardkids://khan');
+    fireEvent.change(input, { target: { value: 'youtube.com' } });
+    expect(input).toHaveValue('youtube.com');
   });
 
   it('lista os sites liberados vindos da API', async () => {
@@ -72,6 +72,43 @@ describe('Browser', () => {
     fireEvent.click(await screen.findByText('https://canva.com'));
     expect(open).toHaveBeenCalledWith('https://canva.com', '_blank', 'noopener,noreferrer');
     open.mockRestore();
+  });
+
+  it('digitar um site liberado e enviar abre o site (normaliza www/maiúsculas)', async () => {
+    const open = vi.spyOn(window, 'open').mockReturnValue(null);
+    listAllowedSites.mockResolvedValueOnce(sampleSites);
+    renderWithClient(<Browser onNavigate={() => {}} />);
+    await screen.findByText('khanacademy.org'); // garante sites carregados
+    fireEvent.change(screen.getByLabelText('Endereço'), { target: { value: 'www.KhanAcademy.org' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Ir para o site' }));
+    expect(trackSiteOpen).toHaveBeenCalledWith('khanacademy.org');
+    expect(open).toHaveBeenCalledWith('https://khanacademy.org', '_blank', 'noopener,noreferrer');
+    open.mockRestore();
+  });
+
+  it('digitar um site não liberado mostra aviso e o Pedir navega', async () => {
+    const open = vi.spyOn(window, 'open').mockReturnValue(null);
+    listAllowedSites.mockResolvedValueOnce(sampleSites);
+    const onNavigate = vi.fn();
+    renderWithClient(<Browser onNavigate={onNavigate} />);
+    await screen.findByText('khanacademy.org');
+    fireEvent.change(screen.getByLabelText('Endereço'), { target: { value: 'facebook.com' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Ir para o site' }));
+    expect(open).not.toHaveBeenCalled();
+    expect(screen.getByText('Esse site ainda não está liberado.')).toBeInTheDocument();
+    // 2 "Pedir" no DOM (o do aviso e o de "Site novo?"); o do aviso vem primeiro
+    fireEvent.click(screen.getAllByRole('button', { name: 'Pedir' })[0]);
+    expect(onNavigate).toHaveBeenCalledWith('requests');
+    open.mockRestore();
+  });
+
+  it('o botão recarregar refaz a busca de sites', async () => {
+    listAllowedSites.mockResolvedValue(sampleSites);
+    renderWithClient(<Browser onNavigate={() => {}} />);
+    await screen.findByText('khanacademy.org');
+    expect(listAllowedSites).toHaveBeenCalledTimes(1);
+    fireEvent.click(screen.getByRole('button', { name: 'Recarregar' }));
+    await waitFor(() => expect(listAllowedSites).toHaveBeenCalledTimes(2));
   });
 
   it('botão "Pedir" navega para a tela de pedidos', async () => {

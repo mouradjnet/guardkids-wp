@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, type FormEvent } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { listAllowedSites } from '../api/child';
 import type { AllowedSite } from '../api/types';
@@ -21,32 +21,88 @@ function toUrl(domain: string): string {
   return /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
 }
 
+/** Reduz o que a criança digita (ou o domínio salvo) a um host comparável. */
+function normalizeHost(input: string): string {
+  return input
+    .trim()
+    .toLowerCase()
+    .replace(/^https?:\/\//, '')
+    .replace(/^www\./, '')
+    .replace(/\/.*$/, '');
+}
+
 export function Browser({ onNavigate }: BrowserProps) {
-  const [url, setUrl] = useState('guardkids://inicio');
+  const [query, setQuery] = useState('');
+  const [notAllowed, setNotAllowed] = useState(false);
   const sitesQuery = useQuery({ queryKey: ['child', 'sites'], queryFn: listAllowedSites });
+  const sites = sitesQuery.data ?? [];
+
+  function handleSubmit(e: FormEvent) {
+    e.preventDefault();
+    const q = normalizeHost(query);
+    if (!q) return;
+    const match = sites.find((s) => normalizeHost(s.domain) === q);
+    if (match) {
+      getActiveTracker()?.trackSiteOpen(match.domain);
+      window.open(toUrl(match.domain), '_blank', 'noopener,noreferrer');
+      setNotAllowed(false);
+    } else {
+      setNotAllowed(true);
+    }
+  }
 
   return (
     <main className="flex flex-1 flex-col gap-stack-md px-container-padding-mobile py-stack-md">
-      <section className="glass-panel flex items-center gap-2 rounded-2xl px-3 py-2 shadow-ambient">
+      <form
+        onSubmit={handleSubmit}
+        className="glass-panel flex items-center gap-2 rounded-2xl px-3 py-2 shadow-ambient"
+      >
         <div className="flex h-8 w-8 items-center justify-center rounded-full bg-secondary-container/40 text-secondary">
           <Icon name="lock" className="text-base" filled />
         </div>
         <input
           type="text"
-          value={url}
-          onChange={(e) => setUrl(e.target.value)}
+          value={query}
+          onChange={(e) => {
+            setQuery(e.target.value);
+            setNotAllowed(false);
+          }}
           aria-label="Endereço"
           className="flex-1 bg-transparent text-label-md text-on-surface outline-none placeholder:text-on-surface-variant"
-          placeholder="guardkids://inicio"
+          placeholder="Digite um site liberado (ex: youtube.com)"
         />
         <button
+          type="submit"
+          aria-label="Ir para o site"
+          className="rounded-full p-2 text-on-surface-variant hover:bg-surface-variant/50"
+        >
+          <Icon name="arrow_forward" />
+        </button>
+        <button
           type="button"
+          onClick={() => sitesQuery.refetch()}
           aria-label="Recarregar"
           className="rounded-full p-2 text-on-surface-variant hover:bg-surface-variant/50"
         >
           <Icon name="refresh" />
         </button>
-      </section>
+      </form>
+
+      {notAllowed && (
+        <div className="flex items-center justify-between gap-3 rounded-2xl border border-orange-warm/30 bg-orange-warm/10 p-3">
+          <div className="flex items-center gap-2 text-on-surface">
+            <Icon name="info" className="text-lg text-orange-warm" filled />
+            <span className="text-label-sm">Esse site ainda não está liberado.</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => onNavigate('requests')}
+            className="shrink-0 rounded-xl bg-orange-warm px-4 py-2 text-label-md font-semibold text-white shadow-sm transition-colors hover:bg-orange-warm/90"
+          >
+            Pedir
+          </button>
+        </div>
+      )}
 
       <section className="rounded-2xl border border-secondary/30 bg-secondary-container/30 p-3">
         <div className="flex items-center gap-2 text-secondary">
