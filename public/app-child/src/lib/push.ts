@@ -28,7 +28,7 @@ export async function subscribe(): Promise<void> {
   const registration = await navigator.serviceWorker.ready;
   const sub = await registration.pushManager.subscribe({
     userVisibleOnly: true,
-    applicationServerKey: urlBase64ToUint8Array(publicKey),
+    applicationServerKey: urlBase64ToUint8Array(publicKey) as BufferSource,
   });
   const json = sub.toJSON() as { endpoint?: string; keys?: { p256dh?: string; auth?: string } };
   await apiFetch('/child/push/subscribe', {
