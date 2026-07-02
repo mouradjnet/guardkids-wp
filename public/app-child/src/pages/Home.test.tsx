@@ -73,6 +73,17 @@ describe('Home', () => {
     });
   });
 
+  it('em 404 (filho deletado), limpa o token e força reload', async () => {
+    getMe.mockRejectedValueOnce(
+      new ApiError('not_found', 'Filho não encontrado.', 404),
+    );
+    renderWithClient(<Home onNavigate={() => {}} />);
+    await waitFor(() => {
+      expect(clearStoredToken).toHaveBeenCalledTimes(1);
+      expect(window.location.reload).toHaveBeenCalledTimes(1);
+    });
+  });
+
   it('em erro genérico, mostra mensagem amigável', async () => {
     getMe.mockRejectedValueOnce(new Error('offline'));
     renderWithClient(<Home onNavigate={() => {}} />);
