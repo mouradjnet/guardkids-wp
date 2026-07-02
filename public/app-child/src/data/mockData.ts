@@ -46,55 +46,6 @@ export const schedule: ScheduleItem[] = [
   },
 ];
 
-export const lastRequest = {
-  label: 'Pedido de 30 min para Roblox',
-  status: 'approved' as const,
-};
-
-export type AllowedSite = {
-  id: string;
-  name: string;
-  domain: string;
-  icon: string;
-  color: 'primary' | 'orange' | 'mint' | 'violet';
-  description: string;
-};
-
-export const allowedSites: AllowedSite[] = [
-  {
-    id: 'khan',
-    name: 'Khan Academy',
-    domain: 'khanacademy.org',
-    icon: 'school',
-    color: 'primary',
-    description: 'Aulas e exercícios',
-  },
-  {
-    id: 'youtubekids',
-    name: 'YouTube Kids',
-    domain: 'youtubekids.com',
-    icon: 'smart_display',
-    color: 'orange',
-    description: 'Vídeos infantis',
-  },
-  {
-    id: 'duolingo',
-    name: 'Duolingo',
-    domain: 'duolingo.com',
-    icon: 'translate',
-    color: 'mint',
-    description: 'Aprender idiomas',
-  },
-  {
-    id: 'roblox',
-    name: 'Roblox',
-    domain: 'roblox.com',
-    icon: 'stadia_controller',
-    color: 'violet',
-    description: 'Jogos online',
-  },
-];
-
 export type MyRequestStatus = 'pending' | 'approved' | 'denied';
 
 export type MyRequest = {

@@ -142,7 +142,7 @@ function PageRenderer({
 }) {
   switch (page) {
     case 'browser':
-      return <Browser />;
+      return <Browser onNavigate={onNavigate} />;
     case 'requests':
       return <Requests />;
     case 'alerts':

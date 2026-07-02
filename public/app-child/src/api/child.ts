@@ -1,5 +1,5 @@
 import { apiFetch, apiFetchWithToken } from './client';
-import type { Child, CreateRequestInput, MyRequest } from './types';
+import type { AllowedSite, Child, CreateRequestInput, MyRequest } from './types';
 
 export function getMe(): Promise<Child> {
   return apiFetch<Child>('/child/me');
@@ -12,6 +12,11 @@ export function validateToken(token: string): Promise<Child> {
 
 export function listMyRequests(): Promise<MyRequest[]> {
   return apiFetch<MyRequest[]>('/child/requests');
+}
+
+/** Sites liberados (whitelist) pro navegador seguro. */
+export function listAllowedSites(): Promise<AllowedSite[]> {
+  return apiFetch<AllowedSite[]>('/child/sites');
 }
 
 export function createRequest(input: CreateRequestInput): Promise<MyRequest> {

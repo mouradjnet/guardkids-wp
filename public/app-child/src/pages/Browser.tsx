@@ -1,17 +1,23 @@
 import { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { listAllowedSites } from '../api/child';
+import type { AllowedSite } from '../api/types';
 import { Icon } from '../components/Icon';
-import { allowedSites, type AllowedSite } from '../data/mockData';
 import { getActiveTracker } from '../lib/usageTracker';
+import type { PageId } from '../data/mockData';
 
-const colorMap: Record<AllowedSite['color'], { bg: string; text: string }> = {
-  primary: { bg: 'bg-primary-container', text: 'text-on-primary-container' },
-  orange: { bg: 'bg-orange-warm/20', text: 'text-orange-warm' },
-  mint: { bg: 'bg-secondary-container', text: 'text-on-secondary-container' },
-  violet: { bg: 'bg-surface-container-highest', text: 'text-primary' },
-};
+type BrowserProps = { onNavigate: (page: PageId) => void };
 
-export function Browser() {
+const TONES = [
+  { bg: 'bg-primary-container', text: 'text-on-primary-container' },
+  { bg: 'bg-orange-warm/20', text: 'text-orange-warm' },
+  { bg: 'bg-secondary-container', text: 'text-on-secondary-container' },
+  { bg: 'bg-surface-container-highest', text: 'text-primary' },
+];
+
+export function Browser({ onNavigate }: BrowserProps) {
   const [url, setUrl] = useState('guardkids://inicio');
+  const sitesQuery = useQuery({ queryKey: ['child', 'sites'], queryFn: listAllowedSites });
 
   return (
     <main className="flex flex-1 flex-col gap-stack-md px-container-padding-mobile py-stack-md">
@@ -48,11 +54,36 @@ export function Browser() {
 
       <section className="flex flex-col gap-3">
         <h2 className="px-1 font-display text-headline-md text-primary">Seus sites favoritos</h2>
-        <div className="grid grid-cols-2 gap-3">
-          {allowedSites.map((site) => (
-            <SiteShortcut key={site.id} site={site} />
-          ))}
-        </div>
+
+        {sitesQuery.isLoading && (
+          <div className="grid grid-cols-2 gap-3">
+            <div className="glass-panel h-32 animate-pulse rounded-2xl bg-surface-container-low" />
+            <div className="glass-panel h-32 animate-pulse rounded-2xl bg-surface-container-low" />
+          </div>
+        )}
+
+        {sitesQuery.error && (
+          <div className="glass-panel flex flex-col items-center gap-2 rounded-2xl bg-error/5 p-4 text-error">
+            <Icon name="error" className="text-2xl" />
+            <p className="text-label-sm">Não deu pra carregar seus sites agora.</p>
+          </div>
+        )}
+
+        {sitesQuery.data && sitesQuery.data.length === 0 && (
+          <div className="glass-panel flex flex-col items-center justify-center gap-2 rounded-2xl p-6 text-center text-on-surface-variant">
+            <Icon name="travel_explore" className="text-3xl text-primary" filled />
+            <p className="text-label-md font-semibold">Nenhum site liberado ainda</p>
+            <p className="text-label-sm">Peça pros seus pais liberarem um site pra você.</p>
+          </div>
+        )}
+
+        {sitesQuery.data && sitesQuery.data.length > 0 && (
+          <div className="grid grid-cols-2 gap-3">
+            {sitesQuery.data.map((site, i) => (
+              <SiteShortcut key={site.domain} site={site} tone={TONES[i % TONES.length]} />
+            ))}
+          </div>
+        )}
       </section>
 
       <section className="glass-panel mt-2 flex items-center justify-between gap-3 rounded-2xl p-4 shadow-ambient">
@@ -71,6 +102,7 @@ export function Browser() {
         </div>
         <button
           type="button"
+          onClick={() => onNavigate('requests')}
           className="rounded-xl bg-orange-warm px-4 py-2 text-label-md font-semibold text-white shadow-sm transition-colors hover:bg-orange-warm/90"
         >
           Pedir
@@ -90,8 +122,13 @@ export function Browser() {
   );
 }
 
-function SiteShortcut({ site }: { site: AllowedSite }) {
-  const tone = colorMap[site.color];
+function SiteShortcut({
+  site,
+  tone,
+}: {
+  site: AllowedSite;
+  tone: { bg: string; text: string };
+}) {
   function onClick() {
     getActiveTracker()?.trackSiteOpen(site.domain);
   }
@@ -102,15 +139,15 @@ function SiteShortcut({ site }: { site: AllowedSite }) {
       className="glass-panel flex flex-col items-start gap-3 rounded-2xl p-4 text-left shadow-ambient transition-transform active:scale-95"
     >
       <div className={`flex h-12 w-12 items-center justify-center rounded-xl ${tone.bg} ${tone.text}`}>
-        <Icon name={site.icon} className="text-2xl" filled />
+        <Icon name="public" className="text-2xl" filled />
       </div>
-      <div>
-        <div className="font-display text-label-md font-bold text-on-surface">{site.name}</div>
-        <div className="text-label-sm text-on-surface-variant">{site.description}</div>
+      <div className="w-full">
+        <div className="truncate font-display text-label-md font-bold text-on-surface">{site.domain}</div>
+        <div className="text-label-sm text-on-surface-variant">{site.category ?? 'Site liberado'}</div>
       </div>
       <div className="mt-1 flex items-center gap-1 text-label-sm text-secondary">
         <Icon name="lock" className="text-sm" filled />
-        <span className="truncate">{site.domain}</span>
+        <span>Seguro</span>
       </div>
     </button>
   );
