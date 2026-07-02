@@ -14,7 +14,26 @@ final class FavoriteRepository extends Repository
     /** @return array<int, array<string, mixed>> */
     public function findByChild(int $childId): array
     {
-        return $this->findWhere(['child_id' => $childId], 'id', 'DESC');
+        return $this->findWhere(['child_id' => $childId], 'id', 'ASC');
+    }
+
+    public function remove(int $childId, int $contentId): void
+    {
+        $sql = $this->db->prepare(
+            'DELETE FROM ' . $this->table() . ' WHERE child_id = %d AND content_id = %d',
+            $childId,
+            $contentId,
+        );
+        $this->db->query($sql);
+    }
+
+    /** @return array<int, int> */
+    public function contentIdsOf(int $childId): array
+    {
+        return array_map(
+            static fn (array $r): int => (int) $r['content_id'],
+            $this->findByChild($childId),
+        );
     }
 
     /** @return array<int, array<string, mixed>> */

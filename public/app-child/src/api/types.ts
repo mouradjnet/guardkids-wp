@@ -43,6 +43,12 @@ export type Content = {
   url: string | null;
   type: string;
   thumbnail: string | null;
+  ageMin: number;
+  ageMax: number;
+  estimatedMinutes: number | null;
+  level: string | null;
+  tags: string | null;
+  favorited?: boolean;
 };
 
 export type Favorite = { id: number; childId: number; contentId: number; createdAt: string | null };

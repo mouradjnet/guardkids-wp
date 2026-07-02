@@ -1,51 +1,121 @@
-import { useQuery } from '@tanstack/react-query';
-import { getContentSummary } from '../api/content';
+import { useState } from 'react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import {
+  createContent, deleteContent, getAnalytics, listContentCategories, listContents, updateContent,
+  type Content, type ContentInput,
+} from '../api/content';
+import { listChildren } from '../api/children';
+import { ContentForm } from '../components/ContentForm';
+import { RecommendationManager } from '../components/RecommendationManager';
 
-function Metric({ label, value }: { label: string; value: string | number }) {
+function AnalyticsCard({ title, rows }: { title: string; rows: { label: string; value: string | number }[] }) {
   return (
     <div className="rounded-2xl border border-outline-variant bg-surface p-4 shadow-sm">
-      <div className="text-3xl font-bold text-primary">{value}</div>
-      <div className="text-label-md text-on-surface-variant">{label}</div>
+      <h3 className="mb-2 text-label-md font-bold text-on-surface">{title}</h3>
+      {rows.length === 0 ? (
+        <p className="text-label-sm text-on-surface-variant">Sem dados ainda.</p>
+      ) : (
+        <ul className="space-y-1">
+          {rows.map((r) => (
+            <li key={r.label} className="flex justify-between text-label-sm">
+              <span className="text-on-surface-variant">{r.label}</span>
+              <span className="font-semibold text-on-surface">{r.value}</span>
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 }
 
 export function ContentDashboard() {
-  const query = useQuery({ queryKey: ['content', 'summary'], queryFn: getContentSummary });
-  const s = query.data;
+  const qc = useQueryClient();
+  const analytics = useQuery({ queryKey: ['content', 'analytics'], queryFn: getAnalytics });
+  const categories = useQuery({ queryKey: ['content', 'categories'], queryFn: listContentCategories });
+  const contents = useQuery({ queryKey: ['content', 'list'], queryFn: () => listContents() });
+  const children = useQuery({ queryKey: ['children'], queryFn: listChildren });
+  const [editing, setEditing] = useState<Content | null>(null);
+  const [creating, setCreating] = useState(false);
+  const [recChild, setRecChild] = useState(0);
+
+  const invalidate = () => {
+    qc.invalidateQueries({ queryKey: ['content', 'list'] });
+    qc.invalidateQueries({ queryKey: ['content', 'analytics'] });
+  };
+  const save = useMutation({
+    mutationFn: (input: ContentInput) => (editing ? updateContent(editing.id, input) : createContent(input)),
+    onSuccess: () => { invalidate(); setEditing(null); setCreating(false); },
+  });
+  const remove = useMutation({ mutationFn: (id: number) => deleteContent(id), onSuccess: invalidate });
+
+  const a = analytics.data;
+  const list = contents.data ?? [];
 
   return (
     <main className="flex-1 space-y-6 p-6">
-      <div>
+      <div className="flex items-center justify-between">
         <h1 className="font-display text-headline-lg text-on-background">Conteúdo Infantil</h1>
-        <p className="text-body-md text-on-surface-variant">
-          O Mundo Guardião do seu filho. Cadastre conteúdos seguros para ele explorar.
-        </p>
-      </div>
-
-      <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
-        <Metric label="Conteúdos" value={s?.contents ?? 0} />
-        <Metric label="Categorias" value={s?.categories ?? 0} />
-        <Metric label="Favoritos" value={s?.favorites ?? 0} />
-        <Metric label="Recomendações" value={s?.recommendations ?? 0} />
-      </div>
-
-      <div className="rounded-2xl border border-outline-variant bg-surface p-4 shadow-sm">
-        <span className="text-label-md text-on-surface-variant">Última sincronização: </span>
-        <span className="font-semibold text-on-surface">{s?.lastSync ?? 'Nunca'}</span>
-      </div>
-
-      <div className="flex flex-col items-center justify-center gap-3 rounded-2xl border-2 border-dashed border-outline-variant p-10 text-center">
-        <span className="material-symbols-outlined text-5xl text-outline">inventory_2</span>
-        <p className="text-label-lg font-semibold text-on-surface">Nenhum conteúdo cadastrado</p>
-        <button
-          type="button"
-          disabled
-          className="rounded-xl bg-primary px-5 py-2.5 text-label-md font-semibold text-white opacity-60"
-        >
+        <button type="button" onClick={() => { setEditing(null); setCreating(true); }} className="rounded-xl bg-primary px-5 py-2.5 text-label-md font-semibold text-white">
           Adicionar Conteúdo
         </button>
       </div>
+
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+        <AnalyticsCard title="Mais acessados" rows={(a?.mostAccessed ?? []).map((m) => ({ label: m.title, value: `${m.opens}×` }))} />
+        <AnalyticsCard title="Categorias favoritas" rows={(a?.favoriteCategories ?? []).map((c) => ({ label: c.category, value: `${c.opens}×` }))} />
+        <AnalyticsCard title="Tempo por categoria" rows={(a?.timePerCategory ?? []).map((t) => ({ label: t.category, value: `${t.minutes} min` }))} />
+      </div>
+
+      {contents.isLoading ? (
+        <div className="h-24 animate-pulse rounded-2xl bg-surface-container-low" />
+      ) : list.length === 0 ? (
+        <div className="flex flex-col items-center gap-2 rounded-2xl border-2 border-dashed border-outline-variant p-10 text-center">
+          <span className="material-symbols-outlined text-5xl text-outline">inventory_2</span>
+          <p className="text-label-lg font-semibold text-on-surface">Nenhum conteúdo cadastrado</p>
+        </div>
+      ) : (
+        <div className="divide-y divide-outline-variant rounded-2xl border border-outline-variant bg-surface">
+          {list.map((c) => (
+            <div key={c.id} className="flex items-center justify-between p-3">
+              <div>
+                <div className="text-label-md font-semibold text-on-surface">{c.title}</div>
+                <div className="text-label-sm text-on-surface-variant">{c.ageMin}–{c.ageMax} anos{c.tags ? ` · ${c.tags}` : ''}</div>
+              </div>
+              <div className="flex gap-2">
+                <button type="button" onClick={() => { setCreating(false); setEditing(c); }} className="text-primary">Editar</button>
+                <button type="button" onClick={() => remove.mutate(c.id)} className="text-error">Excluir</button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <section className="space-y-3 rounded-2xl border border-outline-variant bg-surface p-4">
+        <div className="flex items-center gap-3">
+          <h2 className="font-display text-headline-md text-on-surface">Recomendações por filho</h2>
+          <select
+            aria-label="Filho"
+            value={recChild}
+            onChange={(e) => setRecChild(Number(e.target.value))}
+            className="rounded-lg border border-outline-variant p-2"
+          >
+            <option value={0} disabled>Escolher filho…</option>
+            {(children.data ?? []).map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+          </select>
+        </div>
+        {recChild > 0 && (
+          <RecommendationManager childId={recChild} contentOptions={list.map((c) => ({ id: c.id, title: c.title }))} />
+        )}
+      </section>
+
+      {(creating || editing) && (
+        <ContentForm
+          categories={categories.data ?? []}
+          initial={editing ?? undefined}
+          onSubmit={(input) => save.mutateAsync(input).then(() => undefined)}
+          onClose={() => { setCreating(false); setEditing(null); }}
+        />
+      )}
     </main>
   );
 }
