@@ -5,11 +5,27 @@ declare(strict_types=1);
 namespace GuardKids\Tests\Unit\Notifications;
 
 use GuardKids\Notifications\Notifier;
+use GuardKids\Notifications\WebPush\PushSender;
 use PHPUnit\Framework\TestCase;
 
 final class NotifierTest extends TestCase
 {
     private \wpdb $wpdb;
+
+    /** Sender no-op — a fase 1 testa só a criação in-app, não o push. */
+    private function notifier(): Notifier
+    {
+        $noop = new class () extends PushSender {
+            public function __construct()
+            {
+            }
+
+            public function sendToChild(int $childId, string $title, string $body): void
+            {
+            }
+        };
+        return new Notifier(null, null, $noop);
+    }
 
     protected function setUp(): void
     {
@@ -63,7 +79,7 @@ final class NotifierTest extends TestCase
 
     public function testNotifyRequestDecidedApproved(): void
     {
-        (new Notifier())->notifyRequestDecided(
+        ($this->notifier())->notifyRequestDecided(
             ['id' => 9, 'child_id' => 1, 'description' => 'Liberar site', 'highlight' => 'canva.com'],
             'approved',
         );
@@ -77,14 +93,14 @@ final class NotifierTest extends TestCase
 
     public function testNotifyRequestDecidedDenied(): void
     {
-        (new Notifier())->notifyRequestDecided(['id' => 3, 'child_id' => 1], 'denied');
+        ($this->notifier())->notifyRequestDecided(['id' => 3, 'child_id' => 1], 'denied');
         self::assertSame('request_denied', $this->wpdb->rows[1]['type']);
         self::assertSame('Seu pedido não foi aprovado', $this->wpdb->rows[1]['title']);
     }
 
     public function testNotifyRequestDecidedIsIdempotent(): void
     {
-        $notifier = new Notifier();
+        $notifier = $this->notifier();
         $req = ['id' => 9, 'child_id' => 1];
         $notifier->notifyRequestDecided($req, 'approved');
         $notifier->notifyRequestDecided($req, 'approved');
@@ -93,7 +109,7 @@ final class NotifierTest extends TestCase
 
     public function testNotifyBlockedUsesDetailTitle(): void
     {
-        (new Notifier())->notifyBlocked(1, 'bedtime');
+        ($this->notifier())->notifyBlocked(1, 'bedtime');
         self::assertSame('blocked', $this->wpdb->rows[1]['type']);
         self::assertSame('Hora de dormir', $this->wpdb->rows[1]['title']);
     }

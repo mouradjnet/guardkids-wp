@@ -8,6 +8,7 @@ use DateTimeImmutable;
 use GuardKids\Database\ChildRepository;
 use GuardKids\Database\NotificationRepository;
 use GuardKids\Database\SiteRepository;
+use GuardKids\Notifications\WebPush\PushSender;
 
 /**
  * Funil único de criação de notificações do app-filho. Cada gatilho vira uma
@@ -20,11 +21,28 @@ final class Notifier
 
     private readonly NotificationRepository $repo;
     private readonly ChildRepository $children;
+    private readonly PushSender $pushSender;
 
-    public function __construct(?NotificationRepository $repo = null, ?ChildRepository $children = null)
+    public function __construct(
+        ?NotificationRepository $repo = null,
+        ?ChildRepository $children = null,
+        ?PushSender $pushSender = null
+    ) {
+        $this->repo       = $repo ?? new NotificationRepository();
+        $this->children   = $children ?? new ChildRepository();
+        $this->pushSender = $pushSender ?? new PushSender();
+    }
+
+    /**
+     * Funil único: cria a notificação e, se for nova, empurra o Web Push.
+     *
+     * @param array{type:string,title:string,body?:?string} $data
+     */
+    private function emit(int $childId, string $dedupKey, array $data): void
     {
-        $this->repo     = $repo ?? new NotificationRepository();
-        $this->children = $children ?? new ChildRepository();
+        if ($this->repo->createIfAbsent($childId, $dedupKey, $data)) {
+            $this->pushSender->sendToChild($childId, (string) $data['title'], (string) ($data['body'] ?? ''));
+        }
     }
 
     /**
@@ -38,7 +56,7 @@ final class Notifier
         }
         $label = trim(((string) ($request['description'] ?? '')) . ' ' . ((string) ($request['highlight'] ?? '')));
         $approved = $decision === 'approved';
-        $this->repo->createIfAbsent($childId, 'req:' . (int) ($request['id'] ?? 0), [
+        $this->emit($childId, 'req:' . (int) ($request['id'] ?? 0), [
             'type'  => $approved ? 'request_approved' : 'request_denied',
             'title' => $approved ? 'Seu pedido foi aprovado! 🎉' : 'Seu pedido não foi aprovado',
             'body'  => $label !== '' ? $label : null,
@@ -53,7 +71,7 @@ final class Notifier
             return;
         }
         foreach ($this->children->findAll() as $child) {
-            $this->repo->createIfAbsent((int) ($child['id'] ?? 0), 'site:' . $domain, [
+            $this->emit((int) ($child['id'] ?? 0), 'site:' . $domain, [
                 'type'  => 'site_allowed',
                 'title' => 'Novo site liberado',
                 'body'  => 'Agora você pode acessar ' . $domain,
@@ -64,7 +82,7 @@ final class Notifier
     public function notifyBlocked(int $childId, string $detail): void
     {
         $titles = ['bedtime' => 'Hora de dormir', 'weekday' => 'Dia bloqueado', 'limit' => 'Tempo esgotado'];
-        $this->repo->createIfAbsent($childId, 'blocked:' . $detail . ':' . gmdate('Y-m-d'), [
+        $this->emit($childId, 'blocked:' . $detail . ':' . gmdate('Y-m-d'), [
             'type'  => 'blocked',
             'title' => $titles[$detail] ?? 'Acesso pausado',
             'body'  => 'O acesso está pausado agora.',
@@ -79,7 +97,7 @@ final class Notifier
     public function persistWarnings(int $childId, DateTimeImmutable $now, array $child, int $usedMinutes): void
     {
         foreach (self::approachingWarnings($child, $usedMinutes, $now) as $w) {
-            $this->repo->createIfAbsent($childId, (string) $w['dedup_key'], [
+            $this->emit($childId, (string) $w['dedup_key'], [
                 'type'  => (string) $w['type'],
                 'title' => (string) $w['title'],
                 'body'  => (string) $w['body'],
