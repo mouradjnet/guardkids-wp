@@ -28,6 +28,12 @@ test.describe('Phase 5 wire-up — usageTracker no PWA real', () => {
       localStorage.setItem(key, value);
     }, { key: TOKEN_KEY, value: FAKE_TOKEN });
 
+    // Neutraliza window.open: o clique no atalho abre o site em nova aba, mas
+    // no e2e não queremos navegar pra internet real (foco é o tracker).
+    await page.addInitScript(() => {
+      window.open = () => null;
+    });
+
     // Stub /child/me pra Home conseguir renderizar nome do child.
     // `**` no fim casa o cache-buster (?_=<ts>) que o client anexa em GET.
     await page.route('**/wp-json/guardkids/v1/child/me**', (route) =>

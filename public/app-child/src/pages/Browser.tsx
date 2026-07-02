@@ -15,6 +15,12 @@ const TONES = [
   { bg: 'bg-surface-container-highest', text: 'text-primary' },
 ];
 
+/** Monta uma URL navegável do domínio da whitelist (que pode vir com ou sem protocolo). */
+function toUrl(domain: string): string {
+  const trimmed = domain.trim();
+  return /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
+}
+
 export function Browser({ onNavigate }: BrowserProps) {
   const [url, setUrl] = useState('guardkids://inicio');
   const sitesQuery = useQuery({ queryKey: ['child', 'sites'], queryFn: listAllowedSites });
@@ -131,6 +137,7 @@ function SiteShortcut({
 }) {
   function onClick() {
     getActiveTracker()?.trackSiteOpen(site.domain);
+    window.open(toUrl(site.domain), '_blank', 'noopener,noreferrer');
   }
   return (
     <button

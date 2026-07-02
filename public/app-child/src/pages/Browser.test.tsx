@@ -55,11 +55,23 @@ describe('Browser', () => {
     expect(await screen.findByText('Nenhum site liberado ainda')).toBeInTheDocument();
   });
 
-  it('rastreia abertura do site via usageTracker ao clicar no atalho', async () => {
+  it('ao clicar no atalho: rastreia e abre o site em nova aba', async () => {
+    const open = vi.spyOn(window, 'open').mockReturnValue(null);
     listAllowedSites.mockResolvedValueOnce(sampleSites);
     renderWithClient(<Browser onNavigate={() => {}} />);
     fireEvent.click(await screen.findByText('khanacademy.org'));
     expect(trackSiteOpen).toHaveBeenCalledWith('khanacademy.org');
+    expect(open).toHaveBeenCalledWith('https://khanacademy.org', '_blank', 'noopener,noreferrer');
+    open.mockRestore();
+  });
+
+  it('domínio com protocolo é aberto sem prefixar https', async () => {
+    const open = vi.spyOn(window, 'open').mockReturnValue(null);
+    listAllowedSites.mockResolvedValueOnce([{ domain: 'https://canva.com', category: null }]);
+    renderWithClient(<Browser onNavigate={() => {}} />);
+    fireEvent.click(await screen.findByText('https://canva.com'));
+    expect(open).toHaveBeenCalledWith('https://canva.com', '_blank', 'noopener,noreferrer');
+    open.mockRestore();
   });
 
   it('botão "Pedir" navega para a tela de pedidos', async () => {
