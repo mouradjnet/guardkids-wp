@@ -18,9 +18,10 @@ const items: {
 type BottomNavProps = {
   activePage: PageId;
   onNavigate: (page: PageId) => void;
+  alertsUnread: number;
 };
 
-export function BottomNav({ activePage, onNavigate }: BottomNavProps) {
+export function BottomNav({ activePage, onNavigate, alertsUnread }: BottomNavProps) {
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-50 flex items-center justify-around border-t border-outline-variant bg-surface/85 pb-safe pt-2 shadow-ambient-up backdrop-blur-md">
       {items.map((item) => {
@@ -36,7 +37,7 @@ export function BottomNav({ activePage, onNavigate }: BottomNavProps) {
                 : 'relative flex flex-col items-center justify-center rounded-xl px-4 py-1.5 text-on-surface-variant transition-transform hover:bg-surface-container-high active:scale-95'
             }
           >
-            {item.badge && !isActive && (
+            {item.badge && !isActive && alertsUnread > 0 && (
               <span className="absolute right-3 top-1 h-2 w-2 rounded-full bg-error" />
             )}
             <Icon name={item.icon} filled={item.filled} />

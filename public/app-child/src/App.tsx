@@ -128,7 +128,11 @@ export default function App() {
     <div className="flex min-h-screen flex-col overflow-x-hidden bg-surface pb-24 text-on-surface">
       <Header activePage={activePage} onNavigate={setActivePage} />
       <PageRenderer page={activePage} onNavigate={setActivePage} />
-      <BottomNav activePage={activePage} onNavigate={setActivePage} />
+      <BottomNav
+        activePage={activePage}
+        onNavigate={setActivePage}
+        alertsUnread={meQuery.data?.unreadNotifications ?? 0}
+      />
     </div>
   );
 }
