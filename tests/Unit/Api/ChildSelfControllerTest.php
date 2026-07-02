@@ -36,6 +36,8 @@ final class ChildSelfControllerTest extends TestCase
             public array $sites = [];
             /** @var array<int, array<string, mixed>> */
             public array $notifications = [];
+            /** @var array<int, array<string, mixed>> */
+            public array $pushSubs = [];
 
             public function __construct()
             {
@@ -90,6 +92,22 @@ final class ChildSelfControllerTest extends TestCase
                 if (str_contains((string) $sql, 'guardkids_sites')) {
                     return array_values($this->sites);
                 }
+                if (str_contains((string) $sql, 'guardkids_push_subscriptions')) {
+                    $out = $this->pushSubs;
+                    if (preg_match("/endpoint = '([^']*)'/", (string) $sql, $e) === 1) {
+                        $out = array_values(array_filter(
+                            $out,
+                            static fn (array $r): bool => (string) ($r['endpoint'] ?? '') === $e[1],
+                        ));
+                    }
+                    if (preg_match('/child_id = (\d+)/', (string) $sql, $c) === 1) {
+                        $out = array_values(array_filter(
+                            $out,
+                            static fn (array $r): bool => (int) ($r['child_id'] ?? 0) === (int) $c[1],
+                        ));
+                    }
+                    return $out;
+                }
                 if (str_contains((string) $sql, 'guardkids_notifications')) {
                     $out = $this->notifications;
                     if (preg_match('/child_id = (\d+)/', (string) $sql, $m) === 1) {
@@ -129,6 +147,11 @@ final class ChildSelfControllerTest extends TestCase
                     $this->notifications[$id] = array_merge(['id' => $id], $data);
                     return 1;
                 }
+                if (str_contains((string) $table, 'guardkids_push_subscriptions')) {
+                    $id = count($this->pushSubs) + 1;
+                    $this->pushSubs[$id] = array_merge(['id' => $id], $data);
+                    return 1;
+                }
                 return 0;
             }
 
@@ -154,6 +177,7 @@ final class ChildSelfControllerTest extends TestCase
             }
         };
         $GLOBALS['wpdb'] = $this->wpdb;
+        $GLOBALS['gk_options'] = [];
 
         $this->wpdb->children[1] = [
             'id' => 1, 'slug' => 'lucas', 'name' => 'Lucas',
@@ -272,6 +296,39 @@ final class ChildSelfControllerTest extends TestCase
         $res = (new ChildSelfController())->me($this->authedRequest('GET', '/child/me'));
         self::assertInstanceOf(WP_REST_Response::class, $res);
         self::assertSame(1, $res->get_data()['unreadNotifications']);
+    }
+
+    public function testPushKeyReturnsVapidPublic(): void
+    {
+        $res = (new ChildSelfController())->pushKey($this->authedRequest('GET', '/child/push/key'));
+        self::assertInstanceOf(WP_REST_Response::class, $res);
+        self::assertNotEmpty($res->get_data()['publicKey']);
+    }
+
+    public function testPushKey401WithoutToken(): void
+    {
+        $res = (new ChildSelfController())->pushKey(new WP_REST_Request('GET', '/child/push/key'));
+        self::assertInstanceOf(WP_Error::class, $res);
+        self::assertSame(401, $res->get_error_data()['status']);
+    }
+
+    public function testPushSubscribePersists(): void
+    {
+        $req = $this->authedRequest('POST', '/child/push/subscribe');
+        $req->set_param('endpoint', 'https://push/abc');
+        $req->set_param('keys', ['p256dh' => 'p', 'auth' => 'a']);
+        $res = (new ChildSelfController())->pushSubscribe($req);
+        self::assertInstanceOf(WP_REST_Response::class, $res);
+        self::assertTrue($res->get_data()['ok']);
+        self::assertNotEmpty($this->wpdb->pushSubs);
+    }
+
+    public function testPushSubscribe422WithoutEndpoint(): void
+    {
+        $req = $this->authedRequest('POST', '/child/push/subscribe');
+        $res = (new ChildSelfController())->pushSubscribe($req);
+        self::assertInstanceOf(WP_Error::class, $res);
+        self::assertSame(422, $res->get_error_data()['status']);
     }
 
     public function testRequestsCreateInsertsPendingWithChildIdFromToken(): void

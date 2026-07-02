@@ -9,11 +9,13 @@ use GuardKids\Auth\ChildPin;
 use GuardKids\Database\ChildRepository;
 use GuardKids\Database\LocationRepository;
 use GuardKids\Database\NotificationRepository;
+use GuardKids\Database\PushSubscriptionRepository;
 use GuardKids\Database\RequestRepository;
 use GuardKids\Database\SettingsRepository;
 use GuardKids\Database\SiteRepository;
 use GuardKids\Database\UsageEventRepository;
 use GuardKids\Notifications\Notifier;
+use GuardKids\Notifications\WebPush\VapidKeys;
 use GuardKids\Schedule\ScheduleEvaluator;
 use GuardKids\Security\RateLimiter;
 use WP_Error;
@@ -35,6 +37,8 @@ final class ChildSelfController
     private readonly SiteRepository $sites;
     private readonly NotificationRepository $notifications;
     private readonly Notifier $notifier;
+    private readonly PushSubscriptionRepository $pushSubs;
+    private readonly VapidKeys $vapidKeys;
     private readonly ScheduleEvaluator $evaluator;
     private readonly RateLimiter $limiter;
     private readonly ChildPin $pin;
@@ -50,6 +54,8 @@ final class ChildSelfController
         $this->sites     = new SiteRepository();
         $this->notifications = new NotificationRepository();
         $this->notifier      = new Notifier();
+        $this->pushSubs      = new PushSubscriptionRepository();
+        $this->vapidKeys     = new VapidKeys();
         $this->evaluator = new ScheduleEvaluator();
         $this->limiter   = $limiter ?? new RateLimiter();
         $this->pin       = $pin ?? new ChildPin();
@@ -192,6 +198,43 @@ final class ChildSelfController
             'read'      => ($row['read_at'] ?? null) !== null,
             'createdAt' => $row['created_at'] ?? null,
         ];
+    }
+
+    public function pushKey(WP_REST_Request $req): WP_REST_Response|WP_Error
+    {
+        if ($this->auth->resolveChildId($req) === null) {
+            return new WP_Error('child_auth_required', 'Token inválido.', ['status' => 401]);
+        }
+        return rest_ensure_response(['publicKey' => $this->vapidKeys->publicKey()]);
+    }
+
+    public function pushSubscribe(WP_REST_Request $req): WP_REST_Response|WP_Error
+    {
+        $childId = $this->auth->resolveChildId($req);
+        if ($childId === null) {
+            return new WP_Error('child_auth_required', 'Token inválido.', ['status' => 401]);
+        }
+        $endpoint = (string) $req->get_param('endpoint');
+        $keys     = $req->get_param('keys');
+        $p256dh   = is_array($keys) ? (string) ($keys['p256dh'] ?? '') : '';
+        $auth     = is_array($keys) ? (string) ($keys['auth'] ?? '') : '';
+        if ($endpoint === '' || $p256dh === '' || $auth === '') {
+            return new WP_Error('invalid_payload', 'Subscription incompleta.', ['status' => 422]);
+        }
+        $this->pushSubs->upsertByEndpoint($childId, $endpoint, $p256dh, $auth);
+        return rest_ensure_response(['ok' => true]);
+    }
+
+    public function pushUnsubscribe(WP_REST_Request $req): WP_REST_Response|WP_Error
+    {
+        if ($this->auth->resolveChildId($req) === null) {
+            return new WP_Error('child_auth_required', 'Token inválido.', ['status' => 401]);
+        }
+        $endpoint = (string) $req->get_param('endpoint');
+        if ($endpoint !== '') {
+            $this->pushSubs->deleteByEndpoint($endpoint);
+        }
+        return rest_ensure_response(['ok' => true]);
     }
 
     public function requestsCreate(WP_REST_Request $req): WP_REST_Response|WP_Error
