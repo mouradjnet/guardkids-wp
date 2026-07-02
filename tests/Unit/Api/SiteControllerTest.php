@@ -20,8 +20,12 @@ final class SiteControllerTest extends TestCase
         $this->wpdb = new class () extends \wpdb {
             public string $prefix = 'wp_';
             public int $insert_id = 0;
-            /** @var array<int, array<string, mixed>> */
+            /** @var array<int, array<string, mixed>> sites */
             public array $rows = [];
+            /** @var array<int, array<string, mixed>> */
+            public array $children = [];
+            /** @var array<int, array<string, mixed>> */
+            public array $notifications = [];
 
             public function __construct()
             {
@@ -46,11 +50,35 @@ final class SiteControllerTest extends TestCase
 
             public function get_results($sql, $output = OBJECT)
             {
+                if (str_contains((string) $sql, 'guardkids_children')) {
+                    return array_values($this->children);
+                }
+                if (str_contains((string) $sql, 'guardkids_notifications')) {
+                    $out = $this->notifications;
+                    if (preg_match('/child_id = (\d+)/', (string) $sql, $m) === 1) {
+                        $out = array_values(array_filter(
+                            $out,
+                            static fn (array $r): bool => (int) $r['child_id'] === (int) $m[1],
+                        ));
+                    }
+                    if (preg_match("/dedup_key = '([^']*)'/", (string) $sql, $d) === 1) {
+                        $out = array_values(array_filter(
+                            $out,
+                            static fn (array $r): bool => (string) ($r['dedup_key'] ?? '') === $d[1],
+                        ));
+                    }
+                    return $out;
+                }
                 return array_values($this->rows);
             }
 
             public function insert($table, $data, $format = null)
             {
+                if (str_contains((string) $table, 'guardkids_notifications')) {
+                    $id = count($this->notifications) + 1;
+                    $this->notifications[$id] = array_merge(['id' => $id], $data);
+                    return 1;
+                }
                 $this->insert_id = count($this->rows) + 1;
                 $this->rows[$this->insert_id] = array_merge(['id' => $this->insert_id], $data);
                 return 1;
@@ -114,6 +142,35 @@ final class SiteControllerTest extends TestCase
         $res = (new SiteController(new AlwaysAllowGate()))->create($req);
         self::assertInstanceOf(WP_Error::class, $res);
         self::assertSame(422, $res->get_error_data()['status']);
+    }
+
+    public function testCreateWhitelistNotifiesChildrenWithNormalizedDomain(): void
+    {
+        $this->wpdb->children = [1 => ['id' => 1, 'name' => 'Lucas']];
+
+        $req = new WP_REST_Request('POST', '/sites');
+        $req->set_param('domain', 'https://www.canva.com/design');
+        $req->set_param('list_type', 'whitelist');
+
+        (new SiteController(new AlwaysAllowGate()))->create($req);
+
+        self::assertNotEmpty($this->wpdb->notifications);
+        $last = $this->wpdb->notifications[array_key_last($this->wpdb->notifications)];
+        self::assertSame('site_allowed', $last['type']);
+        self::assertSame('Agora você pode acessar canva.com', $last['body']);
+    }
+
+    public function testCreateBlacklistDoesNotNotify(): void
+    {
+        $this->wpdb->children = [1 => ['id' => 1, 'name' => 'Lucas']];
+
+        $req = new WP_REST_Request('POST', '/sites');
+        $req->set_param('domain', 'tiktok.com');
+        $req->set_param('list_type', 'blacklist');
+
+        (new SiteController(new AlwaysAllowGate()))->create($req);
+
+        self::assertEmpty($this->wpdb->notifications);
     }
 
     public function testDestroyDeletesAndReturnsConfirmation(): void

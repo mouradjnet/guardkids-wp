@@ -6,6 +6,7 @@ namespace GuardKids\Api\Controllers;
 
 use GuardKids\Database\SiteRepository;
 use GuardKids\License\Gate;
+use GuardKids\Notifications\Notifier;
 use WP_Error;
 use WP_REST_Request;
 use WP_REST_Response;
@@ -14,11 +15,13 @@ final class SiteController
 {
     private readonly SiteRepository $repo;
     private readonly Gate $gate;
+    private readonly Notifier $notifier;
 
     public function __construct(?Gate $gate = null)
     {
-        $this->repo = new SiteRepository();
-        $this->gate = $gate ?? new Gate();
+        $this->repo     = new SiteRepository();
+        $this->gate     = $gate ?? new Gate();
+        $this->notifier = new Notifier();
     }
 
     /**
@@ -72,6 +75,11 @@ final class SiteController
         if ($id === 0) {
             return new WP_Error('db_error', 'Não foi possível salvar.', ['status' => 500]);
         }
+
+        if (((string) ($req->get_param('list_type') ?? 'whitelist')) === 'whitelist') {
+            $this->notifier->notifySiteAllowed($domain);
+        }
+
         return new WP_REST_Response($this->toJson($this->repo->findById($id) ?? []), 201);
     }
 
