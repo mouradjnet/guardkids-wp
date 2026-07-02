@@ -56,6 +56,7 @@ export type PageId =
   | 'approvals'
   | 'sites-rules'
   | 'content'
+  | 'gamification'
   | 'time'
   | 'reports'
   | 'settings'
@@ -263,6 +264,7 @@ export const navItems = [
   { id: 'approvals' as PageId, label: 'Aprovações', icon: 'task_alt', badge: 2 },
   { id: 'sites-rules' as PageId, label: 'Sites & Regras', icon: 'app_blocking' },
   { id: 'content' as PageId, label: 'Conteúdo Infantil', icon: 'auto_stories' },
+  { id: 'gamification' as PageId, label: 'Gamificação', icon: 'stadia_controller' },
   { id: 'time' as PageId, label: 'Limites de Tempo', icon: 'timer' },
   { id: 'reports' as PageId, label: 'Relatórios', icon: 'monitoring' },
   { id: 'settings' as PageId, label: 'Configurações', icon: 'settings' },

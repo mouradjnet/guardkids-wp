@@ -7,6 +7,7 @@ import { Approvals } from './pages/Approvals';
 import { Children } from './pages/Children';
 import { ContentDashboard } from './pages/ContentDashboard';
 import { Dashboard } from './pages/Dashboard';
+import { GamificationDashboard } from './pages/GamificationDashboard';
 import { License } from './pages/License';
 import { Localizacao } from './pages/Localizacao';
 import { ProtectionMode } from './pages/ProtectionMode';
@@ -46,6 +47,8 @@ function PageRenderer({ page }: { page: PageId }) {
       return <SitesRules />;
     case 'content':
       return <ContentDashboard />;
+    case 'gamification':
+      return <GamificationDashboard />;
     case 'time':
       return <TimeLimits />;
     case 'reports':
