@@ -11,6 +11,7 @@ import { Blocked } from './pages/Blocked';
 import { Browser } from './pages/Browser';
 import { Home } from './pages/Home';
 import { Localizacao } from './pages/Localizacao';
+import { Loja } from './pages/Loja';
 import { Mundo } from './pages/Mundo';
 import { PairScreen } from './pages/PairScreen';
 import { Requests } from './pages/Requests';
@@ -156,6 +157,8 @@ function PageRenderer({
       return <Alerts />;
     case 'location':
       return <Localizacao />;
+    case 'store':
+      return <Loja onNavigate={onNavigate} />;
     case 'home':
     default:
       return <Home onNavigate={onNavigate} />;
