@@ -33,6 +33,7 @@ $tables = [
     $wpdb->prefix . 'guardkids_content_history',
     $wpdb->prefix . 'guardkids_progression',
     $wpdb->prefix . 'guardkids_progression_awards',
+    $wpdb->prefix . 'guardkids_mission_completions',
 ];
 
 foreach ($tables as $table) {
