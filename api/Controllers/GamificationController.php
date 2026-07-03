@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace GuardKids\Api\Controllers;
 
 use GuardKids\Auth\ChildAuth;
+use GuardKids\Database\MissionCompletionRepository;
 use GuardKids\Database\ProgressionRepository;
 use GuardKids\Progression\LevelCurve;
 use WP_Error;
@@ -18,11 +19,13 @@ use WP_REST_Response;
 final class GamificationController
 {
     private readonly ProgressionRepository $progression;
+    private readonly MissionCompletionRepository $missions;
     private readonly ChildAuth $auth;
 
     public function __construct()
     {
         $this->progression = new ProgressionRepository();
+        $this->missions = new MissionCompletionRepository();
         $this->auth        = new ChildAuth();
     }
 
@@ -44,7 +47,7 @@ final class GamificationController
             'coins'             => $w['coins'],
             'level'             => $w['level'],
             'streakDays'        => $w['streakDays'],
-            'missionsCompleted' => 0,
+            'missionsCompleted' => $this->missions->countCompleted($childId),
         ]);
     }
 
