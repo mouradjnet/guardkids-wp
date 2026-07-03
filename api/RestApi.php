@@ -23,6 +23,7 @@ use GuardKids\Api\Controllers\MeController;
 use GuardKids\Api\Controllers\PrivacyController;
 use GuardKids\Api\Controllers\ContentController;
 use GuardKids\Api\Controllers\GamificationController;
+use GuardKids\Api\Controllers\MissionController;
 use GuardKids\Auth\ChildAuth;
 use GuardKids\Auth\GuardianAuth;
 
@@ -78,6 +79,13 @@ final class RestApi
             'methods'             => \WP_REST_Server::READABLE,
             'callback'            => [$controller, 'progression'],
             'permission_callback' => [self::class, 'requireAdmin'],
+        ]);
+
+        $missions = new MissionController();
+        register_rest_route(self::NAMESPACE, '/child/missions', [
+            'methods'             => \WP_REST_Server::READABLE,
+            'callback'            => [$missions, 'childMissions'],
+            'permission_callback' => (new ChildAuth())->requireToken(),
         ]);
     }
 
