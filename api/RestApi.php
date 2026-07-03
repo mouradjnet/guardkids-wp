@@ -25,6 +25,8 @@ use GuardKids\Api\Controllers\ContentController;
 use GuardKids\Api\Controllers\GamificationController;
 use GuardKids\Api\Controllers\MissionController;
 use GuardKids\Api\Controllers\MedalController;
+use GuardKids\Api\Controllers\RewardController;
+use GuardKids\Api\Controllers\RedemptionController;
 use GuardKids\Auth\ChildAuth;
 use GuardKids\Auth\GuardianAuth;
 
@@ -64,6 +66,7 @@ final class RestApi
         $this->registerCompanionRoutes();
         $this->registerContentRoutes();
         $this->registerGamificationRoutes();
+        $this->registerRewardsRoutes();
     }
 
     private function registerGamificationRoutes(): void
@@ -94,6 +97,46 @@ final class RestApi
             'methods'             => \WP_REST_Server::READABLE,
             'callback'            => [$medals, 'childMedals'],
             'permission_callback' => (new ChildAuth())->requireToken(),
+        ]);
+    }
+
+    private function registerRewardsRoutes(): void
+    {
+        $rewards     = new RewardController();
+        $redemptions = new RedemptionController();
+
+        register_rest_route(self::NAMESPACE, '/rewards', [
+            ['methods' => \WP_REST_Server::READABLE,  'callback' => [$rewards, 'index'],  'permission_callback' => [self::class, 'requireAdmin']],
+            ['methods' => \WP_REST_Server::CREATABLE, 'callback' => [$rewards, 'create'], 'permission_callback' => [self::class, 'requireAdmin']],
+        ]);
+        register_rest_route(self::NAMESPACE, '/rewards/(?P<id>\d+)', [
+            ['methods' => \WP_REST_Server::EDITABLE,  'callback' => [$rewards, 'update'],  'permission_callback' => [self::class, 'requireAdmin']],
+            ['methods' => \WP_REST_Server::DELETABLE, 'callback' => [$rewards, 'destroy'], 'permission_callback' => [self::class, 'requireAdmin']],
+        ]);
+        register_rest_route(self::NAMESPACE, '/child/rewards', [
+            'methods'             => \WP_REST_Server::READABLE,
+            'callback'            => [$rewards, 'childRewards'],
+            'permission_callback' => (new ChildAuth())->requireToken(),
+        ]);
+
+        register_rest_route(self::NAMESPACE, '/child/redemptions', [
+            ['methods' => \WP_REST_Server::CREATABLE, 'callback' => [$redemptions, 'childCreate'], 'permission_callback' => (new ChildAuth())->requireToken()],
+            ['methods' => \WP_REST_Server::READABLE,  'callback' => [$redemptions, 'childIndex'],  'permission_callback' => (new ChildAuth())->requireToken()],
+        ]);
+        register_rest_route(self::NAMESPACE, '/redemptions', [
+            'methods'             => \WP_REST_Server::READABLE,
+            'callback'            => [$redemptions, 'index'],
+            'permission_callback' => [self::class, 'requireAdmin'],
+        ]);
+        register_rest_route(self::NAMESPACE, '/redemptions/(?P<id>\d+)/approve', [
+            'methods'             => \WP_REST_Server::CREATABLE,
+            'callback'            => [$redemptions, 'approve'],
+            'permission_callback' => [self::class, 'requireAdmin'],
+        ]);
+        register_rest_route(self::NAMESPACE, '/redemptions/(?P<id>\d+)/deny', [
+            'methods'             => \WP_REST_Server::CREATABLE,
+            'callback'            => [$redemptions, 'deny'],
+            'permission_callback' => [self::class, 'requireAdmin'],
         ]);
     }
 
