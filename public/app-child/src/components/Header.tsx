@@ -13,6 +13,7 @@ const titles: Record<PageId, string> = {
   alerts: 'Avisos',
   blocked: '',
   location: 'Minha Localização',
+  store: 'Loja de Recompensas',
 };
 
 type HeaderProps = {

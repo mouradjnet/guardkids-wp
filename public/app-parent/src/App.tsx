@@ -11,6 +11,7 @@ import { GamificationDashboard } from './pages/GamificationDashboard';
 import { License } from './pages/License';
 import { Localizacao } from './pages/Localizacao';
 import { ProtectionMode } from './pages/ProtectionMode';
+import { Recompensas } from './pages/Recompensas';
 import { Reports } from './pages/Reports';
 import { Settings } from './pages/Settings';
 import { SitesRules } from './pages/SitesRules';
@@ -49,6 +50,8 @@ function PageRenderer({ page }: { page: PageId }) {
       return <ContentDashboard />;
     case 'gamification':
       return <GamificationDashboard />;
+    case 'rewards':
+      return <Recompensas />;
     case 'time':
       return <TimeLimits />;
     case 'reports':

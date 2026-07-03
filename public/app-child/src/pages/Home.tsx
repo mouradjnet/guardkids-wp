@@ -56,6 +56,17 @@ export function Home({ onNavigate }: HomeProps) {
       <ProgressCard />
       <MissionsCard />
       <MedalsCard />
+      <button
+        type="button"
+        onClick={() => onNavigate('store')}
+        className="flex items-center justify-between rounded-2xl bg-surface-container p-4 text-left shadow-sm"
+      >
+        <span className="flex items-center gap-2">
+          <Icon name="storefront" className="text-xl text-primary" filled />
+          <span className="font-display text-label-md font-bold text-on-surface">Loja de Recompensas</span>
+        </span>
+        <Icon name="chevron_right" className="text-on-surface-variant" />
+      </button>
       <Welcome child={child} />
       <ScreenTime child={child} />
       <QuickActions onNavigate={onNavigate} />

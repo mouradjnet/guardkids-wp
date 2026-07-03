@@ -63,4 +63,22 @@ final class ProgressionRepository extends Repository
             'last_activity_date' => $lastActivityDate,
         ]);
     }
+
+    /**
+     * Deduz coins de forma atômica: só desconta se o saldo cobrir. Um único
+     * UPDATE ... WHERE coins >= X é atômico sob o lock de linha do MySQL —
+     * sem read-modify-write, impossível ficar negativo.
+     */
+    public function spend(int $childId, int $coins): bool
+    {
+        $sql = $this->db->prepare(
+            'UPDATE ' . $this->table() . ' SET coins = coins - %d, updated_at = %s '
+            . 'WHERE child_id = %d AND coins >= %d',
+            $coins,
+            current_time('mysql', true),
+            $childId,
+            $coins,
+        );
+        return $this->db->query($sql) === 1;
+    }
 }
