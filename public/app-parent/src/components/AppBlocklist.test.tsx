@@ -41,7 +41,9 @@ describe('AppBlocklist', () => {
     wrap(<AppBlocklist childId={3} />);
 
     const tiktok = await screen.findByRole('checkbox', { name: /tiktok/i });
-    expect(tiktok).toBeChecked();
+    // selected é preenchido num useEffect após a query resolver, então há um
+    // render intermediário com o checkbox ainda desmarcado; espera o sync.
+    await waitFor(() => expect(tiktok).toBeChecked());
     const wa = screen.getByRole('checkbox', { name: /whatsapp/i });
     expect(wa).not.toBeChecked();
 
