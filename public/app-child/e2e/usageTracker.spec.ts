@@ -59,6 +59,37 @@ test.describe('Phase 5 wire-up — usageTracker no PWA real', () => {
         body: JSON.stringify([{ domain: 'khanacademy.org', category: 'Educação' }]),
       }),
     );
+
+    // Cards de gamificação na Home (ProgressCard/MissionsCard/MedalsCard).
+    // Sem stub, a rota fica pendente no harness e trava a renderização da Home.
+    await page.route('**/wp-json/guardkids/v1/child/progression**', (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          xp: 0,
+          coins: 0,
+          level: 1,
+          xpIntoLevel: 0,
+          xpForNextLevel: 100,
+          streakDays: 0,
+        }),
+      }),
+    );
+    await page.route('**/wp-json/guardkids/v1/child/missions**', (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify([]),
+      }),
+    );
+    await page.route('**/wp-json/guardkids/v1/child/medals**', (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify([]),
+      }),
+    );
   });
 
   test('heartbeat POST dispara apos 60s com aba visivel', async ({ page }) => {
