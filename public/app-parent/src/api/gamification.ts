@@ -6,6 +6,7 @@ export type ChildProgression = {
   level: number;
   streakDays: number;
   missionsCompleted: number;
+  medalsUnlocked: number;
 };
 
 export function getChildProgression(childId: number): Promise<ChildProgression> {

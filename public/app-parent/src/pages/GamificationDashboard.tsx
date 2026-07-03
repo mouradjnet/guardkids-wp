@@ -14,6 +14,7 @@ function ChildProgressCard({ child }: { child: Child }) {
     { label: 'XP', value: p?.xp ?? 0 },
     { label: 'GuardCoins', value: p?.coins ?? 0 },
     { label: 'Missões concluídas', value: p?.missionsCompleted ?? 0 },
+    { label: 'Medalhas', value: p?.medalsUnlocked ?? 0 },
     { label: 'Dias consecutivos', value: p?.streakDays ?? 0 },
   ];
   return (
