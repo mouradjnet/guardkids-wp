@@ -14,12 +14,13 @@ function ChildProgressCard({ child }: { child: Child }) {
     { label: 'XP', value: p?.xp ?? 0 },
     { label: 'GuardCoins', value: p?.coins ?? 0 },
     { label: 'Missões concluídas', value: p?.missionsCompleted ?? 0 },
+    { label: 'Medalhas', value: p?.medalsUnlocked ?? 0 },
     { label: 'Dias consecutivos', value: p?.streakDays ?? 0 },
   ];
   return (
     <div className="rounded-2xl border border-outline-variant bg-surface p-4 shadow-sm">
       <h3 className="mb-3 font-display text-headline-md text-on-surface">{child.name}</h3>
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-6">
         {metrics.map((m) => (
           <div key={m.label}>
             <div className="text-2xl font-bold text-primary">{m.value}</div>

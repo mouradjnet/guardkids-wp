@@ -55,6 +55,14 @@ final class GamificationControllerTest extends TestCase
                         static fn ($r) => (int) ($r['child_id'] ?? 0) === $cid,
                     ));
                 }
+                if (str_contains((string) $sql, 'COUNT(*)') && str_contains((string) $sql, 'medal_unlocks')) {
+                    preg_match('/child_id = (\d+)/', (string) $sql, $mc);
+                    $cid = (int) ($mc[1] ?? 0);
+                    return (string) count(array_filter(
+                        $this->t['medal_unlocks'] ?? [],
+                        static fn ($r) => (int) ($r['child_id'] ?? 0) === $cid,
+                    ));
+                }
                 return null;
             }
 
@@ -160,6 +168,22 @@ final class GamificationControllerTest extends TestCase
         $req->set_param('child_id', 5);
         $data = (new GamificationController())->progression($req)->get_data();
         self::assertSame(2, $data['missionsCompleted']);
+    }
+
+    public function testParentProgressionCountsUnlockedMedals(): void
+    {
+        $this->wpdb->t['progression'] = [
+            1 => ['id' => 1, 'child_id' => 5, 'xp' => 150, 'coins' => 20, 'streak_days' => 3, 'last_activity_date' => '2026-07-02'],
+        ];
+        $this->wpdb->t['medal_unlocks'] = [
+            1 => ['id' => 1, 'child_id' => 5, 'medal_key' => 'explorer_10', 'unlocked_date' => '2026-07-02'],
+            2 => ['id' => 2, 'child_id' => 5, 'medal_key' => 'faithful_7', 'unlocked_date' => '2026-07-02'],
+            3 => ['id' => 3, 'child_id' => 9, 'medal_key' => 'explorer_10', 'unlocked_date' => '2026-07-02'],
+        ];
+        $req = new WP_REST_Request('GET', '/progression');
+        $req->set_param('child_id', 5);
+        $data = (new GamificationController())->progression($req)->get_data();
+        self::assertSame(2, $data['medalsUnlocked']);
     }
 
     public function testChildHistoryOpenCreditsProgression(): void

@@ -24,6 +24,7 @@ use GuardKids\Api\Controllers\PrivacyController;
 use GuardKids\Api\Controllers\ContentController;
 use GuardKids\Api\Controllers\GamificationController;
 use GuardKids\Api\Controllers\MissionController;
+use GuardKids\Api\Controllers\MedalController;
 use GuardKids\Auth\ChildAuth;
 use GuardKids\Auth\GuardianAuth;
 
@@ -85,6 +86,13 @@ final class RestApi
         register_rest_route(self::NAMESPACE, '/child/missions', [
             'methods'             => \WP_REST_Server::READABLE,
             'callback'            => [$missions, 'childMissions'],
+            'permission_callback' => (new ChildAuth())->requireToken(),
+        ]);
+
+        $medals = new MedalController();
+        register_rest_route(self::NAMESPACE, '/child/medals', [
+            'methods'             => \WP_REST_Server::READABLE,
+            'callback'            => [$medals, 'childMedals'],
             'permission_callback' => (new ChildAuth())->requireToken(),
         ]);
     }

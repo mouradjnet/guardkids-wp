@@ -14,12 +14,14 @@ describe('GamificationDashboard', () => {
     getChildProgression.mockReset();
   });
 
-  it('mostra um card por filho com nível e coins', async () => {
+  it('mostra um card por filho com nível, coins e medalhas', async () => {
     listChildren.mockResolvedValueOnce([{ id: 5, name: 'Lucas' }]);
-    getChildProgression.mockResolvedValue({ xp: 150, coins: 20, level: 2, streakDays: 3, missionsCompleted: 0 });
+    getChildProgression.mockResolvedValue({ xp: 150, coins: 20, level: 2, streakDays: 3, missionsCompleted: 0, medalsUnlocked: 4 });
     renderWithClient(<GamificationDashboard />);
     expect(await screen.findByText('Lucas')).toBeInTheDocument();
     expect(await screen.findByText(/nível 2/i)).toBeInTheDocument();
+    expect(await screen.findByText('Medalhas')).toBeInTheDocument();
+    expect(await screen.findByText('4')).toBeInTheDocument();
   });
 
   it('mostra estado vazio sem filhos', async () => {

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace GuardKids\Api\Controllers;
 
 use GuardKids\Auth\ChildAuth;
+use GuardKids\Database\MedalUnlockRepository;
 use GuardKids\Database\MissionCompletionRepository;
 use GuardKids\Database\ProgressionRepository;
 use GuardKids\Progression\LevelCurve;
@@ -20,12 +21,14 @@ final class GamificationController
 {
     private readonly ProgressionRepository $progression;
     private readonly MissionCompletionRepository $missions;
+    private readonly MedalUnlockRepository $medals;
     private readonly ChildAuth $auth;
 
     public function __construct()
     {
         $this->progression = new ProgressionRepository();
         $this->missions = new MissionCompletionRepository();
+        $this->medals = new MedalUnlockRepository();
         $this->auth        = new ChildAuth();
     }
 
@@ -48,6 +51,7 @@ final class GamificationController
             'level'             => $w['level'],
             'streakDays'        => $w['streakDays'],
             'missionsCompleted' => $this->missions->countCompleted($childId),
+            'medalsUnlocked'    => $this->medals->countUnlocked($childId),
         ]);
     }
 
