@@ -37,6 +37,21 @@ final class MedalUnlockRepository extends Repository
         return $ok === false ? 0 : (int) $this->db->insert_id;
     }
 
+    /**
+     * @return array<int, string>
+     */
+    public function unlockedKeys(int $childId): array
+    {
+        $sql = $this->db->prepare(
+            'SELECT medal_key FROM ' . $this->table() . ' WHERE child_id = %d',
+            $childId,
+        );
+        $rows = $this->db->get_results($sql, ARRAY_A);
+        return is_array($rows)
+            ? array_map(static fn ($r) => (string) $r['medal_key'], $rows)
+            : [];
+    }
+
     public function countUnlocked(int $childId): int
     {
         $sql = $this->db->prepare(
