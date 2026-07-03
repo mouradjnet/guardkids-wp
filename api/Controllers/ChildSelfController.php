@@ -6,9 +6,11 @@ namespace GuardKids\Api\Controllers;
 
 use GuardKids\Auth\ChildAuth;
 use GuardKids\Auth\ChildPin;
+use GuardKids\Avatars\AvatarCatalog;
 use GuardKids\Database\ChildRepository;
 use GuardKids\Database\LocationRepository;
 use GuardKids\Database\NotificationRepository;
+use GuardKids\Database\ProgressionRepository;
 use GuardKids\Database\PushSubscriptionRepository;
 use GuardKids\Database\RequestRepository;
 use GuardKids\Database\SettingsRepository;
@@ -38,6 +40,7 @@ final class ChildSelfController
     private readonly NotificationRepository $notifications;
     private readonly Notifier $notifier;
     private readonly PushSubscriptionRepository $pushSubs;
+    private readonly ProgressionRepository $progression;
     private readonly VapidKeys $vapidKeys;
     private readonly ScheduleEvaluator $evaluator;
     private readonly RateLimiter $limiter;
@@ -55,6 +58,7 @@ final class ChildSelfController
         $this->notifications = new NotificationRepository();
         $this->notifier      = new Notifier();
         $this->pushSubs      = new PushSubscriptionRepository();
+        $this->progression   = new ProgressionRepository();
         $this->vapidKeys     = new VapidKeys();
         $this->evaluator = new ScheduleEvaluator();
         $this->limiter   = $limiter ?? new RateLimiter();
@@ -93,8 +97,28 @@ final class ChildSelfController
                 'schedule'            => $schedule,
                 'pinUnlockEnabled'    => $this->pinUnlockEnabled(),
                 'unreadNotifications' => $this->notifications->unreadCount($childId),
+                'avatarEmoji'         => $this->avatarEmoji($childId),
             ]
         );
+    }
+
+    /**
+     * Emoji do avatar equipado (progression.equipped_avatar → AvatarCatalog),
+     * ou null se sem carteira / avatar default / chave desconhecida.
+     */
+    private function avatarEmoji(int $childId): ?string
+    {
+        $wallet = $this->progression->findByChild($childId);
+        $key = $wallet !== null ? ($wallet['equipped_avatar'] ?? null) : null;
+        if (! is_string($key) || $key === '') {
+            return null;
+        }
+        foreach (AvatarCatalog::all() as $a) {
+            if ($a['key'] === $key) {
+                return $a['emoji'];
+            }
+        }
+        return null;
     }
 
     /**
