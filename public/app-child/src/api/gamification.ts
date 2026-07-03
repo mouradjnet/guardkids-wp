@@ -12,3 +12,20 @@ export type Progression = {
 export function getProgression(): Promise<Progression> {
   return apiFetch<Progression>('/child/progression');
 }
+
+export type Mission = {
+  key: string;
+  title: string;
+  description: string;
+  icon: string;
+  target: number;
+  progress: number;
+  completed: boolean;
+  justCompleted: boolean;
+  xpReward: number;
+  coinsReward: number;
+};
+
+export function getMissions(): Promise<Mission[]> {
+  return apiFetch<Mission[]>('/child/missions');
+}

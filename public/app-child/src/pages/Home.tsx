@@ -3,6 +3,7 @@ import { getMe } from '../api/child';
 import { ApiError } from '../api/client';
 import { clearStoredToken } from '../api/token';
 import { Icon } from '../components/Icon';
+import { MissionsCard } from '../components/MissionsCard';
 import { ProgressCard } from '../components/ProgressCard';
 import { QuickActions } from '../components/QuickActions';
 import { SafeBrowser } from '../components/SafeBrowser';
@@ -52,6 +53,7 @@ export function Home({ onNavigate }: HomeProps) {
   return (
     <main className="flex flex-1 flex-col gap-stack-lg px-container-padding-mobile py-stack-md">
       <ProgressCard />
+      <MissionsCard />
       <Welcome child={child} />
       <ScreenTime child={child} />
       <QuickActions onNavigate={onNavigate} />
