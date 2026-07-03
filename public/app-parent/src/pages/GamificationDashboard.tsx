@@ -20,7 +20,7 @@ function ChildProgressCard({ child }: { child: Child }) {
   return (
     <div className="rounded-2xl border border-outline-variant bg-surface p-4 shadow-sm">
       <h3 className="mb-3 font-display text-headline-md text-on-surface">{child.name}</h3>
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-6">
         {metrics.map((m) => (
           <div key={m.label}>
             <div className="text-2xl font-bold text-primary">{m.value}</div>
