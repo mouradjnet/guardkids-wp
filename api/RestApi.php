@@ -216,6 +216,18 @@ final class RestApi
             ],
         ]);
 
+        register_rest_route(self::NAMESPACE, '/content/(?P<id>\d+)/approve', [
+            'methods'             => \WP_REST_Server::CREATABLE,
+            'callback'            => [$controller, 'approveContent'],
+            'permission_callback' => [self::class, 'requireAdmin'],
+        ]);
+
+        register_rest_route(self::NAMESPACE, '/content/(?P<id>\d+)/revoke', [
+            'methods'             => \WP_REST_Server::CREATABLE,
+            'callback'            => [$controller, 'revokeContent'],
+            'permission_callback' => [self::class, 'requireAdmin'],
+        ]);
+
         register_rest_route(self::NAMESPACE, '/content/favorites', [
             'methods'             => \WP_REST_Server::CREATABLE,
             'callback'            => [$controller, 'addFavorite'],
