@@ -1,4 +1,4 @@
-import { screen } from '@testing-library/react';
+import { fireEvent, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { renderWithClient } from '../test/queryClient';
 import { ContentDashboard } from './ContentDashboard';
@@ -6,10 +6,16 @@ import { ContentDashboard } from './ContentDashboard';
 const getAnalytics = vi.fn();
 const listContents = vi.fn();
 const listContentCategories = vi.fn();
+const getContentSummary = vi.fn();
+const approveContent = vi.fn();
+const revokeContent = vi.fn();
 vi.mock('../api/content', () => ({
   getAnalytics: () => getAnalytics(),
-  listContents: () => listContents(),
+  listContents: (...args: unknown[]) => listContents(...args),
   listContentCategories: () => listContentCategories(),
+  getContentSummary: () => getContentSummary(),
+  approveContent: (id: number) => approveContent(id),
+  revokeContent: (id: number) => revokeContent(id),
   createContent: vi.fn(),
   updateContent: vi.fn(),
   deleteContent: vi.fn(),
@@ -22,19 +28,41 @@ vi.mock('../api/children', () => ({
   listChildren: () => Promise.resolve([]),
 }));
 
+const pendingItem = {
+  id: 1, categoryId: 1, title: 'Item de teste', description: null, url: null, thumbnail: null,
+  type: 'link', ageMin: 0, ageMax: 99, estimatedMinutes: null, level: null, tags: null,
+  status: 'pending' as const,
+};
+
+function defaults() {
+  getAnalytics.mockResolvedValue({ mostAccessed: [], favoriteCategories: [], timePerCategory: [] });
+  listContentCategories.mockResolvedValue([]);
+  getContentSummary.mockResolvedValue({ contents: 1, categories: 0, favorites: 0, recommendations: 0, pendingCount: 1, lastSync: null });
+}
+
 describe('ContentDashboard', () => {
   afterEach(() => {
-    getAnalytics.mockReset();
-    listContents.mockReset();
-    listContentCategories.mockReset();
+    vi.clearAllMocks();
   });
 
   it('mostra estado vazio quando não há conteúdo e botão ativo', async () => {
-    getAnalytics.mockResolvedValueOnce({ mostAccessed: [], favoriteCategories: [], timePerCategory: [] });
-    listContents.mockResolvedValueOnce([]);
-    listContentCategories.mockResolvedValueOnce([]);
+    defaults();
+    listContents.mockResolvedValue([]);
+    getContentSummary.mockResolvedValue({ contents: 0, categories: 0, favorites: 0, recommendations: 0, pendingCount: 0, lastSync: null });
     renderWithClient(<ContentDashboard />);
     expect(await screen.findByText('Nenhum conteúdo cadastrado')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /adicionar conteúdo/i })).toBeEnabled();
+  });
+
+  it('marca item pendente com badge e botão Aprovar que chama a api', async () => {
+    defaults();
+    listContents.mockResolvedValue([pendingItem]);
+    approveContent.mockResolvedValue({ ...pendingItem, status: 'approved' });
+    renderWithClient(<ContentDashboard />);
+
+    expect(await screen.findByText('Item de teste')).toBeInTheDocument();
+    expect(screen.getByText('Pendente', { selector: 'span' })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /aprovar/i }));
+    await waitFor(() => expect(approveContent).toHaveBeenCalledWith(1));
   });
 });

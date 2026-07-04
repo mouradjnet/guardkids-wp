@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
-  createContent, deleteContent, getAnalytics, listContentCategories, listContents, updateContent,
+  approveContent, createContent, deleteContent, getAnalytics, getContentSummary,
+  listContentCategories, listContents, revokeContent, updateContent,
   type Content, type ContentInput,
 } from '../api/content';
 import { listChildren } from '../api/children';
@@ -30,9 +31,11 @@ function AnalyticsCard({ title, rows }: { title: string; rows: { label: string; 
 
 export function ContentDashboard() {
   const qc = useQueryClient();
+  const [statusFilter, setStatusFilter] = useState<'' | 'pending' | 'approved'>('');
   const analytics = useQuery({ queryKey: ['content', 'analytics'], queryFn: getAnalytics });
   const categories = useQuery({ queryKey: ['content', 'categories'], queryFn: listContentCategories });
-  const contents = useQuery({ queryKey: ['content', 'list'], queryFn: () => listContents() });
+  const contents = useQuery({ queryKey: ['content', 'list', statusFilter], queryFn: () => listContents(0, '', statusFilter) });
+  const summary = useQuery({ queryKey: ['content', 'summary'], queryFn: getContentSummary });
   const children = useQuery({ queryKey: ['children'], queryFn: listChildren });
   const [editing, setEditing] = useState<Content | null>(null);
   const [creating, setCreating] = useState(false);
@@ -41,12 +44,15 @@ export function ContentDashboard() {
   const invalidate = () => {
     qc.invalidateQueries({ queryKey: ['content', 'list'] });
     qc.invalidateQueries({ queryKey: ['content', 'analytics'] });
+    qc.invalidateQueries({ queryKey: ['content', 'summary'] });
   };
   const save = useMutation({
     mutationFn: (input: ContentInput) => (editing ? updateContent(editing.id, input) : createContent(input)),
     onSuccess: () => { invalidate(); setEditing(null); setCreating(false); },
   });
   const remove = useMutation({ mutationFn: (id: number) => deleteContent(id), onSuccess: invalidate });
+  const approve = useMutation({ mutationFn: (id: number) => approveContent(id), onSuccess: invalidate });
+  const revoke = useMutation({ mutationFn: (id: number) => revokeContent(id), onSuccess: invalidate });
 
   const a = analytics.data;
   const list = contents.data ?? [];
@@ -54,7 +60,14 @@ export function ContentDashboard() {
   return (
     <main className="mx-auto w-full max-w-[1440px] flex-1 space-y-6 p-container-padding-mobile pb-24 md:ml-64 md:p-container-padding-desktop md:pb-container-padding-desktop">
       <div className="flex items-center justify-between">
-        <h1 className="font-display text-headline-lg text-on-background">Conteúdo Infantil</h1>
+        <div className="flex items-center gap-3">
+          <h1 className="font-display text-headline-lg text-on-background">Conteúdo Infantil</h1>
+          {(summary.data?.pendingCount ?? 0) > 0 && (
+            <span className="rounded-full bg-amber-500/15 px-3 py-1 text-label-sm font-semibold text-amber-700">
+              {summary.data?.pendingCount} pendente{summary.data?.pendingCount === 1 ? '' : 's'}
+            </span>
+          )}
+        </div>
         <button type="button" onClick={() => { setEditing(null); setCreating(true); }} className="rounded-xl bg-primary px-5 py-2.5 text-label-md font-semibold text-white">
           Adicionar Conteúdo
         </button>
@@ -64,6 +77,21 @@ export function ContentDashboard() {
         <AnalyticsCard title="Mais acessados" rows={(a?.mostAccessed ?? []).map((m) => ({ label: m.title, value: `${m.opens}×` }))} />
         <AnalyticsCard title="Categorias favoritas" rows={(a?.favoriteCategories ?? []).map((c) => ({ label: c.category, value: `${c.opens}×` }))} />
         <AnalyticsCard title="Tempo por categoria" rows={(a?.timePerCategory ?? []).map((t) => ({ label: t.category, value: `${t.minutes} min` }))} />
+      </div>
+
+      <div className="flex gap-2" role="group" aria-label="Filtrar por status">
+        {([['', 'Todos'], ['pending', 'Pendentes'], ['approved', 'Aprovados']] as const).map(([value, label]) => (
+          <button
+            key={value}
+            type="button"
+            onClick={() => setStatusFilter(value)}
+            className={`rounded-full px-4 py-1.5 text-label-sm font-semibold ${
+              statusFilter === value ? 'bg-primary text-white' : 'bg-surface-container-low text-on-surface-variant'
+            }`}
+          >
+            {label}
+          </button>
+        ))}
       </div>
 
       {contents.isLoading ? (
@@ -78,10 +106,22 @@ export function ContentDashboard() {
           {list.map((c) => (
             <div key={c.id} className="flex items-center justify-between p-3">
               <div>
-                <div className="text-label-md font-semibold text-on-surface">{c.title}</div>
+                <div className="flex items-center gap-2">
+                  <span className="text-label-md font-semibold text-on-surface">{c.title}</span>
+                  <span className={`rounded-full px-2 py-0.5 text-label-sm font-semibold ${
+                    c.status === 'approved' ? 'bg-green-500/15 text-green-700' : 'bg-amber-500/15 text-amber-700'
+                  }`}>
+                    {c.status === 'approved' ? 'Aprovado' : 'Pendente'}
+                  </span>
+                </div>
                 <div className="text-label-sm text-on-surface-variant">{c.ageMin}–{c.ageMax} anos{c.tags ? ` · ${c.tags}` : ''}</div>
               </div>
               <div className="flex gap-2">
+                {c.status === 'pending' ? (
+                  <button type="button" onClick={() => approve.mutate(c.id)} className="text-green-700">Aprovar</button>
+                ) : (
+                  <button type="button" onClick={() => revoke.mutate(c.id)} className="text-amber-700">Revogar</button>
+                )}
                 <button type="button" onClick={() => { setCreating(false); setEditing(c); }} className="text-primary">Editar</button>
                 <button type="button" onClick={() => remove.mutate(c.id)} className="text-error">Excluir</button>
               </div>
