@@ -60,6 +60,7 @@ final class ContentController
             is_numeric($category) ? (int) $category : null,
             is_string($search) ? $search : null,
             $this->childAge($childId),
+            true,
         );
         $favIds = $this->favorites->contentIdsOf($childId);
         return rest_ensure_response(array_map(function (array $r) use ($favIds): array {
@@ -73,7 +74,7 @@ final class ContentController
         if ($childId === null) {
             return new WP_Error('child_auth_required', 'Token inválido.', ['status' => 401]);
         }
-        $items = $this->contentRepo->search(null, null, $this->childAge($childId));
+        $items = $this->contentRepo->search(null, null, $this->childAge($childId), true);
         $countByCat = [];
         foreach ($items as $it) {
             $c = isset($it['category_id']) ? (int) $it['category_id'] : 0;
@@ -96,7 +97,7 @@ final class ContentController
         }
         $out = [];
         foreach ($this->recommendations->findByChildOrdered($childId) as $rec) {
-            $content = $this->contentRepo->findById((int) ($rec['content_id'] ?? 0));
+            $content = $this->contentRepo->findApprovedById((int) ($rec['content_id'] ?? 0));
             if ($content !== null) {
                 $out[] = ['id' => (int) $rec['id'], 'note' => $rec['note'] ?? null, 'content' => $this->contentToJson($content)];
             }
@@ -112,7 +113,7 @@ final class ContentController
         }
         $out = [];
         foreach ($this->favorites->contentIdsOf($childId) as $cid) {
-            $content = $this->contentRepo->findById($cid);
+            $content = $this->contentRepo->findApprovedById($cid);
             if ($content !== null) {
                 $out[] = $this->contentToJson($content) + ['favorited' => true];
             }
@@ -129,6 +130,9 @@ final class ContentController
         $contentId = (int) $req->get_param('content_id');
         if ($contentId === 0) {
             return new WP_Error('invalid_payload', 'content_id obrigatório.', ['status' => 422]);
+        }
+        if ($this->contentRepo->findApprovedById($contentId) === null) {
+            return new WP_Error('content_not_available', 'Conteúdo indisponível.', ['status' => 409]);
         }
         $this->favorites->add($childId, $contentId);
         return new WP_REST_Response(['ok' => true], 201);
@@ -153,6 +157,9 @@ final class ContentController
         $contentId = (int) $req->get_param('content_id');
         if ($contentId === 0) {
             return new WP_Error('invalid_payload', 'content_id obrigatório.', ['status' => 422]);
+        }
+        if ($this->contentRepo->findApprovedById($contentId) === null) {
+            return new WP_Error('content_not_available', 'Conteúdo indisponível.', ['status' => 409]);
         }
         $action = (string) $req->get_param('action');
         $action = in_array($action, ['open', 'close'], true) ? $action : 'open';
@@ -186,11 +193,18 @@ final class ContentController
     {
         $category = $req->get_param('category');
         $search   = $req->get_param('search');
+        $status   = $req->get_param('status');
         $rows = $this->contentRepo->search(
             is_numeric($category) ? (int) $category : null,
             is_string($search) ? $search : null,
             null,
         );
+        if (is_string($status) && in_array($status, ['pending', 'approved'], true)) {
+            $rows = array_values(array_filter(
+                $rows,
+                static fn (array $r): bool => ($r['status'] ?? 'approved') === $status,
+            ));
+        }
         return rest_ensure_response(array_map([$this, 'contentToJson'], $rows));
     }
 
@@ -237,6 +251,26 @@ final class ContentController
             return new WP_Error('db_error', 'Falha ao excluir.', ['status' => 500]);
         }
         return rest_ensure_response(['deleted' => true, 'id' => $id]);
+    }
+
+    public function approveContent(WP_REST_Request $req): WP_REST_Response|WP_Error
+    {
+        $id = (int) $req['id'];
+        if ($this->contentRepo->findById($id) === null) {
+            return new WP_Error('not_found', 'Conteúdo não encontrado.', ['status' => 404]);
+        }
+        $this->contentRepo->approve($id, (int) get_current_user_id());
+        return rest_ensure_response($this->contentToJson($this->contentRepo->findById($id) ?? []));
+    }
+
+    public function revokeContent(WP_REST_Request $req): WP_REST_Response|WP_Error
+    {
+        $id = (int) $req['id'];
+        if ($this->contentRepo->findById($id) === null) {
+            return new WP_Error('not_found', 'Conteúdo não encontrado.', ['status' => 404]);
+        }
+        $this->contentRepo->revoke($id);
+        return rest_ensure_response($this->contentToJson($this->contentRepo->findById($id) ?? []));
     }
 
     public function analytics(WP_REST_Request $req): WP_REST_Response
@@ -307,6 +341,7 @@ final class ContentController
             'estimatedMinutes' => isset($row['estimated_minutes']) ? (int) $row['estimated_minutes'] : null,
             'level'            => $row['level'] ?? null,
             'tags'             => $row['tags'] ?? null,
+            'status'           => (string) ($row['status'] ?? 'approved'),
         ];
     }
 
@@ -361,6 +396,7 @@ final class ContentController
             'categories'      => $this->categoriesRepo->count(),
             'favorites'       => $this->favorites->count(),
             'recommendations' => $this->recommendations->count(),
+            'pendingCount'    => $this->contentRepo->countByStatus('pending'),
             'lastSync'        => null,
         ]);
     }
