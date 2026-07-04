@@ -5,6 +5,7 @@ export type ContentSummary = {
   categories: number;
   favorites: number;
   recommendations: number;
+  pendingCount: number;
   lastSync: string | null;
 };
 
@@ -25,6 +26,7 @@ export type Content = {
   estimatedMinutes: number | null;
   level: string | null;
   tags: string | null;
+  status: 'pending' | 'approved';
 };
 
 export type ContentCategory = { id: number; slug: string; name: string; icon: string | null; description: string | null };
@@ -50,10 +52,15 @@ export type ContentInput = {
   tags?: string;
 };
 
-export function listContents(category = 0, search = ''): Promise<Content[]> {
+export function listContents(
+  category = 0,
+  search = '',
+  status: '' | 'pending' | 'approved' = '',
+): Promise<Content[]> {
   const params = new URLSearchParams();
   if (category > 0) params.set('category', String(category));
   if (search) params.set('search', search);
+  if (status) params.set('status', status);
   const qs = params.toString();
   return apiFetch<Content[]>(`/content${qs ? `?${qs}` : ''}`);
 }
@@ -72,6 +79,14 @@ export function updateContent(id: number, input: ContentInput): Promise<Content>
 
 export function deleteContent(id: number): Promise<{ deleted: boolean }> {
   return apiFetch<{ deleted: boolean }>(`/content/${id}`, { method: 'DELETE' });
+}
+
+export function approveContent(id: number): Promise<Content> {
+  return apiFetch<Content>(`/content/${id}/approve`, { method: 'POST' });
+}
+
+export function revokeContent(id: number): Promise<Content> {
+  return apiFetch<Content>(`/content/${id}/revoke`, { method: 'POST' });
 }
 
 export function getAnalytics(): Promise<ContentAnalytics> {
