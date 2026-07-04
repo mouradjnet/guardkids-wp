@@ -7,6 +7,7 @@ import { Header } from './components/Header';
 import { createLocationTracker, type LocationTracker } from './lib/locationTracker';
 import { createUsageTracker, setActiveTracker, type UsageTracker } from './lib/usageTracker';
 import { Alerts } from './pages/Alerts';
+import { Avatar } from './pages/Avatar';
 import { Blocked } from './pages/Blocked';
 import { Browser } from './pages/Browser';
 import { Home } from './pages/Home';
@@ -159,6 +160,8 @@ function PageRenderer({
       return <Localizacao />;
     case 'store':
       return <Loja onNavigate={onNavigate} />;
+    case 'avatar':
+      return <Avatar onNavigate={onNavigate} />;
     case 'home':
     default:
       return <Home onNavigate={onNavigate} />;

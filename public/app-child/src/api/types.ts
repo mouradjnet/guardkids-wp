@@ -25,6 +25,8 @@ export type Child = {
   pinUnlockEnabled?: boolean;
   /** Quantidade de notificações não-lidas (alimenta o badge). */
   unreadNotifications?: number;
+  /** Emoji do avatar equipado (Gamificação 3e), ou null. */
+  avatarEmoji?: string | null;
 };
 
 export type ContentCategory = {
