@@ -14,6 +14,7 @@ const titles: Record<PageId, string> = {
   blocked: '',
   location: 'Minha Localização',
   store: 'Loja de Recompensas',
+  avatar: 'Meu Avatar',
 };
 
 type HeaderProps = {
@@ -70,12 +71,20 @@ export function Header({ activePage, onNavigate }: HeaderProps) {
           className="rounded-full p-2 text-on-surface-variant transition-colors hover:bg-surface-variant/50"
           aria-label="Perfil"
         >
-          <Icon name="account_circle" />
+          {meQuery.data?.avatarEmoji ? (
+            <span className="text-2xl leading-none">{meQuery.data.avatarEmoji}</span>
+          ) : (
+            <Icon name="account_circle" />
+          )}
         </button>
       </div>
 
       {profileOpen && meQuery.data && (
-        <ProfileSheet child={meQuery.data} onClose={() => setProfileOpen(false)} />
+        <ProfileSheet
+          child={meQuery.data}
+          onClose={() => setProfileOpen(false)}
+          onNavigate={onNavigate}
+        />
       )}
     </header>
   );

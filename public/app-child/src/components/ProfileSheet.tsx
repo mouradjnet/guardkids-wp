@@ -1,9 +1,14 @@
 import type { Child } from '../api/types';
+import type { PageId } from '../data/mockData';
 import { Icon } from './Icon';
 
-type ProfileSheetProps = { child: Child; onClose: () => void };
+type ProfileSheetProps = {
+  child: Child;
+  onClose: () => void;
+  onNavigate: (page: PageId) => void;
+};
 
-export function ProfileSheet({ child, onClose }: ProfileSheetProps) {
+export function ProfileSheet({ child, onClose, onNavigate }: ProfileSheetProps) {
   const limit = child.limitMinutes > 0 ? child.limitMinutes : 0;
   const pct = limit > 0 ? Math.min(100, Math.round((child.usedMinutes / limit) * 100)) : 0;
 
@@ -32,7 +37,11 @@ export function ProfileSheet({ child, onClose }: ProfileSheetProps) {
         </div>
 
         <div className="flex items-center gap-4">
-          {child.avatarUrl ? (
+          {child.avatarEmoji ? (
+            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-primary-container text-3xl">
+              {child.avatarEmoji}
+            </div>
+          ) : child.avatarUrl ? (
             <img
               src={child.avatarUrl}
               alt=""
@@ -65,6 +74,18 @@ export function ProfileSheet({ child, onClose }: ProfileSheetProps) {
           <Icon name="verified_user" className="text-lg" filled />
           <span className="text-label-md font-semibold">Aparelho protegido</span>
         </div>
+
+        <button
+          type="button"
+          onClick={() => {
+            onClose();
+            onNavigate('avatar');
+          }}
+          className="mt-4 flex w-full items-center justify-center gap-2 rounded-2xl bg-primary p-3 text-on-primary"
+        >
+          <Icon name="mood" className="text-lg" filled />
+          <span className="text-label-md font-semibold">Trocar avatar</span>
+        </button>
       </div>
     </div>
   );

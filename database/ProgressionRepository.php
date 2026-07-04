@@ -64,6 +64,12 @@ final class ProgressionRepository extends Repository
         ]);
     }
 
+    public function setEquippedAvatar(int $childId, string $avatarKey): void
+    {
+        $row = $this->ensure($childId);
+        $this->update((int) $row['id'], ['equipped_avatar' => $avatarKey]);
+    }
+
     /**
      * Deduz coins de forma atômica: só desconta se o saldo cobrir. Um único
      * UPDATE ... WHERE coins >= X é atômico sob o lock de linha do MySQL —

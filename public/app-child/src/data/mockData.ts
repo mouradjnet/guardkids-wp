@@ -6,7 +6,8 @@ export type PageId =
   | 'blocked'
   | 'alerts'
   | 'location'
-  | 'store';
+  | 'store'
+  | 'avatar';
 
 export const child = {
   name: 'Lucas',
