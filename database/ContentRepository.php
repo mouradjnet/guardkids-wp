@@ -31,19 +31,24 @@ final class ContentRepository extends Repository
     /** @param array<string, mixed> $data */
     public function create(array $data): int
     {
-        $ok = $this->db->insert($this->table(), $data + ['created_at' => current_time('mysql', true)]);
+        $defaults = ['status' => 'pending', 'created_at' => current_time('mysql', true)];
+        $ok = $this->db->insert($this->table(), $data + $defaults);
         return $ok === false ? 0 : (int) $this->db->insert_id;
     }
 
     /**
      * Busca com filtros opcionais: categoria, termo (title/tags LIKE), idade.
+     * Se $approvedOnly for true, só devolve conteúdo com status='approved'.
      *
      * @return array<int, array<string, mixed>>
      */
-    public function search(?int $categoryId, ?string $term, ?int $childAge): array
+    public function search(?int $categoryId, ?string $term, ?int $childAge, bool $approvedOnly = false): array
     {
         $where = [];
         $params = [];
+        if ($approvedOnly) {
+            $where[] = "status = 'approved'";
+        }
         if ($categoryId !== null && $categoryId > 0) {
             $where[] = 'category_id = %d';
             $params[] = $categoryId;
@@ -79,5 +84,44 @@ final class ContentRepository extends Repository
     public function update(int $id, array $data): bool
     {
         return $this->db->update($this->table(), $data, ['id' => $id]) !== false;
+    }
+
+    /**
+     * Como {@see findById}, mas só devolve se o conteúdo estiver aprovado.
+     * Usado nos caminhos de leitura da criança (recomendações/favoritos).
+     *
+     * @return array<string, mixed>|null
+     */
+    public function findApprovedById(int $id): ?array
+    {
+        $row = $this->findById($id);
+        return $row !== null && ($row['status'] ?? null) === 'approved' ? $row : null;
+    }
+
+    public function approve(int $id, int $userId): bool
+    {
+        return $this->update($id, [
+            'status'      => 'approved',
+            'approved_by' => $userId,
+            'approved_at' => current_time('mysql', true),
+        ]);
+    }
+
+    public function revoke(int $id): bool
+    {
+        return $this->update($id, [
+            'status'      => 'pending',
+            'approved_by' => null,
+            'approved_at' => null,
+        ]);
+    }
+
+    public function countByStatus(string $status): int
+    {
+        $sql = $this->db->prepare(
+            'SELECT COUNT(*) FROM ' . $this->table() . ' WHERE status = %s',
+            $status,
+        );
+        return (int) $this->db->get_var($sql);
     }
 }
