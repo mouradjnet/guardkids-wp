@@ -173,6 +173,12 @@ final class RestApi
         $adminGet('/content/summary', 'summary');
         $adminGet('/content/analytics', 'analytics');
 
+        register_rest_route(self::NAMESPACE, '/content', [
+            'methods'             => \WP_REST_Server::CREATABLE,
+            'callback'            => [$controller, 'createContent'],
+            'permission_callback' => [self::class, 'requireAdmin'],
+        ]);
+
         register_rest_route(self::NAMESPACE, '/content/recommendations', [
             'methods'             => \WP_REST_Server::CREATABLE,
             'callback'            => [$controller, 'createRecommendation'],

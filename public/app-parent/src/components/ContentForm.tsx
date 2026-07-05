@@ -29,25 +29,32 @@ export function ContentForm({ categories, initial, onSubmit, onClose }: ContentF
   const [level, setLevel] = useState(initial?.level ?? LEVELS[0]);
   const [tags, setTags] = useState(initial?.tags ?? '');
   const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   async function submit(e: FormEvent) {
     e.preventDefault();
     if (!title.trim()) return;
     setBusy(true);
+    setError(null);
     const [ageMin, ageMax] = AGE_BUCKETS[bucket];
-    await onSubmit({
-      title: title.trim(),
-      description: description || undefined,
-      categoryId: categoryId || undefined,
-      ageMin,
-      ageMax,
-      url: url || undefined,
-      thumbnail: thumbnail || undefined,
-      estimatedMinutes: minutes ? Number(minutes) : undefined,
-      level,
-      tags: tags || undefined,
-    });
-    setBusy(false);
+    try {
+      await onSubmit({
+        title: title.trim(),
+        description: description || undefined,
+        categoryId: categoryId || undefined,
+        ageMin,
+        ageMax,
+        url: url || undefined,
+        thumbnail: thumbnail || undefined,
+        estimatedMinutes: minutes ? Number(minutes) : undefined,
+        level,
+        tags: tags || undefined,
+      });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Não foi possível salvar.');
+    } finally {
+      setBusy(false);
+    }
   }
 
   return (
@@ -91,6 +98,7 @@ export function ContentForm({ categories, initial, onSubmit, onClose }: ContentF
             <input value={tags} onChange={(e) => setTags(e.target.value)} placeholder="jogo, online" className="mt-1 w-full rounded-lg border border-outline-variant p-2" />
           </label>
         </div>
+        {error && <p role="alert" className="rounded-lg bg-error/10 p-3 text-label-sm text-error">{error}</p>}
         <div className="flex justify-end gap-2 pt-2">
           <button type="button" onClick={onClose} className="rounded-lg px-4 py-2 text-on-surface-variant">Cancelar</button>
           <button type="submit" disabled={busy} className="rounded-lg bg-primary px-4 py-2 font-semibold text-white disabled:opacity-60">{busy ? 'Salvando…' : 'Salvar'}</button>

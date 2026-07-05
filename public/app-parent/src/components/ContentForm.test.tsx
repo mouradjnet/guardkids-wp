@@ -19,4 +19,20 @@ describe('ContentForm', () => {
       expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({ title: 'Roblox', ageMin: 7, ageMax: 9 })),
     );
   });
+
+  it('mostra erro e libera o botão quando o salvamento falha', async () => {
+    const onSubmit = vi.fn().mockRejectedValue(new Error('Falhou no servidor'));
+    render(
+      <ContentForm
+        categories={[{ id: 1, slug: 'games', name: 'Jogos', icon: null, description: null }]}
+        onSubmit={onSubmit}
+        onClose={() => {}}
+      />,
+    );
+    fireEvent.change(screen.getByLabelText('Título'), { target: { value: 'Roblox' } });
+    fireEvent.click(screen.getByRole('button', { name: /salvar/i }));
+    await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent('Falhou no servidor'));
+    // botão não fica preso em "Salvando…"
+    expect(screen.getByRole('button', { name: /^salvar$/i })).toBeEnabled();
+  });
 });
