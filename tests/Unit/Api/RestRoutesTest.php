@@ -83,24 +83,36 @@ final class RestRoutesTest extends TestCase
     }
 
     /**
-     * Guarda a classe do bug: todo método público do ContentController é um
-     * handler de endpoint, então cada um precisa estar ligado a uma rota. Se
-     * alguém adicionar um handler e esquecer a rota, este teste falha.
+     * Guarda a classe do bug em TODOS os controllers: todo método público é um
+     * handler de endpoint (exceto o construtor e os helpers `*Args`, que só
+     * devolvem o schema de `args` pro register_rest_route). Cada handler precisa
+     * estar ligado a alguma rota — se alguém adicionar um e esquecer a rota,
+     * este teste falha, seja em que controller for.
      */
-    public function testEveryContentControllerHandlerHasARoute(): void
+    public function testEveryControllerHandlerHasARoute(): void
     {
         $handlers = $this->registeredHandlers();
-        $methods = (new ReflectionClass(ContentController::class))->getMethods(ReflectionMethod::IS_PUBLIC);
+        $orphans = [];
 
-        foreach ($methods as $m) {
-            if ($m->isConstructor() || $m->getDeclaringClass()->getName() !== ContentController::class) {
+        foreach (glob(dirname(__DIR__, 3) . '/api/Controllers/*.php') as $file) {
+            $class = 'GuardKids\\Api\\Controllers\\' . basename($file, '.php');
+            if (!class_exists($class)) {
                 continue;
             }
-            self::assertArrayHasKey(
-                ContentController::class . '::' . $m->getName(),
-                $handlers,
-                "ContentController::{$m->getName()} não está ligado a nenhuma rota REST.",
-            );
+            foreach ((new ReflectionClass($class))->getMethods(ReflectionMethod::IS_PUBLIC) as $m) {
+                if ($m->isConstructor() || $m->getDeclaringClass()->getName() !== $class) {
+                    continue;
+                }
+                // `*Args` são helpers de schema, não endpoints.
+                if (str_ends_with($m->getName(), 'Args')) {
+                    continue;
+                }
+                if (!isset($handlers[$class . '::' . $m->getName()])) {
+                    $orphans[] = $class . '::' . $m->getName();
+                }
+            }
         }
+
+        self::assertSame([], $orphans, 'Handlers de controller sem rota REST: ' . implode(', ', $orphans));
     }
 }
