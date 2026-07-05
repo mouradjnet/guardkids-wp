@@ -49,6 +49,13 @@ final class ContentControllerTest extends TestCase
                     }
                     return $this->settings[$m[1]] ?? null;
                 }
+                if (str_contains((string) $sql, 'COUNT(*)')
+                    && preg_match('/guardkids_content_items.*status = \'([a-z]+)\'/s', (string) $sql, $s) === 1) {
+                    return (string) count(array_filter(
+                        $this->t['content_items'] ?? [],
+                        static fn ($r) => ($r['status'] ?? null) === $s[1],
+                    ));
+                }
                 if (str_contains((string) $sql, 'COUNT(*)') && preg_match('/guardkids_(content_[a-z_]+)/', (string) $sql, $m) === 1) {
                     return (string) count($this->t[$m[1]] ?? []);
                 }
@@ -59,6 +66,9 @@ final class ContentControllerTest extends TestCase
             {
                 if (preg_match('/guardkids_(content_[a-z_]+)/', (string) $sql, $m) === 1) {
                     $rows = array_values($this->t[$m[1]] ?? []);
+                    if (str_contains((string) $sql, "status = 'approved'")) {
+                        $rows = array_values(array_filter($rows, static fn ($r) => ($r['status'] ?? null) === 'approved'));
+                    }
                     if (preg_match('/category_id = (\d+)/', (string) $sql, $c) === 1) {
                         $rows = array_values(array_filter($rows, static fn ($r) => (int) ($r['category_id'] ?? 0) === (int) $c[1]));
                     }
@@ -270,8 +280,8 @@ final class ContentControllerTest extends TestCase
     {
         $this->seedChild(1, 8);
         $this->wpdb->t['content_items'] = [
-            1 => ['id' => 1, 'title' => 'A', 'category_id' => 1, 'age_min' => 4, 'age_max' => 6],
-            2 => ['id' => 2, 'title' => 'B', 'category_id' => 1, 'age_min' => 7, 'age_max' => 9],
+            1 => ['id' => 1, 'title' => 'A', 'category_id' => 1, 'age_min' => 4, 'age_max' => 6, 'status' => 'approved'],
+            2 => ['id' => 2, 'title' => 'B', 'category_id' => 1, 'age_min' => 7, 'age_max' => 9, 'status' => 'approved'],
         ];
         $res = (new ContentController())->childLibrary($this->tokenReq('GET', '/child/library'));
         $data = $res->get_data();
@@ -282,6 +292,7 @@ final class ContentControllerTest extends TestCase
     public function testChildFavoriteAddThenRemove(): void
     {
         $this->seedChild(1, 8);
+        $this->wpdb->t['content_items'] = [10 => ['id' => 10, 'title' => 'X', 'status' => 'approved']];
         $add = $this->tokenReq('POST', '/child/library/favorites');
         $add->set_param('content_id', 10);
         self::assertSame(201, (new ContentController())->childAddFavorite($add)->get_status());
@@ -295,6 +306,7 @@ final class ContentControllerTest extends TestCase
     public function testChildHistoryRecords(): void
     {
         $this->seedChild(1, 8);
+        $this->wpdb->t['content_items'] = [10 => ['id' => 10, 'title' => 'X', 'status' => 'approved']];
         $req = $this->tokenReq('POST', '/child/library/history');
         $req->set_param('content_id', 10);
         $req->set_param('action', 'open');
@@ -309,5 +321,89 @@ final class ContentControllerTest extends TestCase
         $res = (new ContentController())->childLibrary(new WP_REST_Request('GET', '/child/library'));
         self::assertInstanceOf(WP_Error::class, $res);
         self::assertSame(401, $res->get_error_data()['status']);
+    }
+
+    public function testChildLibraryExcludesPending(): void
+    {
+        $this->seedChild(1, 8);
+        $this->wpdb->t['content_items'] = [
+            1 => ['id' => 1, 'title' => 'Aprovado', 'category_id' => 1, 'age_min' => 0, 'age_max' => 99, 'status' => 'approved'],
+            2 => ['id' => 2, 'title' => 'Pendente', 'category_id' => 1, 'age_min' => 0, 'age_max' => 99, 'status' => 'pending'],
+        ];
+        $data = (new ContentController())->childLibrary($this->tokenReq('GET', '/child/library'))->get_data();
+        self::assertCount(1, $data);
+        self::assertSame('Aprovado', $data[0]['title']);
+    }
+
+    public function testChildFavoritesSkipsPending(): void
+    {
+        $this->seedChild(1, 8);
+        $this->wpdb->t['content_items'] = [
+            5 => ['id' => 5, 'title' => 'Pendente', 'status' => 'pending'],
+        ];
+        $this->wpdb->t['content_favorites'] = [
+            1 => ['id' => 1, 'child_id' => 1, 'content_id' => 5],
+        ];
+        $data = (new ContentController())->childFavorites($this->tokenReq('GET', '/child/library/favorites'))->get_data();
+        self::assertSame([], $data);
+    }
+
+    public function testChildAddFavoriteRejectsPending(): void
+    {
+        $this->seedChild(1, 8);
+        $this->wpdb->t['content_items'] = [9 => ['id' => 9, 'title' => 'P', 'status' => 'pending']];
+        $add = $this->tokenReq('POST', '/child/library/favorites');
+        $add->set_param('content_id', 9);
+        $res = (new ContentController())->childAddFavorite($add);
+        self::assertInstanceOf(WP_Error::class, $res);
+        self::assertSame(409, $res->get_error_data()['status']);
+    }
+
+    public function testApproveAndRevokeContent(): void
+    {
+        $this->wpdb->t['content_items'] = [1 => ['id' => 1, 'title' => 'A', 'status' => 'pending']];
+        $ap = new WP_REST_Request('POST', '/content/1/approve');
+        $ap['id'] = 1;
+        $res = (new ContentController())->approveContent($ap);
+        self::assertSame('approved', $res->get_data()['status']);
+
+        $rv = new WP_REST_Request('POST', '/content/1/revoke');
+        $rv['id'] = 1;
+        $res = (new ContentController())->revokeContent($rv);
+        self::assertSame('pending', $res->get_data()['status']);
+    }
+
+    public function testApproveContent404WhenMissing(): void
+    {
+        $req = new WP_REST_Request('POST', '/content/999/approve');
+        $req['id'] = 999;
+        $res = (new ContentController())->approveContent($req);
+        self::assertInstanceOf(WP_Error::class, $res);
+        self::assertSame(404, $res->get_error_data()['status']);
+    }
+
+    public function testListContentsFiltersByStatus(): void
+    {
+        $this->wpdb->t['content_items'] = [
+            1 => ['id' => 1, 'title' => 'A', 'status' => 'approved'],
+            2 => ['id' => 2, 'title' => 'B', 'status' => 'pending'],
+        ];
+        $req = new WP_REST_Request('GET', '/content');
+        $req->set_param('status', 'pending');
+        $data = (new ContentController())->listContents($req)->get_data();
+        self::assertCount(1, $data);
+        self::assertSame('B', $data[0]['title']);
+        self::assertSame('pending', $data[0]['status']);
+    }
+
+    public function testSummaryIncludesPendingCount(): void
+    {
+        $this->wpdb->t['content_items'] = [
+            1 => ['id' => 1, 'title' => 'A', 'status' => 'pending'],
+            2 => ['id' => 2, 'title' => 'B', 'status' => 'pending'],
+            3 => ['id' => 3, 'title' => 'C', 'status' => 'approved'],
+        ];
+        $data = (new ContentController())->summary(new WP_REST_Request('GET', '/content/summary'))->get_data();
+        self::assertSame(2, $data['pendingCount']);
     }
 }

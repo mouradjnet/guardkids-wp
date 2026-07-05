@@ -112,6 +112,14 @@ final class GamificationControllerTest extends TestCase
                 }
                 return $rows;
             }
+
+            public function get_row($sql, $output = OBJECT, $y = 0)
+            {
+                if (preg_match('/WHERE id = (\d+)/', (string) $sql, $m) === 1) {
+                    return $this->t[$this->nameOf((string) $sql)][(int) $m[1]] ?? null;
+                }
+                return null;
+            }
         };
         $GLOBALS['wpdb'] = $this->wpdb;
         $this->token = (new ChildAuth())->issueToken(1, 'tablet')['token'];
@@ -188,6 +196,7 @@ final class GamificationControllerTest extends TestCase
 
     public function testChildHistoryOpenCreditsProgression(): void
     {
+        $this->wpdb->t['content_items'] = [10 => ['id' => 10, 'title' => 'X', 'status' => 'approved']];
         $req = $this->tokenReq('POST', '/child/library/history');
         $req->set_param('content_id', 10);
         $req->set_param('action', 'open');
