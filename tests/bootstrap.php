@@ -552,6 +552,28 @@ if (! class_exists('WP_REST_Server')) {
     }
 }
 
+// Stubs de roteamento REST. `register_rest_route` grava cada registro em
+// $GLOBALS['gk_routes'] pra RestRoutesTest inspecionar as rotas registradas.
+if (! function_exists('register_rest_route')) {
+    function register_rest_route($namespace, $route, $args = [], $override = false)
+    {
+        $GLOBALS['gk_routes'][] = ['namespace' => $namespace, 'route' => $route, 'args' => $args];
+        return true;
+    }
+}
+if (! function_exists('add_action')) {
+    function add_action($hook, $cb, $priority = 10, $args = 1)
+    {
+        return true;
+    }
+}
+if (! function_exists('add_filter')) {
+    function add_filter($hook, $cb, $priority = 10, $args = 1)
+    {
+        return true;
+    }
+}
+
 // Stubs de HTTP pro Web Push (PushSender). Gravam a última request em
 // $GLOBALS['gk_http'] e devolvem $GLOBALS['gk_http_status'].
 if (! function_exists('wp_remote_post')) {
