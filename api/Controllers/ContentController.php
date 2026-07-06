@@ -273,6 +273,37 @@ final class ContentController
         return rest_ensure_response($this->contentToJson($this->contentRepo->findById($id) ?? []));
     }
 
+    /**
+     * Recebe uma imagem (multipart, campo `file`), joga na Biblioteca de Mídia
+     * do WP e devolve a URL do anexo pra usar como miniatura. Só admin.
+     */
+    public function uploadThumbnail(WP_REST_Request $req): WP_REST_Response|WP_Error
+    {
+        $files = $req->get_file_params();
+        if (empty($files['file'])) {
+            return new WP_Error('no_file', 'Nenhum arquivo enviado.', ['status' => 422]);
+        }
+        $type = (string) ($files['file']['type'] ?? '');
+        $allowed = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+        if (! in_array($type, $allowed, true)) {
+            return new WP_Error('invalid_type', 'Envie uma imagem JPG, PNG, WEBP ou GIF.', ['status' => 422]);
+        }
+        if (! function_exists('media_handle_upload')) {
+            require_once ABSPATH . 'wp-admin/includes/image.php';
+            require_once ABSPATH . 'wp-admin/includes/file.php';
+            require_once ABSPATH . 'wp-admin/includes/media.php';
+        }
+        $attachmentId = media_handle_upload('file', 0);
+        if (is_wp_error($attachmentId)) {
+            return $attachmentId;
+        }
+        $url = wp_get_attachment_url((int) $attachmentId);
+        if (! is_string($url) || $url === '') {
+            return new WP_Error('upload_failed', 'Não foi possível salvar a imagem.', ['status' => 500]);
+        }
+        return new WP_REST_Response(['id' => (int) $attachmentId, 'url' => $url], 201);
+    }
+
     public function analytics(WP_REST_Request $req): WP_REST_Response
     {
         return rest_ensure_response(ContentAnalytics::compute(

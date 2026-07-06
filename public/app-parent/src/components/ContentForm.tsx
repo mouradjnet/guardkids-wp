@@ -1,5 +1,5 @@
-import { useState, type FormEvent } from 'react';
-import type { Content, ContentCategory, ContentInput } from '../api/content';
+import { useState, type ChangeEvent, type FormEvent } from 'react';
+import { uploadThumbnail, type Content, type ContentCategory, type ContentInput } from '../api/content';
 
 const AGE_BUCKETS: Record<string, [number, number]> = {
   '4-6': [4, 6], '7-9': [7, 9], '10-13': [10, 13], '14-16': [14, 16],
@@ -29,7 +29,24 @@ export function ContentForm({ categories, initial, onSubmit, onClose }: ContentF
   const [level, setLevel] = useState(initial?.level ?? LEVELS[0]);
   const [tags, setTags] = useState(initial?.tags ?? '');
   const [busy, setBusy] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  async function onPickFile(e: ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    setError(null);
+    try {
+      const { url: uploadedUrl } = await uploadThumbnail(file);
+      setThumbnail(uploadedUrl);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Falha ao enviar a imagem.');
+    } finally {
+      setUploading(false);
+      e.target.value = '';
+    }
+  }
 
   async function submit(e: FormEvent) {
     e.preventDefault();
@@ -85,6 +102,15 @@ export function ContentForm({ categories, initial, onSubmit, onClose }: ContentF
         <label className="block text-label-md">Miniatura (URL)
           <input value={thumbnail} onChange={(e) => setThumbnail(e.target.value)} placeholder="https://..." className="mt-1 w-full rounded-lg border border-outline-variant p-2" />
         </label>
+        <div className="flex items-center gap-3">
+          <label className="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-outline-variant px-3 py-2 text-label-sm font-semibold text-on-surface hover:bg-surface-variant">
+            {uploading ? 'Enviando…' : 'Enviar imagem'}
+            <input type="file" accept="image/*" onChange={onPickFile} disabled={uploading} className="hidden" />
+          </label>
+          {thumbnail && (
+            <img src={thumbnail} alt="Miniatura" className="h-12 w-12 rounded-lg border border-outline-variant object-cover" />
+          )}
+        </div>
         <div className="grid grid-cols-3 gap-3">
           <label className="block text-label-md">Tempo (min)
             <input type="number" value={minutes} onChange={(e) => setMinutes(e.target.value)} className="mt-1 w-full rounded-lg border border-outline-variant p-2" />

@@ -35,11 +35,14 @@ export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> 
     url += (path.includes('?') ? '&' : '?') + '_=' + Date.now();
   }
 
+  // FormData (upload) precisa do Content-Type multipart com boundary que o
+  // browser define sozinho — não forçamos application/json nesse caso.
+  const isFormData = init?.body instanceof FormData;
   const res = await fetch(url, {
     credentials: 'same-origin',
     ...init,
     headers: {
-      'Content-Type': 'application/json',
+      ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
       ...authHeaders(),
       ...init?.headers,
     },

@@ -73,6 +73,12 @@ export function createContent(input: ContentInput): Promise<Content> {
   return apiFetch<Content>('/content', { method: 'POST', body: JSON.stringify(input) });
 }
 
+export function uploadThumbnail(file: File): Promise<{ id: number; url: string }> {
+  const form = new FormData();
+  form.append('file', file);
+  return apiFetch<{ id: number; url: string }>('/content/thumbnail', { method: 'POST', body: form });
+}
+
 export function updateContent(id: number, input: ContentInput): Promise<Content> {
   return apiFetch<Content>(`/content/${id}`, { method: 'PUT', body: JSON.stringify(input) });
 }
