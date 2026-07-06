@@ -283,8 +283,27 @@ if (! class_exists('WP_REST_Request')) {
         /** @var mixed */
         private $jsonBody = null;
 
+        /** @var array<string, mixed> */
+        private array $fileParams = [];
+
         public function __construct(private string $method = '', private string $route = '')
         {
+        }
+
+        /**
+         * @param array<string, mixed> $files
+         */
+        public function set_file_params(array $files): void
+        {
+            $this->fileParams = $files;
+        }
+
+        /**
+         * @return array<string, mixed>
+         */
+        public function get_file_params(): array
+        {
+            return $this->fileParams;
         }
 
         public function set_header(string $key, string $value): void
@@ -571,6 +590,21 @@ if (! function_exists('add_filter')) {
     function add_filter($hook, $cb, $priority = 10, $args = 1)
     {
         return true;
+    }
+}
+
+// Stubs de upload de mídia. media_handle_upload devolve $GLOBALS['gk_media_result']
+// (int do anexo ou WP_Error); wp_get_attachment_url devolve $GLOBALS['gk_attachment_url'].
+if (! function_exists('media_handle_upload')) {
+    function media_handle_upload($field, $postId = 0, $postData = [], $overrides = [])
+    {
+        return $GLOBALS['gk_media_result'] ?? 42;
+    }
+}
+if (! function_exists('wp_get_attachment_url')) {
+    function wp_get_attachment_url($id)
+    {
+        return $GLOBALS['gk_attachment_url'] ?? 'https://example.test/wp-content/uploads/thumb.png';
     }
 }
 

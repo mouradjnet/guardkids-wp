@@ -179,6 +179,12 @@ final class RestApi
             'permission_callback' => [self::class, 'requireAdmin'],
         ]);
 
+        register_rest_route(self::NAMESPACE, '/content/thumbnail', [
+            'methods'             => \WP_REST_Server::CREATABLE,
+            'callback'            => [$controller, 'uploadThumbnail'],
+            'permission_callback' => [self::class, 'requireAdmin'],
+        ]);
+
         register_rest_route(self::NAMESPACE, '/content/recommendations', [
             'methods'             => \WP_REST_Server::CREATABLE,
             'callback'            => [$controller, 'createRecommendation'],
