@@ -55,14 +55,6 @@ export type Content = {
 
 export type Favorite = { id: number; childId: number; contentId: number; createdAt: string | null };
 
-export type Recommendation = {
-  id: number;
-  childId: number;
-  contentId: number;
-  note: string | null;
-  createdAt: string | null;
-};
-
 export type Notification = {
   id: number;
   type: string;
