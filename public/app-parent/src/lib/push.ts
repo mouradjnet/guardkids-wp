@@ -1,10 +1,6 @@
 import { apiFetch } from '../api/client';
 
-declare global {
-  interface Window {
-    guardkidsApi?: { nonce: string; root: string; logoutUrl: string; swUrl?: string };
-  }
-}
+// `window.guardkidsApi` (incl. swUrl) é declarado em src/vite-env.d.ts.
 
 export function isPushSupported(): boolean {
   return (

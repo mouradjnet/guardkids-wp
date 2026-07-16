@@ -38,6 +38,20 @@ vi.mock('../api/guardians', () => ({
   resendInvite: resendInviteMock,
 }));
 
+// jsdom não tem navigator.serviceWorker: sem este mock, isPushSupported() daria
+// false e o toggle de push nasceria travado em todos os testes.
+const { isPushSupportedMock, pushSubscribeMock, pushUnsubscribeMock } = vi.hoisted(() => ({
+  isPushSupportedMock: vi.fn(() => true),
+  pushSubscribeMock: vi.fn(),
+  pushUnsubscribeMock: vi.fn(),
+}));
+vi.mock('../lib/push', () => ({
+  isPushSupported: isPushSupportedMock,
+  subscribe: pushSubscribeMock,
+  unsubscribe: pushUnsubscribeMock,
+  getPermission: vi.fn(() => 'granted'),
+}));
+
 const { exportDataMock, clearHistoryMock, deleteAllDataMock } = vi.hoisted(() => ({
   exportDataMock: vi.fn(),
   clearHistoryMock: vi.fn(),
@@ -133,6 +147,12 @@ describe('Settings page', () => {
     getPinStatusMock.mockReset().mockResolvedValue({ pinSet: false });
     setPinMock.mockReset().mockResolvedValue({ pinSet: true });
     clearPinMock.mockReset().mockResolvedValue({ pinSet: false });
+    // O afterEach faz restoreAllMocks, que zera o `() => true` do vi.fn — sem
+    // reafirmar aqui, isPushSupported devolveria undefined e o toggle nasceria
+    // travado em todos os testes.
+    isPushSupportedMock.mockReset().mockReturnValue(true);
+    pushSubscribeMock.mockReset().mockResolvedValue(undefined);
+    pushUnsubscribeMock.mockReset().mockResolvedValue(undefined);
   });
   afterEach(() => vi.restoreAllMocks());
 
@@ -229,7 +249,9 @@ describe('Settings page', () => {
     renderPage();
     await screen.findByText('Notificações push');
 
-    expect(toggleFor('Notificações push')).toHaveAttribute('aria-checked', 'true');
+    // push nasce DESLIGADO: o toggle agora é funcional, e "ligado por padrão"
+    // sem subscription seria mentira (era cosmético enquanto ficava locked).
+    expect(toggleFor('Notificações push')).toHaveAttribute('aria-checked', 'false');
     expect(toggleFor('Alertas em tempo real')).toHaveAttribute('aria-checked', 'false');
     expect(toggleFor('Logout automático por inatividade')).toHaveAttribute('aria-checked', 'false');
     expect(toggleFor('PIN no painel infantil')).toHaveAttribute('aria-checked', 'true');
@@ -566,5 +588,78 @@ describe('Settings page', () => {
     await user.click(screen.getByRole('button', { name: /excluir tudo/i }));
 
     await waitFor(() => expect(deleteAllDataMock).toHaveBeenCalledWith('EXCLUIR'));
+  });
+
+  describe('notificações push', () => {
+    it('o toggle não está mais bloqueado', async () => {
+      listSettingsMock.mockResolvedValue({});
+      renderPage();
+      await screen.findByText('Notificações push');
+
+      // waitFor: o switch fica disabled enquanto settingsQuery.isLoading, e o
+      // findByText acima resolve antes da query assentar.
+      await waitFor(() => expect(toggleFor('Notificações push')).not.toBeDisabled());
+    });
+
+    it('assina no browser e persiste o setting ao ligar', async () => {
+      listSettingsMock.mockResolvedValue({});
+      pushSubscribeMock.mockResolvedValue(undefined);
+      const user = userEvent.setup();
+      renderPage();
+      await screen.findByText('Notificações push');
+      await waitFor(() => expect(toggleFor('Notificações push')).not.toBeDisabled());
+
+      await user.click(toggleFor('Notificações push'));
+
+      await waitFor(() => expect(pushSubscribeMock).toHaveBeenCalled());
+      // v5: mutationFn recebe (variables, context) — daí o expect.anything().
+      await waitFor(() =>
+        expect(updateSettingsMock).toHaveBeenCalledWith(
+          { 'notifications.push': true },
+          expect.anything(),
+        ),
+      );
+    });
+
+    it('cancela a assinatura ao desligar', async () => {
+      listSettingsMock.mockResolvedValue({ 'notifications.push': true });
+      pushUnsubscribeMock.mockResolvedValue(undefined);
+      const user = userEvent.setup();
+      renderPage();
+      await screen.findByText('Notificações push');
+      await waitFor(() =>
+        expect(toggleFor('Notificações push')).toHaveAttribute('aria-checked', 'true'),
+      );
+
+      await user.click(toggleFor('Notificações push'));
+
+      await waitFor(() => expect(pushUnsubscribeMock).toHaveBeenCalled());
+    });
+
+    it('mostra o erro e NÃO persiste quando a permissão é negada', async () => {
+      listSettingsMock.mockResolvedValue({});
+      pushSubscribeMock.mockRejectedValue(new Error('Permissão de notificação negada no navegador.'));
+      const user = userEvent.setup();
+      renderPage();
+      await screen.findByText('Notificações push');
+      await waitFor(() => expect(toggleFor('Notificações push')).not.toBeDisabled());
+
+      await user.click(toggleFor('Notificações push'));
+
+      expect(await screen.findByRole('alert')).toHaveTextContent(/permiss/i);
+      // O toggle não pode mentir que está ligado.
+      expect(toggleFor('Notificações push')).toHaveAttribute('aria-checked', 'false');
+      expect(updateSettingsMock).not.toHaveBeenCalled();
+    });
+
+    it('fica travado quando o browser não suporta push', async () => {
+      isPushSupportedMock.mockReturnValue(false);
+      listSettingsMock.mockResolvedValue({});
+      renderPage();
+      await screen.findByText('Notificações push');
+
+      expect(toggleFor('Notificações push')).toBeDisabled();
+      expect(screen.getByText(/não suporta notificações push/i)).toBeInTheDocument();
+    });
   });
 });
