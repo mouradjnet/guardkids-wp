@@ -26,6 +26,8 @@ $tables = [
     $wpdb->prefix . 'guardkids_companion_devices',
     $wpdb->prefix . 'guardkids_notifications',
     $wpdb->prefix . 'guardkids_push_subscriptions',
+    $wpdb->prefix . 'guardkids_guardian_push_subscriptions',
+    $wpdb->prefix . 'guardkids_guardian_push_dedup',
     $wpdb->prefix . 'guardkids_content_categories',
     $wpdb->prefix . 'guardkids_content_items',
     $wpdb->prefix . 'guardkids_content_favorites',
