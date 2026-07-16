@@ -469,6 +469,19 @@ if (! function_exists('current_user_can')) {
     }
 }
 
+// user_can — capability de um usuário ARBITRARIO (não o logado). Usado por
+// GuardianAuth::isActiveGuardian, que roda no envio de push, quando quem fez a
+// request foi a criança e não há guardião logado.
+$GLOBALS['gk_caps_by_user'] = [];
+
+if (! function_exists('user_can')) {
+    function user_can($user, string $cap): bool
+    {
+        $id = is_object($user) ? (int) ($user->ID ?? 0) : (int) $user;
+        return (bool) ($GLOBALS['gk_caps_by_user'][$id][$cap] ?? false);
+    }
+}
+
 if (! function_exists('get_userdata')) {
     function get_userdata(int $userId): object|false
     {
