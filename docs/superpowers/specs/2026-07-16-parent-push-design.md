@@ -316,6 +316,23 @@ pontos → smoke real.
 Os gatilhos entram **por último** de propósito: até eles existirem, nada dispara, e o canal
 pode ser construído e testado sem risco de spammar ninguém.
 
+## Limitação conhecida e aceita: sem retry
+
+O `emit()` grava a chave de dedupe **antes** de enviar. Se o FCM estiver fora naquele
+instante, o `sendOne` estoura, o catch engola, e aquele evento não é retentado — a chave já
+está marcada.
+
+**Aceito de propósito**, porque o que se perde é o aviso instantâneo, não o dado: o pedido
+continua pendente no painel (que é justamente o destino do push, via `PendingRequests`) e
+ainda entra no digest das 22h do `DigestMailer`. O pai descobre mais tarde por dois caminhos
+que já existem. Falha de FCM é rara e transitória, e o `Notifier` da criança tem o mesmo
+comportamento.
+
+Se um dia isso virar problema medido, o caminho é fila de retry (tabela + backoff +
+expiração + idempotência) — fatia própria, não remendo aqui. Meia-solução descartada:
+"só gravar a chave se ≥1 envio deu certo" ajudaria `lim:`/`blk:` (que se repetem) mas não
+`req:` (que dispara uma vez), e faria envio parcial re-notificar quem já recebeu.
+
 ## Fora de escopo (YAGNI)
 
 - **Feed in-app de notificações do guardião** — decisão 3. O destino do push é o painel, que
