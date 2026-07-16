@@ -155,15 +155,6 @@ final class GuardianNotifierTest extends TestCase
         self::assertStringContainsString('em dia bloqueado', $this->sent[1]['title']);
     }
 
-    public function testDevicePairedSends(): void
-    {
-        $this->notifier()->notifyDevicePaired(3);
-
-        self::assertCount(1, $this->sent);
-        self::assertSame('Novo dispositivo conectado', $this->sent[0]['title']);
-        self::assertStringContainsString('Lucas', $this->sent[0]['body']);
-    }
-
     public function testZeroChildIdIsIgnored(): void
     {
         $this->notifier()->notifyLimitReached(0);

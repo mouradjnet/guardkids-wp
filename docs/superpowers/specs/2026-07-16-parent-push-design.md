@@ -22,9 +22,19 @@ Não é só o canal que não existe — o evento mais importante não é emitido
 
 ## Decisões (fechadas no brainstorming)
 
-1. **Eventos:** quatro — pedido criado, tempo esgotado, tentativa bloqueada, novo
-   dispositivo pareado. Colapsam em **três pontos de código** (tempo esgotado e tentativa
-   bloqueada são o mesmo gatilho `schedule_block`, separados pelo `detail`).
+1. **Eventos:** **três** — pedido criado, tempo esgotado e tentativa bloqueada. Colapsam em
+   **dois pontos de código** (tempo esgotado e tentativa bloqueada são o mesmo gatilho
+   `schedule_block`, separados pelo `detail`).
+
+   > **Revisão em 2026-07-16, durante a implementação.** O brainstorming fechou com um
+   > quarto evento — "filho pareou um novo dispositivo" — que **saiu desta fatia**. O
+   > motivo: o endpoint existente (`ChildController::issueDeviceToken`) é o **pai gerando
+   > um token no painel**, não a criança conectando. Notificar ali avisaria o guardião de
+   > um clique que ele mesmo acabou de dar. O evento de segurança real — alguém resgatou
+   > o token — **não existe no código**: o token vive em `settings` como
+   > `{childId, label, createdAt}` e o `ChildAuth::resolveChildId` é leitura pura, sem
+   > registrar primeiro uso. Entregar isso exige gravar `firstUsedAt` no ciclo de vida do
+   > token, que é outra fatia — não fiação de notificação. Ver "Fora de escopo".
 2. **Destinatários:** **todos os guardiões ativos** (`status=active`), admin ou
    collaborator. Quem decidir primeiro resolve; os outros veem resolvido ao abrir.
 3. **Sem feed in-app:** só push. O destino do toque é `/painel-pais`, onde os
@@ -185,7 +195,6 @@ Métodos públicos e suas chaves:
 | `notifyRequestCreated(array $request)` | `ChildSelfController::requestsCreate` | `req:{id}` | "{Nome} pediu acesso" / descrição do pedido |
 | `notifyLimitReached(int $childId)` | `eventsCreate`, `detail=limit` | `lim:{childId}:{Y-m-d}` | "{Nome} esgotou o tempo de tela" |
 | `notifyBlockedAttempt(int $childId, string $detail)` | `eventsCreate`, `detail=bedtime\|weekday` | `blk:{childId}:{detail}:{Y-m-d}` | "{Nome} tentou acessar fora do horário" |
-| `notifyDevicePaired(int $childId)` | `ChildController::pair` | `pair:{childId}:{Y-m-d}` | "Novo dispositivo conectado em {Nome}" |
 
 O `{Nome}` é resolvido **dentro** do `GuardianNotifier`, que injeta `ChildRepository` no
 construtor exatamente como o `Notifier` já faz. Os call sites passam só o `childId` que já
@@ -311,6 +320,11 @@ pode ser construído e testado sem risco de spammar ninguém.
 
 - **Feed in-app de notificações do guardião** — decisão 3. O destino do push é o painel, que
   já mostra o que importa.
+- **"Filho pareou um novo dispositivo"** — ver a revisão na seção "Decisões". Fazer certo
+  exige gravar `firstUsedAt` no payload do token quando ele é resgatado pela primeira vez,
+  o que muda o ciclo de vida do token e toca o `ChildAuth` (que roda em toda request da
+  criança). É fatia própria, pequena, e o canal que esta entrega já a atende: bastará um
+  `notifyDevicePaired()` no `GuardianNotifier`.
 - **Alerta de zona segura (geofencing)** — a `ZonasSeguras` promete "em breve, notificações",
   mas não existe detecção de entrada/saída no código. É fatia própria, e o canal que esta
   entrega é justamente o que ela vai precisar depois.

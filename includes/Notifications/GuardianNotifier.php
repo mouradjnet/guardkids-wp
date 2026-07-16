@@ -100,16 +100,4 @@ final class GuardianNotifier
         );
     }
 
-    public function notifyDevicePaired(int $childId): void
-    {
-        if ($childId === 0) {
-            return;
-        }
-
-        $this->emit(
-            'pair:' . $childId . ':' . gmdate('Y-m-d'),
-            'Novo dispositivo conectado',
-            $this->childName($childId) . ' conectou um aparelho novo.',
-        );
-    }
 }
