@@ -60,7 +60,10 @@ final class GuardianNotifier
             return;
         }
 
-        $label = trim((string) ($request['description'] ?? ''));
+        // description + highlight, mesma composição do Notifier::notifyRequestDecided.
+        $label = trim(
+            ((string) ($request['description'] ?? '')) . ' ' . ((string) ($request['highlight'] ?? ''))
+        );
 
         $this->emit(
             'req:' . $id,
