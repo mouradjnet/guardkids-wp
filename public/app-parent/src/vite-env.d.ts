@@ -14,5 +14,7 @@ interface Window {
     nonce: string;
     root: string;
     logoutUrl?: string;
+    /** URL do service worker no dist/, injetada pelo ParentApp. Ver lib/push.ts. */
+    swUrl?: string;
   };
 }

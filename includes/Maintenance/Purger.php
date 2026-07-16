@@ -23,6 +23,7 @@ final class Purger
     public const USAGE_EVENTS_DAYS     = 90;
     public const LOCATIONS_DAYS        = 30;
     public const DECIDED_REQUESTS_DAYS = 90;
+    public const GUARDIAN_DEDUP_DAYS   = 30;
     public const PAIRING_TOKEN_PREFIX  = 'companion_token:';
 
     private readonly \wpdb $db;
@@ -37,13 +38,30 @@ final class Purger
     }
 
     /**
-     * Roda os 2 purges. Chamada via hook `guardkids_daily_purge`.
+     * Roda os purges do cron. Chamada via hook `guardkids_daily_purge`.
      */
     public function run(): void
     {
         $this->purgeOldUsageEvents(self::USAGE_EVENTS_DAYS);
         $this->purgeOldLocations(self::LOCATIONS_DAYS);
         $this->purgeExpiredPairingTokens();
+        $this->purgeOldGuardianDedup(self::GUARDIAN_DEDUP_DAYS);
+    }
+
+    /**
+     * Chaves de dedupe do push do guardião viram lixo assim que a janela do
+     * evento passa (as chaves diárias já embutem a data). Ninguém lê linha
+     * velha; sem TTL a tabela cresceria pra sempre.
+     *
+     * @return int linhas removidas (0 quando wpdb falha).
+     */
+    public function purgeOldGuardianDedup(int $daysOld): int
+    {
+        return $this->purgeBefore(
+            $this->db->prefix . 'guardkids_guardian_push_dedup',
+            'created_at',
+            $daysOld,
+        );
     }
 
     /**

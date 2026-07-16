@@ -108,6 +108,12 @@ final class ParentApp
         echo '  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>' . "\n";
         echo '  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">' . "\n";
         echo '  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=swap" rel="stylesheet">' . "\n";
+        // Manifest: torna o painel instalável. É o que o iOS exige pra entregar
+        // Web Push (Safari só faz push em site na Tela de Início). NÃO faz do
+        // painel um PWA offline — não há precache nem estratégia de cache.
+        echo '  <link rel="manifest" href="' . esc_url($distUrl . 'manifest.webmanifest') . '">' . "\n";
+        echo '  <link rel="apple-touch-icon" href="' . esc_url($distUrl . 'apple-touch-icon-180x180.png') . '">' . "\n";
+        echo '  <meta name="theme-color" content="#1e3a8a">' . "\n";
         foreach ($cssFiles as $cssFile) {
             $cssUrl = $distUrl . $cssFile;
             echo '  <link rel="stylesheet" href="' . esc_url($cssUrl) . '">' . "\n";
@@ -120,6 +126,10 @@ final class ParentApp
             'nonce'     => $nonce,
             'root'      => $root,
             'logoutUrl' => $logoutUrl,
+            // O SW mora no dist/ (servido por plugins_url), não em /painel-pais/.
+            // O scope dele não cobre esta página — e não precisa: push não exige
+            // que o SW controle a página.
+            'swUrl'     => $distUrl . 'sw.js',
         ]) . ';</script>' . "\n";
         echo '  <script type="module" src="' . esc_url($jsFile) . '"></script>' . "\n";
         echo '</body>' . "\n";

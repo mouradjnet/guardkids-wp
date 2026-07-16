@@ -11,6 +11,7 @@ import {
 import { clearHistory, deleteAllData, exportData } from '../api/privacy';
 import { clearPin, getPinStatus, setPin } from '../api/security';
 import { listSettings, updateSettings, type SettingsBag } from '../api/settings';
+import { isPushSupported, subscribe as pushSubscribe, unsubscribe as pushUnsubscribe } from '../lib/push';
 import type { Guardian, GuardianRole, GuardianWithInvite } from '../api/types';
 import { Icon } from '../components/Icon';
 import { DeleteAccountDialog } from '../components/DeleteAccountDialog';
@@ -34,6 +35,8 @@ export function Settings() {
 
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [pinOpen, setPinOpen] = useState(false);
+  const [pushError, setPushError] = useState<Error | null>(null);
+  const pushSupported = isPushSupported();
 
   const pinStatusQuery = useQuery({ queryKey: ['security', 'pin'], queryFn: getPinStatus });
   const hasPin = pinStatusQuery.data?.pinSet ?? false;
@@ -94,6 +97,24 @@ export function Settings() {
   };
   const set = (key: string, value: boolean) => mutation.mutate({ [key]: value });
 
+  // O push é efeito colateral do toggle, não substituto: só persiste o setting
+  // se a assinatura no browser der certo. Falha => volta pro desligado com o
+  // motivo na tela, nunca mente que está ligado.
+  const setPush = async (key: string, value: boolean) => {
+    setPushError(null);
+    try {
+      if (value) {
+        await pushSubscribe();
+      } else {
+        await pushUnsubscribe();
+      }
+    } catch (err) {
+      setPushError(err instanceof Error ? err : new Error('Não foi possível ativar as notificações.'));
+      return;
+    }
+    set(key, value);
+  };
+
   return (
     <main className="mx-auto flex w-full max-w-[1440px] flex-1 flex-col gap-stack-lg p-container-padding-mobile pb-24 md:ml-64 md:p-container-padding-desktop md:pb-container-padding-desktop">
       <PageHeader
@@ -112,14 +133,26 @@ export function Settings() {
         <SettingToggleRow
           settingsKey="notifications.push"
           title="Notificações push"
-          description="Recebe alertas no celular sobre pedidos e bloqueios."
-          fallback={true}
+          description={
+            pushSupported
+              ? 'Recebe alertas no celular sobre pedidos e bloqueios.'
+              : 'Este navegador não suporta notificações push.'
+          }
+          // fallback=false: enquanto o toggle era `locked`, "ligado por padrão"
+          // era cosmético. Agora que é funcional, um default true mostraria
+          // ligado sem existir subscription nenhuma.
+          fallback={false}
           loading={settingsQuery.isLoading}
           saving={mutation.isPending}
-          locked
+          locked={!pushSupported}
           get={get}
-          set={set}
+          set={setPush}
         />
+        {pushError ? (
+          <p role="alert" className="rounded-lg bg-error/10 p-2 text-label-sm text-error">
+            {pushError.message}
+          </p>
+        ) : null}
         <SettingToggleRow
           settingsKey="notifications.email"
           title="Resumo diário por email"

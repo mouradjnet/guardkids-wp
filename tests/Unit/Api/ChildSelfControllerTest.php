@@ -38,6 +38,8 @@ final class ChildSelfControllerTest extends TestCase
             public array $notifications = [];
             /** @var array<int, array<string, mixed>> */
             public array $pushSubs = [];
+            /** @var array<int, array<string, mixed>> */
+            public array $guardianDedup = [];
 
             public function __construct()
             {
@@ -108,6 +110,21 @@ final class ChildSelfControllerTest extends TestCase
                     }
                     return $out;
                 }
+                // Push do guardião: dedupe + subscriptions (nenhuma inscrita
+                // por padrão, então nada é enviado — mas a linha de dedupe é
+                // criada, e é ela que prova que o gatilho rodou).
+                if (str_contains((string) $sql, 'guardian_push_dedup')) {
+                    if (preg_match("/dedup_key = '([^']*)'/", (string) $sql, $d) === 1) {
+                        return array_values(array_filter(
+                            $this->guardianDedup,
+                            static fn (array $r): bool => (string) ($r['dedup_key'] ?? '') === $d[1],
+                        ));
+                    }
+                    return array_values($this->guardianDedup);
+                }
+                if (str_contains((string) $sql, 'guardian_push_subscriptions')) {
+                    return [];
+                }
                 if (str_contains((string) $sql, 'guardkids_notifications')) {
                     $out = $this->notifications;
                     if (preg_match('/child_id = (\d+)/', (string) $sql, $m) === 1) {
@@ -150,6 +167,11 @@ final class ChildSelfControllerTest extends TestCase
                 if (str_contains((string) $table, 'guardkids_push_subscriptions')) {
                     $id = count($this->pushSubs) + 1;
                     $this->pushSubs[$id] = array_merge(['id' => $id], $data);
+                    return 1;
+                }
+                if (str_contains((string) $table, 'guardian_push_dedup')) {
+                    $id = count($this->guardianDedup) + 1;
+                    $this->guardianDedup[$id] = array_merge(['id' => $id], $data);
                     return 1;
                 }
                 return 0;
@@ -344,6 +366,58 @@ final class ChildSelfControllerTest extends TestCase
         // O childId vem do token, NÃO do request body
         self::assertSame(1, $res->get_data()['childId']);
         self::assertSame('pending', $res->get_data()['status']);
+    }
+
+    /**
+     * O gatilho que motivou a fatia: antes disso, requestsCreate não avisava
+     * ninguém. A linha de dedupe é a prova de que o GuardianNotifier rodou.
+     */
+    public function testRequestsCreateNotifiesGuardians(): void
+    {
+        $req = $this->authedRequest('POST', '/child/requests');
+        $req->set_param('kind', 'extra_time');
+        $req->set_param('description', 'Mais tempo');
+
+        $res = (new ChildSelfController())->requestsCreate($req);
+
+        self::assertSame(201, $res->get_status());
+        self::assertCount(1, $this->wpdb->guardianDedup);
+        self::assertStringStartsWith('req:', (string) $this->wpdb->guardianDedup[1]['dedup_key']);
+    }
+
+    public function testScheduleBlockWithLimitNotifiesGuardians(): void
+    {
+        $req = $this->authedRequest('POST', '/child/events');
+        $req->set_param('type', 'schedule_block');
+        $req->set_param('detail', 'limit');
+
+        $res = (new ChildSelfController())->eventsCreate($req);
+
+        self::assertSame(201, $res->get_status());
+        self::assertCount(1, $this->wpdb->guardianDedup);
+        self::assertStringStartsWith('lim:', (string) $this->wpdb->guardianDedup[1]['dedup_key']);
+    }
+
+    public function testScheduleBlockWithBedtimeNotifiesGuardians(): void
+    {
+        $req = $this->authedRequest('POST', '/child/events');
+        $req->set_param('type', 'schedule_block');
+        $req->set_param('detail', 'bedtime');
+
+        (new ChildSelfController())->eventsCreate($req);
+
+        self::assertCount(1, $this->wpdb->guardianDedup);
+        self::assertStringStartsWith('blk:', (string) $this->wpdb->guardianDedup[1]['dedup_key']);
+    }
+
+    public function testHeartbeatDoesNotNotifyGuardians(): void
+    {
+        $req = $this->authedRequest('POST', '/child/events');
+        $req->set_param('type', 'heartbeat');
+
+        (new ChildSelfController())->eventsCreate($req);
+
+        self::assertSame([], $this->wpdb->guardianDedup, 'heartbeat nao pode acordar ninguem');
     }
 
     public function testRequestsCreateReturns422WithoutKind(): void

@@ -60,6 +60,36 @@ final class GuardianAuth
         return null;
     }
 
+    /**
+     * Um usuário arbitrário pode receber push de guardião?
+     *
+     * Espelha currentRole(), mas pra um user id qualquer: no momento do envio
+     * quem fez a request foi a CRIANÇA, então não há guardião logado e
+     * current_user_can() não serve — daí user_can($id, ...).
+     *
+     * Inclui o admin WP sem linha em `guardians` de propósito: currentRole()
+     * dá 'admin' por manage_options, então resolver destinatários só por
+     * GuardianRepository::findActive() deixaria o dono da instalação sem push.
+     *
+     * Não faz o fallback por email que o currentRole() faz: a subscription
+     * sempre grava um wp_user_id real.
+     */
+    public static function isActiveGuardian(int $wpUserId, ?GuardianRepository $repo = null): bool
+    {
+        if ($wpUserId <= 0) {
+            return false;
+        }
+
+        if (function_exists('user_can') && user_can($wpUserId, 'manage_options')) {
+            return true;
+        }
+
+        $repo ??= new GuardianRepository();
+        $row = $repo->findByWpUserId($wpUserId);
+
+        return $row !== null && ($row['status'] ?? '') === 'active';
+    }
+
     public static function isAdmin(): bool
     {
         return self::currentRole() === 'admin';

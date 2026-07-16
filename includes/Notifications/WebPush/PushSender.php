@@ -4,26 +4,31 @@ declare(strict_types=1);
 
 namespace GuardKids\Notifications\WebPush;
 
+use GuardKids\Auth\GuardianAuth;
+use GuardKids\Database\GuardianPushSubscriptionRepository;
 use GuardKids\Database\PushSubscriptionRepository;
 
 /**
- * Envia web-push (síncrono) às subscriptions de um filho. Limpa endpoints
- * mortos (404/410). Falhas nunca propagam pro gatilho.
+ * Envia web-push (síncrono) às subscriptions de um filho ou dos guardiões.
+ * Limpa endpoints mortos (404/410). Falhas nunca propagam pro gatilho.
  */
 class PushSender
 {
     private readonly PushSubscriptionRepository $subs;
     private readonly Vapid $vapid;
     private readonly Payload $payload;
+    private readonly GuardianPushSubscriptionRepository $guardianSubs;
 
     public function __construct(
         ?PushSubscriptionRepository $subs = null,
         ?Vapid $vapid = null,
-        ?Payload $payload = null
+        ?Payload $payload = null,
+        ?GuardianPushSubscriptionRepository $guardianSubs = null
     ) {
-        $this->subs    = $subs ?? new PushSubscriptionRepository();
-        $this->vapid   = $vapid ?? new Vapid();
-        $this->payload = $payload ?? new Payload();
+        $this->subs         = $subs ?? new PushSubscriptionRepository();
+        $this->vapid        = $vapid ?? new Vapid();
+        $this->payload      = $payload ?? new Payload();
+        $this->guardianSubs = $guardianSubs ?? new GuardianPushSubscriptionRepository();
     }
 
     public function sendToChild(int $childId, string $title, string $body): void
@@ -39,6 +44,41 @@ class PushSender
                 $this->sendOne((string) $sub['endpoint'], (string) $sub['p256dh'], (string) $sub['auth'], $data);
             } catch (\Throwable $e) {
                 error_log('[GuardKids] push falhou: ' . $e->getMessage());
+            }
+        }
+    }
+
+    /**
+     * Subscriptions de quem AINDA é guardião ativo.
+     *
+     * Público e separado do envio de propósito: é a única parte testável sem
+     * passar por Payload::encrypt (que gera chave EC e estoura no openssl do
+     * Windows). Efeito colateral desejado: guardião removido do time para de
+     * receber no envio seguinte, sem limpar a tabela de subscriptions.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    public function guardianSubscriptions(): array
+    {
+        return array_values(array_filter(
+            $this->guardianSubs->findAll(),
+            static fn (array $s): bool => GuardianAuth::isActiveGuardian((int) ($s['wp_user_id'] ?? 0)),
+        ));
+    }
+
+    public function sendToGuardians(string $title, string $body): void
+    {
+        $data = (string) wp_json_encode([
+            'title' => $title,
+            'body'  => $body,
+            'url'   => '/painel-pais/',
+        ]);
+
+        foreach ($this->guardianSubscriptions() as $sub) {
+            try {
+                $this->sendOne((string) $sub['endpoint'], (string) $sub['p256dh'], (string) $sub['auth'], $data);
+            } catch (\Throwable $e) {
+                error_log('[GuardKids] push do guardião falhou: ' . $e->getMessage());
             }
         }
     }

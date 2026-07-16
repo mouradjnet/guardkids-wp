@@ -16,6 +16,7 @@ use GuardKids\Database\RequestRepository;
 use GuardKids\Database\SettingsRepository;
 use GuardKids\Database\SiteRepository;
 use GuardKids\Database\UsageEventRepository;
+use GuardKids\Notifications\GuardianNotifier;
 use GuardKids\Notifications\Notifier;
 use GuardKids\Notifications\WebPush\VapidKeys;
 use GuardKids\Schedule\ScheduleEvaluator;
@@ -39,6 +40,7 @@ final class ChildSelfController
     private readonly SiteRepository $sites;
     private readonly NotificationRepository $notifications;
     private readonly Notifier $notifier;
+    private readonly GuardianNotifier $guardianNotifier;
     private readonly PushSubscriptionRepository $pushSubs;
     private readonly ProgressionRepository $progression;
     private readonly VapidKeys $vapidKeys;
@@ -57,6 +59,7 @@ final class ChildSelfController
         $this->sites     = new SiteRepository();
         $this->notifications = new NotificationRepository();
         $this->notifier      = new Notifier();
+        $this->guardianNotifier = new GuardianNotifier();
         $this->pushSubs      = new PushSubscriptionRepository();
         $this->progression   = new ProgressionRepository();
         $this->vapidKeys     = new VapidKeys();
@@ -290,6 +293,15 @@ final class ChildSelfController
         }
 
         $created = $this->requests->findById($id);
+
+        try {
+            $this->guardianNotifier->notifyRequestCreated($created ?? ['id' => $id, 'child_id' => $childId]);
+        } catch (\Throwable $e) {
+            // Push nunca derruba o gatilho: a criança tem que conseguir pedir
+            // mesmo se o serviço de push estiver fora.
+            error_log('[GuardKids] notificar guardião falhou: ' . $e->getMessage());
+        }
+
         return new WP_REST_Response($this->requestToJson($created ?? []), 201);
     }
 
@@ -349,6 +361,16 @@ final class ChildSelfController
 
         if ($type === 'schedule_block' && $detail !== null) {
             $this->notifier->notifyBlocked($childId, $detail);
+
+            try {
+                if ($detail === 'limit') {
+                    $this->guardianNotifier->notifyLimitReached($childId);
+                } else {
+                    $this->guardianNotifier->notifyBlockedAttempt($childId, $detail);
+                }
+            } catch (\Throwable $e) {
+                error_log('[GuardKids] notificar guardião falhou: ' . $e->getMessage());
+            }
         }
 
         return new WP_REST_Response([

@@ -64,13 +64,26 @@ final class PurgerTest extends TestCase
         self::assertStringContainsString('recorded_at <', $this->wpdb->queries[0]);
     }
 
-    public function testRunInvokesBothPurges(): void
+    public function testRunInvokesAllPurges(): void
     {
         (new Purger($this->wpdb))->run();
 
-        self::assertCount(2, $this->wpdb->queries);
+        // 3 desde v1.36.0: o dedupe do push do guardião entrou no cron diário.
+        // (purgeExpiredPairingTokens usa get_results+delete, não query.)
+        self::assertCount(3, $this->wpdb->queries);
         self::assertStringContainsString('usage_events', $this->wpdb->queries[0]);
         self::assertStringContainsString('locations', $this->wpdb->queries[1]);
+        self::assertStringContainsString('guardian_push_dedup', $this->wpdb->queries[2]);
+    }
+
+    public function testPurgeOldGuardianDedupTargetsCorrectTable(): void
+    {
+        $deleted = (new Purger($this->wpdb))->purgeOldGuardianDedup(30);
+
+        self::assertSame(7, $deleted);
+        self::assertCount(1, $this->wpdb->queries);
+        self::assertStringContainsString('wp_guardkids_guardian_push_dedup', $this->wpdb->queries[0]);
+        self::assertStringContainsString('created_at <', $this->wpdb->queries[0]);
     }
 
     public function testCutoffUsesUtcTimestamp(): void

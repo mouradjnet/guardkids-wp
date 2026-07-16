@@ -52,12 +52,23 @@ if (! function_exists('current_time')) {
      */
     function current_time(string $type, $gmt = 0): string
     {
+        // Espelha o WP: $type que não seja 'mysql'/'timestamp' É um formato de
+        // data, e sem $gmt a hora sai no fuso do SITE. O offset vem de
+        // $GLOBALS['gk_tz_offset_seconds'] (default 0 = UTC), pra um teste
+        // conseguir provar comportamento dependente de fuso.
+        $offset = $gmt ? 0 : (int) ($GLOBALS['gk_tz_offset_seconds'] ?? 0);
+        $ts     = time() + $offset;
+
         if ($type === 'mysql') {
-            return gmdate('Y-m-d H:i:s');
+            return gmdate('Y-m-d H:i:s', $ts);
         }
-        return (string) time();
+        if ($type === 'timestamp') {
+            return (string) $ts;
+        }
+        return gmdate($type, $ts);
     }
 }
+$GLOBALS['gk_tz_offset_seconds'] = 0;
 
 if (! function_exists('wp_json_encode')) {
     /**
@@ -466,6 +477,19 @@ if (! function_exists('current_user_can')) {
     function current_user_can(string $cap): bool
     {
         return (bool) ($GLOBALS['gk_user_caps'][$cap] ?? false);
+    }
+}
+
+// user_can — capability de um usuário ARBITRARIO (não o logado). Usado por
+// GuardianAuth::isActiveGuardian, que roda no envio de push, quando quem fez a
+// request foi a criança e não há guardião logado.
+$GLOBALS['gk_caps_by_user'] = [];
+
+if (! function_exists('user_can')) {
+    function user_can($user, string $cap): bool
+    {
+        $id = is_object($user) ? (int) ($user->ID ?? 0) : (int) $user;
+        return (bool) ($GLOBALS['gk_caps_by_user'][$id][$cap] ?? false);
     }
 }
 

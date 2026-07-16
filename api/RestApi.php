@@ -9,6 +9,7 @@ use GuardKids\Api\Controllers\ChildController;
 use GuardKids\Api\Controllers\ChildSelfController;
 use GuardKids\Api\Controllers\CompanionController;
 use GuardKids\Api\Controllers\GuardianController;
+use GuardKids\Api\Controllers\GuardianPushController;
 use GuardKids\Api\Controllers\LicenseController;
 use GuardKids\Api\Controllers\LocationController;
 use GuardKids\Api\Controllers\ReportsController;
@@ -597,6 +598,29 @@ final class RestApi
             'methods'             => \WP_REST_Server::CREATABLE,
             'callback'            => [$controller, 'pushUnsubscribe'],
             'permission_callback' => $requireToken,
+        ]);
+
+        // Push do guardião — mesmas chaves VAPID, destinatário diferente.
+        // requireCollaboratorOrAbove: o collaborator também decide pedidos,
+        // então também precisa ser avisado.
+        $guardianPush = new GuardianPushController();
+
+        register_rest_route(self::NAMESPACE, '/guardian/push/key', [
+            'methods'             => \WP_REST_Server::READABLE,
+            'callback'            => [$guardianPush, 'pushKey'],
+            'permission_callback' => [self::class, 'requireCollaboratorOrAbove'],
+        ]);
+
+        register_rest_route(self::NAMESPACE, '/guardian/push/subscribe', [
+            'methods'             => \WP_REST_Server::CREATABLE,
+            'callback'            => [$guardianPush, 'pushSubscribe'],
+            'permission_callback' => [self::class, 'requireCollaboratorOrAbove'],
+        ]);
+
+        register_rest_route(self::NAMESPACE, '/guardian/push/unsubscribe', [
+            'methods'             => \WP_REST_Server::CREATABLE,
+            'callback'            => [$guardianPush, 'pushUnsubscribe'],
+            'permission_callback' => [self::class, 'requireCollaboratorOrAbove'],
         ]);
 
         register_rest_route(self::NAMESPACE, '/child/events', [
