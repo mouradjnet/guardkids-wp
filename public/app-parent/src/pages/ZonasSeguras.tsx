@@ -17,7 +17,7 @@ export function ZonasSeguras() {
       <main className="mx-auto flex w-full max-w-[1440px] flex-1 flex-col gap-stack-lg p-container-padding-mobile pb-24 md:ml-64 md:p-container-padding-desktop md:pb-container-padding-desktop">
         <PageHeader
           title="Zonas seguras"
-          subtitle="Receba alertas quando seu filho chegar ou sair de lugares marcados."
+          subtitle="Marque os lugares importantes da rotina e veja-os no mapa da Localização."
         />
         <div className="min-h-[300px]">
           <PremiumLock
@@ -60,7 +60,7 @@ function ZonasSegurasContent() {
     <main className="mx-auto flex w-full max-w-[1440px] flex-1 flex-col gap-stack-lg p-container-padding-mobile pb-24 md:ml-64 md:p-container-padding-desktop md:pb-container-padding-desktop">
       <PageHeader
         title="Zonas Seguras"
-        subtitle="Cadastre lugares importantes — casa, escola, casa da avó."
+        subtitle="Cadastre lugares importantes — casa, escola, casa da avó. Eles aparecem no mapa da Localização."
         action={
           <button
             type="button"
@@ -184,8 +184,8 @@ function EmptyState({ onAdd }: { onAdd: () => void }) {
       <Icon name="shield" className="text-4xl text-primary" />
       <p className="font-display text-headline-md text-on-surface">Nenhuma zona cadastrada</p>
       <p className="max-w-md text-center text-label-sm">
-        Cadastre os lugares da rotina dos seus filhos — Casa, Escola, Casa da avó — com
-        endereço e raio.
+        Cadastre os lugares da rotina dos seus filhos — Casa, Escola, Casa da avó. Cada zona
+        aparece desenhada no mapa da Localização, junto de onde eles estão agora.
       </p>
       <button
         type="button"

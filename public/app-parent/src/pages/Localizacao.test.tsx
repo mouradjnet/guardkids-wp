@@ -5,11 +5,19 @@ import type { ReactNode } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Child, LocationFix } from '../api/types';
 
-const { listChildrenMock, listLocationsMock, listSettingsMock, getLicenseMock } = vi.hoisted(() => ({
-  listChildrenMock: vi.fn(),
-  listLocationsMock: vi.fn(),
-  listSettingsMock: vi.fn(),
-  getLicenseMock: vi.fn(),
+const { listChildrenMock, listLocationsMock, listSettingsMock, getLicenseMock, listSafeZonesMock } =
+  vi.hoisted(() => ({
+    listChildrenMock: vi.fn(),
+    listLocationsMock: vi.fn(),
+    listSettingsMock: vi.fn(),
+    getLicenseMock: vi.fn(),
+    listSafeZonesMock: vi.fn(),
+  }));
+vi.mock('../api/safeZones', () => ({
+  listSafeZones: listSafeZonesMock,
+  createSafeZone: vi.fn(),
+  updateSafeZone: vi.fn(),
+  deleteSafeZone: vi.fn(),
 }));
 vi.mock('../api/children', () => ({
   listChildren: listChildrenMock,
@@ -43,6 +51,12 @@ vi.mock('react-leaflet', () => ({
   Popup: ({ children }: { children: ReactNode }) => (
     <div data-testid="popup">{children}</div>
   ),
+  Circle: ({ children, center, radius }: { children?: ReactNode; center: [number, number]; radius: number }) => (
+    <div data-testid="circle" data-center={center.join(',')} data-radius={radius}>
+      {children}
+    </div>
+  ),
+  Tooltip: ({ children }: { children: ReactNode }) => <div data-testid="tooltip">{children}</div>,
 }));
 
 import { Localizacao } from './Localizacao';
@@ -97,6 +111,7 @@ describe('Localizacao page', () => {
     // Default: licença premium ativa (libera o conteúdo da página).
     // Tests específicos de bloqueio sobrescrevem com FREE_NONE_SNAPSHOT.
     getLicenseMock.mockReset().mockResolvedValue(ACTIVE_PREMIUM_SNAPSHOT);
+    listSafeZonesMock.mockReset().mockResolvedValue([]);
   });
 
   afterEach(() => {
@@ -128,6 +143,36 @@ describe('Localizacao page', () => {
     renderPage();
 
     expect(await screen.findByText(/vamos ativar a localização/i)).toBeInTheDocument();
+  });
+
+  it('desenha as zonas seguras como círculos no mapa', async () => {
+    listChildrenMock.mockResolvedValue([lucas]);
+    listLocationsMock.mockResolvedValue([recentFix()]);
+    listSafeZonesMock.mockResolvedValue([
+      { id: 1, name: 'Escola', address: null, latitude: -23.5, longitude: -46.6, radiusMeters: 200, createdAt: null, updatedAt: null },
+      { id: 2, name: 'Casa', address: null, latitude: -23.6, longitude: -46.7, radiusMeters: 80, createdAt: null, updatedAt: null },
+    ]);
+    renderPage();
+
+    await screen.findByTestId('map-container');
+    const circles = await screen.findAllByTestId('circle');
+
+    expect(circles).toHaveLength(2);
+    expect(circles[0]).toHaveAttribute('data-center', '-23.5,-46.6');
+    expect(circles[0]).toHaveAttribute('data-radius', '200');
+    // o nome da zona precisa estar no mapa, senao o circulo nao diz nada
+    expect(screen.getByText('Escola')).toBeInTheDocument();
+    expect(screen.getByText('Casa')).toBeInTheDocument();
+  });
+
+  it('nao quebra o mapa quando nao ha zonas cadastradas', async () => {
+    listChildrenMock.mockResolvedValue([lucas]);
+    listLocationsMock.mockResolvedValue([recentFix()]);
+    listSafeZonesMock.mockResolvedValue([]);
+    renderPage();
+
+    expect(await screen.findByTestId('map-container')).toBeInTheDocument();
+    expect(screen.queryAllByTestId('circle')).toHaveLength(0);
   });
 
   it('renders map + marker when fix available', async () => {
