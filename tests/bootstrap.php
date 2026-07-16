@@ -622,6 +622,10 @@ if (! function_exists('add_filter')) {
 if (! function_exists('media_handle_upload')) {
     function media_handle_upload($field, $postId = 0, $postData = [], $overrides = [])
     {
+        // Registra os overrides: é por eles que o WP faz a validação REAL de
+        // mime (extensão + magic bytes). Sem gravar aqui, nenhum teste conseguiria
+        // provar que o caller restringiu os tipos.
+        $GLOBALS['gk_media_overrides'] = $overrides;
         return $GLOBALS['gk_media_result'] ?? 42;
     }
 }

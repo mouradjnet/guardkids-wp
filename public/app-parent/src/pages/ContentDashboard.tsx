@@ -7,6 +7,7 @@ import {
 } from '../api/content';
 import { listChildren } from '../api/children';
 import { ContentForm } from '../components/ContentForm';
+import { MutationError } from '../components/MutationError';
 import { RecommendationManager } from '../components/RecommendationManager';
 
 function AnalyticsCard({ title, rows }: { title: string; rows: { label: string; value: string | number }[] }) {
@@ -50,9 +51,12 @@ export function ContentDashboard() {
     mutationFn: (input: ContentInput) => (editing ? updateContent(editing.id, input) : createContent(input)),
     onSuccess: () => { invalidate(); setEditing(null); setCreating(false); },
   });
+  // onError em todas: sem isso o botão não faz nada visível quando o servidor
+  // recusa, e o usuário conclui que o app está quebrado.
   const remove = useMutation({ mutationFn: (id: number) => deleteContent(id), onSuccess: invalidate });
   const approve = useMutation({ mutationFn: (id: number) => approveContent(id), onSuccess: invalidate });
   const revoke = useMutation({ mutationFn: (id: number) => revokeContent(id), onSuccess: invalidate });
+  const acaoErro = remove.error ?? approve.error ?? revoke.error;
 
   const a = analytics.data;
   const list = contents.data ?? [];
@@ -93,6 +97,8 @@ export function ContentDashboard() {
           </button>
         ))}
       </div>
+
+      {acaoErro ? <MutationError error={acaoErro} /> : null}
 
       {contents.isLoading ? (
         <div className="h-24 animate-pulse rounded-2xl bg-surface-container-low" />

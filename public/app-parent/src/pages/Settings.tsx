@@ -20,6 +20,7 @@ import { TwoFactorSection } from '../components/TwoFactorSection';
 import { SessionsSection } from '../components/SessionsSection';
 import { InviteGuardianDialog } from '../components/InviteGuardianDialog';
 import { InviteLinkPanel } from '../components/InviteLinkPanel';
+import { MutationError } from '../components/MutationError';
 import { PageHeader } from '../components/PageHeader';
 
 export function Settings() {
@@ -148,11 +149,8 @@ export function Settings() {
           get={get}
           set={setPush}
         />
-        {pushError ? (
-          <p role="alert" className="rounded-lg bg-error/10 p-2 text-label-sm text-error">
-            {pushError.message}
-          </p>
-        ) : null}
+        {/* sem prefix: "permissão negada" não é falha ao salvar */}
+        {pushError ? <MutationError error={pushError} /> : null}
         <SettingToggleRow
           settingsKey="notifications.email"
           title="Resumo diário por email"
@@ -184,7 +182,7 @@ export function Settings() {
           get={get}
           set={set}
         />
-        {mutation.error ? <MutationError error={mutation.error} /> : null}
+        {mutation.error ? <MutationError prefix="Falha ao salvar" error={mutation.error} /> : null}
       </Section>
 
       <Section
@@ -316,7 +314,7 @@ export function Settings() {
           onClick={() => exportMutation.mutate()}
           pending={exportMutation.isPending}
         />
-        {exportMutation.error ? <MutationError error={exportMutation.error} /> : null}
+        {exportMutation.error ? <MutationError prefix="Falha ao salvar" error={exportMutation.error} /> : null}
         <ActionRow
           icon="cleaning_services"
           title="Limpar histórico"
@@ -332,7 +330,7 @@ export function Settings() {
             localizações, {clearMutation.data.requests} pedidos.
           </p>
         ) : null}
-        {clearMutation.error ? <MutationError error={clearMutation.error} /> : null}
+        {clearMutation.error ? <MutationError prefix="Falha ao salvar" error={clearMutation.error} /> : null}
         <ActionRow
           icon="delete_forever"
           title="Excluir conta e todos os dados"
@@ -896,16 +894,3 @@ function LoadError({ error }: { error: unknown }) {
   );
 }
 
-function MutationError({ error }: { error: unknown }) {
-  const message =
-    error instanceof ApiError
-      ? `${error.message} (${error.status})`
-      : error instanceof Error
-        ? error.message
-        : 'erro desconhecido';
-  return (
-    <p role="alert" className="rounded-lg bg-error/10 p-2 text-label-sm text-error">
-      Falha ao salvar: {message}
-    </p>
-  );
-}

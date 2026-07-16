@@ -82,7 +82,10 @@ final class Notifier
     public function notifyBlocked(int $childId, string $detail): void
     {
         $titles = ['bedtime' => 'Hora de dormir', 'weekday' => 'Dia bloqueado', 'limit' => 'Tempo esgotado'];
-        $this->emit($childId, 'blocked:' . $detail . ':' . gmdate('Y-m-d'), [
+        // current_time e nao gmdate: a janela "1 aviso por dia" tem que virar a
+        // meia-noite do SITE. Em UTC-3, gmdate viraria as 21:00 local — em cima
+        // do bedtime, que e justamente quando este evento dispara.
+        $this->emit($childId, 'blocked:' . $detail . ':' . current_time('Y-m-d'), [
             'type'  => 'blocked',
             'title' => $titles[$detail] ?? 'Acesso pausado',
             'body'  => 'O acesso está pausado agora.',

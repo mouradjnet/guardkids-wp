@@ -184,8 +184,8 @@ function EmptyState({ onAdd }: { onAdd: () => void }) {
       <Icon name="shield" className="text-4xl text-primary" />
       <p className="font-display text-headline-md text-on-surface">Nenhuma zona cadastrada</p>
       <p className="max-w-md text-center text-label-sm">
-        Crie zonas como Casa, Escola, ou Casa da avó. Em breve, vai poder receber notificações
-        quando seus filhos chegarem ou saírem delas.
+        Cadastre os lugares da rotina dos seus filhos — Casa, Escola, Casa da avó — com
+        endereço e raio.
       </p>
       <button
         type="button"

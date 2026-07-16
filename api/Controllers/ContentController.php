@@ -283,17 +283,33 @@ final class ContentController
         if (empty($files['file'])) {
             return new WP_Error('no_file', 'Nenhum arquivo enviado.', ['status' => 422]);
         }
+        // Pré-check amigável, NÃO é segurança: $files['file']['type'] é o
+        // Content-Type que o cliente mandou, e forjar isso é trivial. Serve só
+        // pra devolver 422 legível quando alguém escolhe um PDF sem querer.
         $type = (string) ($files['file']['type'] ?? '');
         $allowed = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
         if (! in_array($type, $allowed, true)) {
             return new WP_Error('invalid_type', 'Envie uma imagem JPG, PNG, WEBP ou GIF.', ['status' => 422]);
         }
+
         if (! function_exists('media_handle_upload')) {
             require_once ABSPATH . 'wp-admin/includes/image.php';
             require_once ABSPATH . 'wp-admin/includes/file.php';
             require_once ABSPATH . 'wp-admin/includes/media.php';
         }
-        $attachmentId = media_handle_upload('file', 0);
+
+        // A fiscalização de verdade: com `mimes`, o media_handle_upload valida
+        // extensão + magic bytes via wp_check_filetype_and_ext e recusa o que
+        // não bater, independente do que o cliente declarou.
+        $attachmentId = media_handle_upload('file', 0, [], [
+            'test_form' => false,
+            'mimes'     => [
+                'jpg|jpeg|jpe' => 'image/jpeg',
+                'png'          => 'image/png',
+                'webp'         => 'image/webp',
+                'gif'          => 'image/gif',
+            ],
+        ]);
         if (is_wp_error($attachmentId)) {
             return $attachmentId;
         }
