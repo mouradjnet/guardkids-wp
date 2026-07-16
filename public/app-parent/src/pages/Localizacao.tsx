@@ -1,11 +1,12 @@
 import { useQuery } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
-import { MapContainer, Marker, Popup, TileLayer } from 'react-leaflet';
+import { Circle, MapContainer, Marker, Popup, TileLayer, Tooltip } from 'react-leaflet';
 import { listChildren } from '../api/children';
 import { ApiError } from '../api/client';
 import { listLocations } from '../api/locations';
+import { listSafeZones } from '../api/safeZones';
 import { listSettings } from '../api/settings';
-import type { Child, LocationFix } from '../api/types';
+import type { Child, LocationFix, SafeZone } from '../api/types';
 import { formatRelative } from '../lib/requestDisplay';
 import { Icon } from '../components/Icon';
 import { PageHeader } from '../components/PageHeader';
@@ -248,6 +249,13 @@ function LocationMap({
   childName: string;
   childOnline: boolean;
 }) {
+  // As zonas eram cadastro sem consumidor: ninguém as desenhava e nada no
+  // backend as lia. Aqui elas ganham a função mínima que justifica existirem —
+  // o pai OLHA o mapa e vê se o filho está dentro da escola. Sem geofencing:
+  // quem compara é o olho, não o servidor.
+  const zonesQuery = useQuery({ queryKey: ['safe-zones'], queryFn: listSafeZones });
+  const zones: SafeZone[] = zonesQuery.data ?? [];
+
   const position: [number, number] = [fix.latitude, fix.longitude];
   const recordedAtMs = Date.parse(fix.recordedAt);
   const online = childOnline && Date.now() - recordedAtMs < ONLINE_THRESHOLD_MS;
@@ -268,6 +276,16 @@ function LocationMap({
             attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
           />
+          {zones.map((zone) => (
+            <Circle
+              key={zone.id}
+              center={[zone.latitude, zone.longitude]}
+              radius={zone.radiusMeters}
+              pathOptions={{ color: '#1e3a8a', fillColor: '#1e3a8a', fillOpacity: 0.08, weight: 2 }}
+            >
+              <Tooltip>{zone.name}</Tooltip>
+            </Circle>
+          ))}
           <Marker position={position}>
             <Popup>
               <strong>{childName}</strong>
