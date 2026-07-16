@@ -40,6 +40,19 @@ final class GuardianNotifier
         }
     }
 
+    /**
+     * Dia corrente no fuso do SITE, não em UTC.
+     *
+     * As chaves diárias existem pra dar "no máximo 1 aviso por filho, por tipo,
+     * por dia" — e "dia" é o do usuário. Com gmdate, em UTC-3 a janela viraria
+     * às 21:00 local, em cima do horário em que o bedtime dispara: um bloqueio
+     * às 20:59 e outro às 21:01 gerariam dois pushes na mesma noite.
+     */
+    private function today(): string
+    {
+        return current_time('Y-m-d');
+    }
+
     /** Notificação sem nome ainda é útil; push que explode por causa de cópia, não. */
     private function childName(int $childId): string
     {
@@ -79,7 +92,7 @@ final class GuardianNotifier
         }
 
         $this->emit(
-            'lim:' . $childId . ':' . gmdate('Y-m-d'),
+            'lim:' . $childId . ':' . $this->today(),
             $this->childName($childId) . ' esgotou o tempo de tela',
             'O limite diário de hoje acabou.',
         );
@@ -94,10 +107,9 @@ final class GuardianNotifier
         $when = ['bedtime' => 'na hora de dormir', 'weekday' => 'em dia bloqueado'][$detail] ?? 'fora do horário';
 
         $this->emit(
-            'blk:' . $childId . ':' . $detail . ':' . gmdate('Y-m-d'),
+            'blk:' . $childId . ':' . $detail . ':' . $this->today(),
             $this->childName($childId) . ' tentou acessar ' . $when,
             'O acesso foi bloqueado pelas regras.',
         );
     }
-
 }

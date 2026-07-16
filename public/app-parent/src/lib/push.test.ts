@@ -98,6 +98,33 @@ describe('subscribe', () => {
 
     await expect(subscribe()).rejects.toThrow(/service worker/i);
   });
+
+  it('rejeita (em vez de pendurar) quando o SW vira redundant', async () => {
+    // SW que falha ao instalar: installing -> redundant, nunca 'activated'.
+    // Sem tratar isso, o await da ativacao nunca assenta e o toggle fica preso
+    // em "salvando" pra sempre — a mesma falha silenciosa do serviceWorker.ready.
+    const listeners: Array<() => void> = [];
+    const worker = {
+      state: 'installing',
+      addEventListener: (_: string, cb: () => void) => listeners.push(cb),
+    };
+    const register = vi.fn().mockResolvedValue({
+      active: null,
+      installing: worker,
+      waiting: null,
+      pushManager: { subscribe: vi.fn() },
+    });
+    vi.stubGlobal('navigator', { serviceWorker: { register, ready: NEVER } });
+    apiFetchMock.mockResolvedValueOnce({ publicKey: VALID_KEY });
+
+    const p = subscribe();
+    // deixa o registerSw chegar no addEventListener antes de disparar
+    await new Promise((r) => setTimeout(r, 0));
+    worker.state = 'redundant';
+    listeners.forEach((cb) => cb());
+
+    await expect(p).rejects.toThrow(/falhou ao instalar/i);
+  });
 });
 
 describe('unsubscribe', () => {

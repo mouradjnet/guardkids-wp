@@ -44,9 +44,15 @@ async function registerSw(): Promise<ServiceWorkerRegistration> {
 
   const worker = reg.installing ?? reg.waiting;
   if (worker) {
-    await new Promise<void>((resolve) => {
+    await new Promise<void>((resolve, reject) => {
       worker.addEventListener('statechange', () => {
         if (worker.state === 'activated') resolve();
+        // 'redundant' = instalacao falhou ou foi substituido. Sem este ramo a
+        // promise nunca assenta e o subscribe pendura em silencio — a mesma
+        // armadilha do serviceWorker.ready, um andar abaixo.
+        if (worker.state === 'redundant') {
+          reject(new Error('O service worker falhou ao instalar. Recarregue a página e tente de novo.'));
+        }
       });
     });
   }

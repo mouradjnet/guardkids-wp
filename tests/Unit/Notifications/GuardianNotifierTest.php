@@ -155,6 +155,33 @@ final class GuardianNotifierTest extends TestCase
         self::assertStringContainsString('em dia bloqueado', $this->sent[1]['title']);
     }
 
+    /**
+     * A janela "1 aviso por dia" tem que virar à meia-noite do SITE, não do UTC.
+     * Em UTC-3 o gmdate vira às 21:00 local — em cima do bedtime, justamente
+     * quando o evento dispara.
+     */
+    public function testDedupKeyUsesSiteTimezoneNotUtc(): void
+    {
+        // Offset calculado pra cair SEMPRE no dia anterior ao de UTC, seja qual
+        // for a hora em que a suíte roda. Um offset fixo de -3h só divergiria
+        // entre 00:00 e 03:00 UTC — o teste passaria por acaso o resto do dia.
+        $agora    = time();
+        $desdeMeiaNoite = $agora % 86400;
+        $GLOBALS['gk_tz_offset_seconds'] = -($desdeMeiaNoite + 60);
+
+        $diaUtc  = gmdate('Y-m-d', $agora);
+        $diaSite = gmdate('Y-m-d', $agora + $GLOBALS['gk_tz_offset_seconds']);
+        self::assertNotSame($diaUtc, $diaSite, 'sanity: o cenario precisa ter dias diferentes');
+
+        $this->notifier()->notifyBlockedAttempt(3, 'bedtime');
+
+        $chaves = array_keys($GLOBALS['wpdb']->dedupKeys);
+        self::assertCount(1, $chaves);
+        self::assertSame('blk:3:bedtime:' . $diaSite, $chaves[0], 'a chave tem que usar o dia do SITE');
+
+        $GLOBALS['gk_tz_offset_seconds'] = 0;
+    }
+
     public function testZeroChildIdIsIgnored(): void
     {
         $this->notifier()->notifyLimitReached(0);

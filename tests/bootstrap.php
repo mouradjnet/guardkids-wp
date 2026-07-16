@@ -52,12 +52,23 @@ if (! function_exists('current_time')) {
      */
     function current_time(string $type, $gmt = 0): string
     {
+        // Espelha o WP: $type que não seja 'mysql'/'timestamp' É um formato de
+        // data, e sem $gmt a hora sai no fuso do SITE. O offset vem de
+        // $GLOBALS['gk_tz_offset_seconds'] (default 0 = UTC), pra um teste
+        // conseguir provar comportamento dependente de fuso.
+        $offset = $gmt ? 0 : (int) ($GLOBALS['gk_tz_offset_seconds'] ?? 0);
+        $ts     = time() + $offset;
+
         if ($type === 'mysql') {
-            return gmdate('Y-m-d H:i:s');
+            return gmdate('Y-m-d H:i:s', $ts);
         }
-        return (string) time();
+        if ($type === 'timestamp') {
+            return (string) $ts;
+        }
+        return gmdate($type, $ts);
     }
 }
+$GLOBALS['gk_tz_offset_seconds'] = 0;
 
 if (! function_exists('wp_json_encode')) {
     /**
