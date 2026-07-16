@@ -57,6 +57,30 @@ final class ContentThumbnailTest extends TestCase
         self::assertSame('https://guardiaokids.site/wp-content/uploads/2026/07/foto.png', $res->get_data()['url']);
     }
 
+    /**
+     * O check de $files['file']['type'] é o Content-Type do CLIENTE — forjável.
+     * A proteção real é o `mimes` no media_handle_upload, que faz o WP validar
+     * extensão + magic bytes. Este teste existe pra que ninguém remova o
+     * override achando que o pré-check já basta.
+     */
+    public function testRestrictsMimesNoMediaHandleUpload(): void
+    {
+        $GLOBALS['gk_media_overrides'] = null;
+        $GLOBALS['gk_media_result'] = 99;
+        $GLOBALS['gk_attachment_url'] = 'https://exemplo.test/foto.png';
+
+        (new ContentController())->uploadThumbnail($this->reqWithFile(['file' => ['type' => 'image/png']]));
+
+        $ov = $GLOBALS['gk_media_overrides'];
+        self::assertIsArray($ov);
+        self::assertArrayHasKey('mimes', $ov, 'sem `mimes` o WP aceita qualquer coisa que o cliente declarar');
+        self::assertSame(
+            ['image/jpeg', 'image/png', 'image/webp', 'image/gif'],
+            array_values($ov['mimes']),
+        );
+        self::assertFalse($ov['test_form'], 'REST não manda o form do wp-admin');
+    }
+
     public function testPropagatesMediaHandleError(): void
     {
         $GLOBALS['gk_media_result'] = new WP_Error('upload_error', 'disco cheio', ['status' => 500]);

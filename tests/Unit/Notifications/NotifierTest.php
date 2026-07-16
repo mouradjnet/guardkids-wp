@@ -114,6 +114,28 @@ final class NotifierTest extends TestCase
         self::assertSame('Hora de dormir', $this->wpdb->rows[1]['title']);
     }
 
+    /**
+     * A janela "1 aviso por dia" tem que virar à meia-noite do SITE, não do UTC.
+     * Em UTC-3 o gmdate viraria às 21:00 local — em cima do bedtime, justamente
+     * quando este evento dispara. Mesmo fix aplicado ao GuardianNotifier na v1.36.0.
+     */
+    public function testNotifyBlockedDedupKeyUsesSiteTimezone(): void
+    {
+        // Offset calculado pra cair SEMPRE no dia anterior ao de UTC, seja qual
+        // for a hora em que a suíte roda — um -3h fixo só divergiria das 00h às 03h UTC.
+        $agora = time();
+        $GLOBALS['gk_tz_offset_seconds'] = -(($agora % 86400) + 60);
+
+        $diaSite = gmdate('Y-m-d', $agora + $GLOBALS['gk_tz_offset_seconds']);
+        self::assertNotSame(gmdate('Y-m-d', $agora), $diaSite, 'sanity: dias precisam divergir');
+
+        ($this->notifier())->notifyBlocked(1, 'bedtime');
+
+        self::assertSame('blocked:bedtime:' . $diaSite, $this->wpdb->rows[1]['dedup_key']);
+
+        $GLOBALS['gk_tz_offset_seconds'] = 0;
+    }
+
     public function testApproachingWarningsLimit(): void
     {
         $now = new \DateTimeImmutable('2026-07-02 15:00:00');

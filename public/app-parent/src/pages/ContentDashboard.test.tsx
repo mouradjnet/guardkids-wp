@@ -65,4 +65,41 @@ describe('ContentDashboard', () => {
     fireEvent.click(screen.getByRole('button', { name: /aprovar/i }));
     await waitFor(() => expect(approveContent).toHaveBeenCalledWith(1));
   });
+
+  it('mostra erro quando aprovar falha (nao pode falhar em silencio)', async () => {
+    defaults();
+    listContents.mockResolvedValue([pendingItem]);
+    approveContent.mockRejectedValue(new Error('Sem permissão para fazer isso.'));
+    renderWithClient(<ContentDashboard />);
+
+    await screen.findByText('Item de teste');
+    fireEvent.click(screen.getByRole('button', { name: /aprovar/i }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(/permiss/i);
+  });
+
+  it('mostra erro quando excluir falha', async () => {
+    defaults();
+    listContents.mockResolvedValue([{ ...pendingItem, status: 'approved' as const }]);
+    const { deleteContent } = await import('../api/content');
+    vi.mocked(deleteContent).mockRejectedValue(new Error('Falha no servidor.'));
+    renderWithClient(<ContentDashboard />);
+
+    await screen.findByText('Item de teste');
+    fireEvent.click(screen.getByRole('button', { name: /excluir/i }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(/falha no servidor/i);
+  });
+
+  it('mostra erro quando revogar falha', async () => {
+    defaults();
+    listContents.mockResolvedValue([{ ...pendingItem, status: 'approved' as const }]);
+    revokeContent.mockRejectedValue(new Error('Nao foi possivel revogar.'));
+    renderWithClient(<ContentDashboard />);
+
+    await screen.findByText('Item de teste');
+    fireEvent.click(screen.getByRole('button', { name: /revogar/i }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(/revogar/i);
+  });
 });
