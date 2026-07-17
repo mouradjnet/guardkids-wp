@@ -53,4 +53,20 @@ describe('SessionsSection', () => {
     fireEvent.click(await screen.findByRole('button', { name: /outros aparelhos/i }));
     await waitFor(() => expect(destroy).toHaveBeenCalledTimes(1));
   });
+
+  it('mostra erro quando encerrar as outras sessões falha (não é silencioso)', async () => {
+    vi.spyOn(api, 'listSessions').mockResolvedValue({
+      sessions: [
+        { device: 'Chrome · Windows', browser: 'Chrome', os: 'Windows', ip: '1.1.1.1', lastAccess: 300, current: true },
+        { device: 'Firefox · Linux', browser: 'Firefox', os: 'Linux', ip: '2.2.2.2', lastAccess: 100, current: false },
+      ],
+    });
+    vi.spyOn(api, 'destroyOtherSessions').mockRejectedValue(new Error('Falha ao encerrar'));
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+
+    wrap(<SessionsSection />);
+    fireEvent.click(await screen.findByRole('button', { name: /outros aparelhos/i }));
+    const alert = await screen.findByRole('alert');
+    expect(alert).toHaveTextContent(/falha ao encerrar/i);
+  });
 });

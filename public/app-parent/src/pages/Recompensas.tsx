@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
+import { MutationError } from '../components/MutationError';
 import {
   approveRedemption,
   createReward,
@@ -121,6 +122,9 @@ export function Recompensas() {
             ))}
           </ul>
         )}
+        {removeMut.error ? (
+          <MutationError prefix="Falha ao remover" error={removeMut.error} />
+        ) : null}
       </section>
 
       <section className="rounded-2xl border border-outline-variant bg-surface p-4">
