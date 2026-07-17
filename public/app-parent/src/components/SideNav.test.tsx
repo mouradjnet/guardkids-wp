@@ -1,12 +1,20 @@
-import { render, screen } from '@testing-library/react';
+import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+
+const listRequestsMock = vi.hoisted(() => vi.fn());
+vi.mock('../api/requests', () => ({
+  listRequests: listRequestsMock,
+  approveRequest: vi.fn(),
+  denyRequest: vi.fn(),
+}));
 
 const useCurrentRoleMock = vi.hoisted(() => vi.fn());
 vi.mock('../hooks/useCurrentRole', () => ({
   useCurrentRole: useCurrentRoleMock,
 }));
 
+import { renderWithClient } from '../test/queryClient';
 import { SideNav } from './SideNav';
 
 const adminResult = {
@@ -27,11 +35,12 @@ const collabResult = {
 };
 
 describe('SideNav', () => {
+  beforeEach(() => listRequestsMock.mockReset().mockResolvedValue([]));
   afterEach(() => useCurrentRoleMock.mockReset());
 
   it('renders all 11 nav items for admin', () => {
     useCurrentRoleMock.mockReturnValue(adminResult);
-    render(<SideNav activePage="dashboard" onNavigate={() => {}} />);
+    renderWithClient(<SideNav activePage="dashboard" onNavigate={() => {}} />);
     expect(screen.getByRole('button', { name: /painel/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /filhos/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /localização/i })).toBeInTheDocument();
@@ -47,7 +56,7 @@ describe('SideNav', () => {
 
   it('highlights active page with bold/primary styling', () => {
     useCurrentRoleMock.mockReturnValue(adminResult);
-    render(<SideNav activePage="approvals" onNavigate={() => {}} />);
+    renderWithClient(<SideNav activePage="approvals" onNavigate={() => {}} />);
     const approvals = screen.getByRole('button', { name: /aprovações/i });
     expect(approvals.className).toMatch(/font-bold/);
     expect(approvals.className).toMatch(/text-primary/);
@@ -57,25 +66,18 @@ describe('SideNav', () => {
     useCurrentRoleMock.mockReturnValue(adminResult);
     const onNavigate = vi.fn();
     const user = userEvent.setup();
-    render(<SideNav activePage="dashboard" onNavigate={onNavigate} />);
+    renderWithClient(<SideNav activePage="dashboard" onNavigate={onNavigate} />);
 
     await user.click(screen.getByRole('button', { name: /sites & regras/i }));
 
     expect(onNavigate).toHaveBeenCalledWith('sites-rules');
   });
 
-  it('renders badge "2" on Aprovações item', () => {
-    useCurrentRoleMock.mockReturnValue(adminResult);
-    render(<SideNav activePage="dashboard" onNavigate={() => {}} />);
-    const approvals = screen.getByRole('button', { name: /aprovações/i });
-    expect(approvals).toHaveTextContent('2');
-  });
-
   it('CTA "Adicionar Novo Filho" navigates to children', async () => {
     useCurrentRoleMock.mockReturnValue(adminResult);
     const onNavigate = vi.fn();
     const user = userEvent.setup();
-    render(<SideNav activePage="dashboard" onNavigate={onNavigate} />);
+    renderWithClient(<SideNav activePage="dashboard" onNavigate={onNavigate} />);
 
     await user.click(screen.getByRole('button', { name: /conectar dispositivo infantil/i }));
 
@@ -84,14 +86,14 @@ describe('SideNav', () => {
 
   it('renders Suporte and Sair footer links', () => {
     useCurrentRoleMock.mockReturnValue(adminResult);
-    render(<SideNav activePage="dashboard" onNavigate={() => {}} />);
+    renderWithClient(<SideNav activePage="dashboard" onNavigate={() => {}} />);
     expect(screen.getByRole('link', { name: /suporte/i })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /sair/i })).toBeInTheDocument();
   });
 
   it('collaborator only sees Painel + Aprovações in nav', () => {
     useCurrentRoleMock.mockReturnValue(collabResult);
-    render(<SideNav activePage="dashboard" onNavigate={() => {}} />);
+    renderWithClient(<SideNav activePage="dashboard" onNavigate={() => {}} />);
     expect(screen.getByRole('button', { name: /painel/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /aprovações/i })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /filhos/i })).not.toBeInTheDocument();
@@ -101,7 +103,7 @@ describe('SideNav', () => {
 
   it('collaborator does not see "Adicionar Novo Filho" CTA', () => {
     useCurrentRoleMock.mockReturnValue(collabResult);
-    render(<SideNav activePage="dashboard" onNavigate={() => {}} />);
+    renderWithClient(<SideNav activePage="dashboard" onNavigate={() => {}} />);
     expect(
       screen.queryByRole('button', { name: /adicionar novo filho/i }),
     ).not.toBeInTheDocument();
@@ -109,8 +111,48 @@ describe('SideNav', () => {
 
   it('shows guardian name + "Colaborador" label when role=collaborator', () => {
     useCurrentRoleMock.mockReturnValue(collabResult);
-    render(<SideNav activePage="dashboard" onNavigate={() => {}} />);
+    renderWithClient(<SideNav activePage="dashboard" onNavigate={() => {}} />);
     expect(screen.getByText('Marina')).toBeInTheDocument();
     expect(screen.getByText(/^colaborador$/i)).toBeInTheDocument();
+  });
+
+  /**
+   * O badge era `badge: 2` hardcoded no mockData: dizia "2" com zero pedidos e
+   * diria "2" com quarenta. Um badge com número é uma afirmação factual — um pai
+   * que confia nele deixa criança esperando.
+   */
+  describe('badge de Aprovações', () => {
+    function botaoAprovacoes() {
+      return screen.getByRole('button', { name: /aprovações/i });
+    }
+
+    it('mostra a contagem REAL de pendentes', async () => {
+      useCurrentRoleMock.mockReturnValue(adminResult);
+      listRequestsMock.mockResolvedValue([{ id: 1 }, { id: 2 }, { id: 3 }]);
+      renderWithClient(<SideNav activePage="dashboard" onNavigate={() => {}} />);
+
+      await waitFor(() => expect(botaoAprovacoes()).toHaveTextContent('3'));
+    });
+
+    it('NAO mostra badge quando nao ha pendentes', async () => {
+      useCurrentRoleMock.mockReturnValue(adminResult);
+      listRequestsMock.mockResolvedValue([]);
+      renderWithClient(<SideNav activePage="dashboard" onNavigate={() => {}} />);
+
+      await waitFor(() => expect(listRequestsMock).toHaveBeenCalled());
+      expect(botaoAprovacoes()).not.toHaveTextContent('2');
+      expect(botaoAprovacoes().textContent).toMatch(/^task_altAprovações$/);
+    });
+
+    it('nao inventa numero enquanto carrega', () => {
+      useCurrentRoleMock.mockReturnValue(adminResult);
+      listRequestsMock.mockResolvedValue([{ id: 1 }, { id: 2 }, { id: 3 }]);
+      renderWithClient(<SideNav activePage="dashboard" onNavigate={() => {}} />);
+
+      // Asserção SÍNCRONA: neste instante a query ainda não resolveu.
+      // (Uma promise que nunca resolve derrubaria o worker do vitest —
+      // o TanStack fica aguardando e o processo morre.)
+      expect(botaoAprovacoes().textContent).toMatch(/^task_altAprovações$/);
+    });
   });
 });

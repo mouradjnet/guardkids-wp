@@ -262,7 +262,8 @@ export const navItems = [
   { id: 'children' as PageId, label: 'Filhos', icon: 'family_restroom' },
   { id: 'location' as PageId, label: 'Localização', icon: 'location_on' },
   { id: 'safe-zones' as PageId, label: 'Zonas Seguras', icon: 'shield' },
-  { id: 'approvals' as PageId, label: 'Aprovações', icon: 'task_alt', badge: 2 },
+  // sem `badge` aqui: a contagem vem do servidor, na SideNav
+  { id: 'approvals' as PageId, label: 'Aprovações', icon: 'task_alt' },
   { id: 'sites-rules' as PageId, label: 'Sites & Regras', icon: 'app_blocking' },
   { id: 'content' as PageId, label: 'Conteúdo Infantil', icon: 'auto_stories' },
   { id: 'gamification' as PageId, label: 'Gamificação', icon: 'stadia_controller' },

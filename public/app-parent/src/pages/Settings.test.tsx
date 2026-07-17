@@ -40,16 +40,17 @@ vi.mock('../api/guardians', () => ({
 
 // jsdom não tem navigator.serviceWorker: sem este mock, isPushSupported() daria
 // false e o toggle de push nasceria travado em todos os testes.
-const { isPushSupportedMock, pushSubscribeMock, pushUnsubscribeMock } = vi.hoisted(() => ({
+const { isPushSupportedMock, pushSubscribeMock, pushUnsubscribeMock, getPermissionMock } = vi.hoisted(() => ({
   isPushSupportedMock: vi.fn(() => true),
   pushSubscribeMock: vi.fn(),
   pushUnsubscribeMock: vi.fn(),
+  getPermissionMock: vi.fn(() => 'granted'),
 }));
 vi.mock('../lib/push', () => ({
   isPushSupported: isPushSupportedMock,
   subscribe: pushSubscribeMock,
   unsubscribe: pushUnsubscribeMock,
-  getPermission: vi.fn(() => 'granted'),
+  getPermission: getPermissionMock,
 }));
 
 const { exportDataMock, clearHistoryMock, deleteAllDataMock } = vi.hoisted(() => ({
@@ -151,6 +152,7 @@ describe('Settings page', () => {
     // reafirmar aqui, isPushSupported devolveria undefined e o toggle nasceria
     // travado em todos os testes.
     isPushSupportedMock.mockReset().mockReturnValue(true);
+    getPermissionMock.mockReset().mockReturnValue('granted');
     pushSubscribeMock.mockReset().mockResolvedValue(undefined);
     pushUnsubscribeMock.mockReset().mockResolvedValue(undefined);
   });
@@ -650,6 +652,17 @@ describe('Settings page', () => {
       // O toggle não pode mentir que está ligado.
       expect(toggleFor('Notificações push')).toHaveAttribute('aria-checked', 'false');
       expect(updateSettingsMock).not.toHaveBeenCalled();
+    });
+
+    it('explica onde resolver quando a permissao foi BLOQUEADA no browser', async () => {
+      // denied != "sem suporte": o toggle funcionaria, mas falharia sempre.
+      getPermissionMock.mockReturnValue('denied');
+      listSettingsMock.mockResolvedValue({});
+      renderPage();
+      await screen.findByText('Notificações push');
+
+      expect(screen.getByText(/bloqueou as notificações deste site/i)).toBeInTheDocument();
+      expect(toggleFor('Notificações push')).toBeDisabled();
     });
 
     it('fica travado quando o browser não suporta push', async () => {
