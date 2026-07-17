@@ -7,6 +7,7 @@ namespace GuardKids;
 use GuardKids\Api\RestApi;
 use GuardKids\Database\CategoryRepository;
 use GuardKids\Database\MigrationRunner;
+use GuardKids\License\RevocationCache;
 use GuardKids\Maintenance\Purger;
 use GuardKids\Notifications\DigestMailer;
 use GuardKids\Security\RestHeaders;
@@ -27,6 +28,7 @@ final class Plugin
     public const PURGE_HOOK = 'guardkids_daily_purge';
     public const DAILY_DIGEST_HOOK  = 'guardkids_daily_digest';
     public const WEEKLY_DIGEST_HOOK = 'guardkids_weekly_digest';
+    public const REVOCATION_REFRESH_HOOK = 'guardkids_revocation_refresh';
 
     private static ?Plugin $instance = null;
 
@@ -60,6 +62,7 @@ final class Plugin
         add_action(self::PURGE_HOOK, [$this, 'runPurger']);
         add_action(self::DAILY_DIGEST_HOOK, [$this, 'runDailyDigest']);
         add_action(self::WEEKLY_DIGEST_HOOK, [$this, 'runWeeklyDigest']);
+        add_action(self::REVOCATION_REFRESH_HOOK, [$this, 'runRevocationRefresh']);
 
         (new RestApi())->register();
         (new RestHeaders())->register();
@@ -118,6 +121,7 @@ final class Plugin
         wp_clear_scheduled_hook(self::PURGE_HOOK);
         wp_clear_scheduled_hook(self::DAILY_DIGEST_HOOK);
         wp_clear_scheduled_hook(self::WEEKLY_DIGEST_HOOK);
+        wp_clear_scheduled_hook(self::REVOCATION_REFRESH_HOOK);
         flush_rewrite_rules();
     }
 
@@ -140,6 +144,9 @@ final class Plugin
         }
         if (wp_next_scheduled(self::WEEKLY_DIGEST_HOOK) === false) {
             wp_schedule_event($this->nextWeeklyAt(1, 8), 'weekly', self::WEEKLY_DIGEST_HOOK);
+        }
+        if (wp_next_scheduled(self::REVOCATION_REFRESH_HOOK) === false) {
+            wp_schedule_event(time() + 3600, 'daily', self::REVOCATION_REFRESH_HOOK);
         }
     }
 
@@ -186,6 +193,15 @@ final class Plugin
     public function runWeeklyDigest(): void
     {
         (new DigestMailer())->sendWeekly();
+    }
+
+    /**
+     * Cron diário: atualiza a lista de licenças revogadas a partir do license
+     * server. Falha aberta — ver RevocationCache::refresh().
+     */
+    public function runRevocationRefresh(): void
+    {
+        (new RevocationCache())->refresh();
     }
 
     /**

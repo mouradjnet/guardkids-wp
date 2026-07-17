@@ -24,6 +24,11 @@ define('GUARDKIDS_FILE', __FILE__);
 define('GUARDKIDS_DIR', plugin_dir_path(__FILE__));
 define('GUARDKIDS_URL', plugin_dir_url(__FILE__));
 
+// Base REST do license server (phone-home de revogação).
+if (! defined('GK_LICENSE_SERVER_BASE')) {
+    define('GK_LICENSE_SERVER_BASE', 'https://licencas.guardiaokids.site/wp-json/gkl/v1/');
+}
+
 require_once GUARDKIDS_DIR . 'includes/Autoloader.php';
 
 (new GuardKids\Autoloader())->register();

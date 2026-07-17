@@ -22,6 +22,7 @@ final class GateTest extends TestCase
         ];
         $GLOBALS['gk_options']                           = [];
         $GLOBALS['gk_options']['siteurl']                = 'https://example.test';
+        $GLOBALS['gk_transients']                        = [];
     }
 
     public function testWithoutLicenseFallsBackToFreePlan(): void
@@ -120,6 +121,20 @@ final class GateTest extends TestCase
         $payload['jti']                              = '01HJREVOKED';
         $this->installLicense($payload);
         $GLOBALS['gk_options']['guardkids_license_revoked'] = ['01HJREVOKED', '01HJOTHER'];
+
+        $gate = $this->gate();
+
+        self::assertSame('revoked', $gate->status());
+        self::assertSame('free', $gate->plan());
+        self::assertFalse($gate->can('browser'));
+    }
+
+    public function testRevokedViaRemoteCacheDowngrades(): void
+    {
+        $payload        = $this->basePayload();
+        $payload['jti'] = '01HJREMOTE';
+        $this->installLicense($payload);
+        $GLOBALS['gk_transients']['gk_revoked_jti'] = ['01HJREMOTE'];
 
         $gate = $this->gate();
 
