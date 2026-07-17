@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 
@@ -14,6 +14,13 @@ vi.mock('./hooks/useCurrentRole', () => ({
 }));
 
 vi.mock('./components/AutoLogoutGuard', () => ({ AutoLogoutGuard: () => null }));
+// A SideNav consulta a contagem real de pendentes desde que o badge deixou de
+// ser hardcoded; sem este mock ela tentaria bater na rede.
+vi.mock('./api/requests', () => ({
+  listRequests: () => Promise.resolve([]),
+  approveRequest: vi.fn(),
+  denyRequest: vi.fn(),
+}));
 
 vi.mock('./pages/Dashboard', () => ({ Dashboard: () => <div data-testid="page-dashboard" /> }));
 vi.mock('./pages/Children', () => ({ Children: () => <div data-testid="page-children" /> }));
@@ -26,16 +33,17 @@ vi.mock('./pages/License', () => ({ License: () => <div data-testid="page-licens
 vi.mock('./pages/Upgrade', () => ({ Upgrade: () => <div data-testid="page-upgrade" /> }));
 
 import { vi } from 'vitest';
+import { renderWithClient } from './test/queryClient';
 import App from './App';
 
 describe('App', () => {
   it('renders Dashboard by default', () => {
-    render(<App />);
+    renderWithClient(<App />);
     expect(screen.getByTestId('page-dashboard')).toBeInTheDocument();
   });
 
   it('renders TopNav, SideNav e BottomNav', () => {
-    render(<App />);
+    renderWithClient(<App />);
     // TopNav heading
     expect(screen.getByRole('heading', { name: /guardkids wp/i })).toBeInTheDocument();
     // SideNav user label
@@ -53,7 +61,7 @@ describe('App', () => {
     ['Upgrade Premium', 'page-upgrade'],
   ])('SideNav %s navega pra %s', async (label, testId) => {
     const user = userEvent.setup();
-    render(<App />);
+    renderWithClient(<App />);
 
     // SideNav e BottomNav podem compartilhar labels ("Filhos", "Aprovações");
     // SideNav vem antes no DOM, então [0] é o botão da side.
@@ -65,7 +73,7 @@ describe('App', () => {
 
   it('BottomNav Regras navega pra sites-rules', async () => {
     const user = userEvent.setup();
-    render(<App />);
+    renderWithClient(<App />);
 
     await user.click(screen.getByRole('button', { name: /^regras$/i }));
 
@@ -74,7 +82,7 @@ describe('App', () => {
 
   it('volta pra Dashboard ao clicar em Painel', async () => {
     const user = userEvent.setup();
-    render(<App />);
+    renderWithClient(<App />);
 
     await user.click(screen.getByRole('button', { name: /^configurações$/i }));
     expect(screen.getByTestId('page-settings')).toBeInTheDocument();

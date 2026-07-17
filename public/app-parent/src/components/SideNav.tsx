@@ -1,6 +1,8 @@
+import { useQuery } from '@tanstack/react-query';
 import { Icon } from './Icon';
 import { Logo } from './Logo';
 import { navItems, type PageId } from '../data/mockData';
+import { listRequests } from '../api/requests';
 import { useCurrentRole } from '../hooks/useCurrentRole';
 import { canAccessPage } from '../lib/roleAccess';
 
@@ -12,6 +14,18 @@ type SideNavProps = {
 export function SideNav({ activePage, onNavigate }: SideNavProps) {
   const { role, name, isCollaborator } = useCurrentRole();
   const visibleItems = navItems.filter((item) => canAccessPage(role, item.id));
+
+  // O badge era `badge: 2` hardcoded no mockData — dizia "2" com zero pedidos e
+  // diria "2" com quarenta. Badge com número é afirmação factual: um pai que
+  // confia nele deixa criança esperando resposta que ele acha que já deu.
+  //
+  // A chave ['requests', ...] casa com o invalidateQueries da Approvals, então
+  // o número cai sozinho quando o pai aprova ou nega.
+  const pendentesQuery = useQuery({
+    queryKey: ['requests', 'pending'],
+    queryFn: () => listRequests('pending'),
+  });
+  const pendentes = pendentesQuery.data?.length ?? 0;
 
   return (
     <aside className="fixed left-0 top-0 z-50 hidden h-screen w-64 flex-col border-r border-outline-variant bg-surface shadow-sm md:flex">
@@ -42,7 +56,9 @@ export function SideNav({ activePage, onNavigate }: SideNavProps) {
         <nav className="flex-1 space-y-2 px-4">
           {visibleItems.map((item) => {
             const isActive = activePage === item.id;
-            const badge = 'badge' in item ? item.badge : undefined;
+            // Só Aprovações tem badge, e ele vem do servidor. Nada de número
+            // enquanto carrega: melhor não dizer nada do que dizer errado.
+            const badge = item.id === 'approvals' && pendentes > 0 ? pendentes : undefined;
             return (
               <button
                 key={item.id}
@@ -74,7 +90,7 @@ export function SideNav({ activePage, onNavigate }: SideNavProps) {
               className="flex w-full items-center justify-center gap-2 rounded-full bg-primary-container px-4 py-3 text-label-md font-semibold text-on-primary-container transition-colors hover:bg-surface-tint hover:text-white"
             >
               <Icon name="add" className="text-lg" />
-              Conectar Dispositivo Infantil
+              Adicionar Filho
             </button>
           </div>
         )}

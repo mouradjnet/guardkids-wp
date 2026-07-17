@@ -144,6 +144,45 @@ final class SiteControllerTest extends TestCase
         self::assertSame(422, $res->get_error_data()['status']);
     }
 
+    /**
+     * O que é GRAVADO tem que ser host limpo, não o que o usuário digitou.
+     *
+     * `SiteRepository::normalizeDomain` documenta o invariante: "mantém a
+     * whitelist consistente e casa com o bloqueio por host do Companion
+     * Android". O `allowDomain()` (usado ao aprovar pedido da criança) já
+     * normaliza; o create manual não normalizava, e o banco de produção tem
+     * linhas com "https://youtube.com" que o Companion não casaria.
+     *
+     * O teste vizinho (Notifies...NormalizedDomain) só provava que a
+     * NOTIFICAÇÃO normaliza — não o que vai pro banco.
+     */
+    public function testCreateGravaDominioNormalizado(): void
+    {
+        $req = new WP_REST_Request('POST', '/sites');
+        $req->set_param('domain', 'https://www.YouTube.com/watch?v=abc');
+        $req->set_param('list_type', 'whitelist');
+
+        $res = (new SiteController(new AlwaysAllowGate()))->create($req);
+
+        self::assertSame(201, $res->get_status());
+        self::assertSame('youtube.com', $res->get_data()['domain'], 'a resposta tem que devolver o host limpo');
+
+        $gravado = $this->wpdb->rows[array_key_last($this->wpdb->rows)];
+        self::assertSame('youtube.com', $gravado['domain'], 'o BANCO tem que guardar host limpo');
+    }
+
+    public function testCreateReturns422QuandoDominioSoTemProtocolo(): void
+    {
+        $req = new WP_REST_Request('POST', '/sites');
+        // normaliza pra string vazia — nao pode virar linha fantasma no banco
+        $req->set_param('domain', 'https://');
+
+        $res = (new SiteController(new AlwaysAllowGate()))->create($req);
+
+        self::assertInstanceOf(WP_Error::class, $res);
+        self::assertSame(422, $res->get_error_data()['status']);
+    }
+
     public function testCreateWhitelistNotifiesChildrenWithNormalizedDomain(): void
     {
         $this->wpdb->children = [1 => ['id' => 1, 'name' => 'Lucas']];

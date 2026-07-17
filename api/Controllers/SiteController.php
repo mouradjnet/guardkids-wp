@@ -48,8 +48,14 @@ final class SiteController
 
     public function create(WP_REST_Request $req): WP_REST_Response|WP_Error
     {
-        $domain = (string) $req->get_param('domain');
+        // Normaliza ANTES de qualquer coisa: o invariante da tabela é host limpo
+        // (é o que o Companion Android compara). O allowDomain() — usado quando o
+        // pai aprova um pedido da criança — já normalizava; este caminho, não, e
+        // por isso o banco acumulou linhas tipo "https://youtube.com" que o
+        // bloqueio por host não casa.
+        $domain = SiteRepository::normalizeDomain((string) $req->get_param('domain'));
         if ($domain === '') {
+            // pega tambem o que normaliza pra vazio ("https://", "www.", " ")
             return new WP_Error('invalid_payload', 'Domínio obrigatório.', ['status' => 422]);
         }
 

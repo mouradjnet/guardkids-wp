@@ -23,9 +23,20 @@ export class ApiError extends Error {
   }
 }
 
+// fetch só rejeita por rede/CORS — status HTTP cai no parseResponse. A mensagem
+// nativa é inglês do browser ("Failed to fetch") e vazava crua pra tela de uma
+// criança. Error comum, não ApiError: sem resposta não há status.
+async function fetchOrExplain(url: string, init: RequestInit): Promise<Response> {
+  try {
+    return await fetch(url, init);
+  } catch {
+    throw new Error('Sem internet. Tente de novo daqui a pouco.');
+  }
+}
+
 export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
   const token = getStoredToken();
-  const res = await fetch(buildUrl(path, init?.method ?? 'GET'), {
+  const res = await fetchOrExplain(buildUrl(path, init?.method ?? 'GET'), {
     credentials: 'omit',
     ...init,
     headers: {
@@ -38,7 +49,7 @@ export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> 
 }
 
 export async function apiFetchWithToken<T>(token: string, path: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(buildUrl(path, init?.method ?? 'GET'), {
+  const res = await fetchOrExplain(buildUrl(path, init?.method ?? 'GET'), {
     credentials: 'omit',
     ...init,
     headers: {

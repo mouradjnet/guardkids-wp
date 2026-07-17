@@ -11,7 +11,7 @@ import {
 import { clearHistory, deleteAllData, exportData } from '../api/privacy';
 import { clearPin, getPinStatus, setPin } from '../api/security';
 import { listSettings, updateSettings, type SettingsBag } from '../api/settings';
-import { isPushSupported, subscribe as pushSubscribe, unsubscribe as pushUnsubscribe } from '../lib/push';
+import { getPermission, isPushSupported, subscribe as pushSubscribe, unsubscribe as pushUnsubscribe } from '../lib/push';
 import type { Guardian, GuardianRole, GuardianWithInvite } from '../api/types';
 import { Icon } from '../components/Icon';
 import { DeleteAccountDialog } from '../components/DeleteAccountDialog';
@@ -38,6 +38,10 @@ export function Settings() {
   const [pinOpen, setPinOpen] = useState(false);
   const [pushError, setPushError] = useState<Error | null>(null);
   const pushSupported = isPushSupported();
+  // Permissão negada no Chrome não é "sem suporte": o toggle funcionaria, mas
+  // vai falhar toda vez. Melhor dizer onde resolver do que deixar o pai tentar
+  // e apanhar sem entender por quê.
+  const pushBloqueadoNoBrowser = pushSupported && getPermission() === 'denied';
 
   const pinStatusQuery = useQuery({ queryKey: ['security', 'pin'], queryFn: getPinStatus });
   const hasPin = pinStatusQuery.data?.pinSet ?? false;
@@ -135,9 +139,11 @@ export function Settings() {
           settingsKey="notifications.push"
           title="Notificações push"
           description={
-            pushSupported
-              ? 'Recebe alertas no celular sobre pedidos e bloqueios.'
-              : 'Este navegador não suporta notificações push.'
+            !pushSupported
+              ? 'Este navegador não suporta notificações push.'
+              : pushBloqueadoNoBrowser
+                ? 'Você bloqueou as notificações deste site. Libere nas configurações do navegador (o cadeado ao lado do endereço) para poder ativar.'
+                : 'Recebe alertas no celular sobre pedidos e bloqueios.'
           }
           // fallback=false: enquanto o toggle era `locked`, "ligado por padrão"
           // era cosmético. Agora que é funcional, um default true mostraria
@@ -145,7 +151,7 @@ export function Settings() {
           fallback={false}
           loading={settingsQuery.isLoading}
           saving={mutation.isPending}
-          locked={!pushSupported}
+          locked={!pushSupported || pushBloqueadoNoBrowser}
           get={get}
           set={setPush}
         />

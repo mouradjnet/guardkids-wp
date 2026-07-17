@@ -103,7 +103,7 @@ export function AddChildDialog({ open, onClose, child }: Props) {
         ? mutation.error.message
         : null;
 
-  const title = isEdit ? `Editar ${child?.name ?? 'filho'}` : 'Conectar Dispositivo Infantil';
+  const title = isEdit ? `Editar ${child?.name ?? 'filho'}` : 'Adicionar Filho';
   const submitLabel = isEdit ? 'Salvar' : 'Adicionar';
   const submitLoading = isEdit ? 'Salvando…' : 'Salvando…';
 

@@ -116,6 +116,21 @@ describe('apiFetch', () => {
     });
   });
 
+  it('translates a network failure instead of leaking "Failed to fetch"', async () => {
+    // fetch só rejeita por rede/CORS — nunca por status HTTP.
+    globalThis.fetch = vi.fn().mockRejectedValue(new TypeError('Failed to fetch'));
+
+    await expect(apiFetch('/children')).rejects.toThrow(/Sem conexão/);
+    await expect(apiFetch('/children')).rejects.not.toThrow(/Failed to fetch/);
+  });
+
+  it('does not tag a network failure with a fake HTTP status', async () => {
+    // ApiError vira "mensagem (status)" na tela; não existe status 0.
+    globalThis.fetch = vi.fn().mockRejectedValue(new TypeError('Failed to fetch'));
+
+    await expect(apiFetch('/children')).rejects.not.toBeInstanceOf(ApiError);
+  });
+
   it('returns undefined for 204 No Content', async () => {
     const fetchMock = vi.fn().mockResolvedValue(new Response(null, { status: 204 }));
     globalThis.fetch = fetchMock;
