@@ -89,7 +89,8 @@ Checklist de validação manual dos dois apps. Ordenado por **risco**, não por 
 - [ ] Editar nome/idade → persiste
 - [ ] Upload de avatar → aparece
 - [ ] **Excluir filho** → some *(o bug histórico era dado duplicado; conferir que a lista reflete)*
-- [ ] Conectar Dispositivo → token + **QR Code** aparecem
+- [ ] **Parear dispositivo** (no card do filho) → token + **QR Code** aparecem
+      *(o botão do topo, "Adicionar Filho", só cria o perfil — não parear nada)*
 
 ### Aprovações
 - [ ] Lista os pendentes

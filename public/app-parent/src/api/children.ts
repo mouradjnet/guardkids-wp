@@ -1,4 +1,4 @@
-import { apiFetch, ApiError, authHeaders } from './client';
+import { apiFetch, ApiError, authHeaders, fetchOrExplain } from './client';
 import type { Child } from './types';
 
 type WpMediaResponse = {
@@ -12,7 +12,7 @@ type WpMediaResponse = {
  * Media Library vive em /wp/v2/media.
  */
 export async function uploadAvatar(file: File): Promise<string> {
-  const res = await fetch('/wp-json/wp/v2/media', {
+  const res = await fetchOrExplain('/wp-json/wp/v2/media', {
     method: 'POST',
     credentials: 'same-origin',
     headers: {

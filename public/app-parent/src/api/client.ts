@@ -25,6 +25,18 @@ export function authHeaders(): Record<string, string> {
   return {};
 }
 
+// fetch só rejeita por rede/CORS — status HTTP vira ApiError abaixo. A mensagem
+// nativa é inglês do browser ("Failed to fetch" no Chrome, "Load failed" no
+// Safari) e vazava crua pra tela. Error comum, não ApiError: sem resposta não há
+// status, e a UI imprime "mensagem (status)".
+export async function fetchOrExplain(url: string, init: RequestInit): Promise<Response> {
+  try {
+    return await fetch(url, init);
+  } catch {
+    throw new Error('Sem conexão com o servidor. Verifique sua internet e tente de novo.');
+  }
+}
+
 export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
   const method = (init?.method ?? 'GET').toUpperCase();
   let url = `${API_ROOT}${path}`;
@@ -38,7 +50,7 @@ export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> 
   // FormData (upload) precisa do Content-Type multipart com boundary que o
   // browser define sozinho — não forçamos application/json nesse caso.
   const isFormData = init?.body instanceof FormData;
-  const res = await fetch(url, {
+  const res = await fetchOrExplain(url, {
     credentials: 'same-origin',
     ...init,
     headers: {

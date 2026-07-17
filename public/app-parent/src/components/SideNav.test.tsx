@@ -73,13 +73,13 @@ describe('SideNav', () => {
     expect(onNavigate).toHaveBeenCalledWith('sites-rules');
   });
 
-  it('CTA "Adicionar Novo Filho" navigates to children', async () => {
+  it('CTA "Adicionar Filho" navigates to children', async () => {
     useCurrentRoleMock.mockReturnValue(adminResult);
     const onNavigate = vi.fn();
     const user = userEvent.setup();
     renderWithClient(<SideNav activePage="dashboard" onNavigate={onNavigate} />);
 
-    await user.click(screen.getByRole('button', { name: /conectar dispositivo infantil/i }));
+    await user.click(screen.getByRole('button', { name: /adicionar filho/i }));
 
     expect(onNavigate).toHaveBeenCalledWith('children');
   });

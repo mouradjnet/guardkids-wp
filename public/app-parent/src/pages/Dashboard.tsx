@@ -102,7 +102,7 @@ function ChildrenEmpty() {
       <p className="text-label-md font-semibold">Nenhuma criança cadastrada ainda</p>
       <p className="text-center text-label-sm">
         Vá em <span className="font-semibold text-primary">Filhos</span> e clique em
-        “Conectar Dispositivo Infantil” para começar.
+        “Adicionar Filho” para começar.
       </p>
     </div>
   );

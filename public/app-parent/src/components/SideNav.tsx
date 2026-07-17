@@ -90,7 +90,7 @@ export function SideNav({ activePage, onNavigate }: SideNavProps) {
               className="flex w-full items-center justify-center gap-2 rounded-full bg-primary-container px-4 py-3 text-label-md font-semibold text-on-primary-container transition-colors hover:bg-surface-tint hover:text-white"
             >
               <Icon name="add" className="text-lg" />
-              Conectar Dispositivo Infantil
+              Adicionar Filho
             </button>
           </div>
         )}
