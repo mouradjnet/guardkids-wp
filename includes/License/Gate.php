@@ -41,12 +41,14 @@ class Gate
     ];
 
     private readonly Verifier $verifier;
+    private readonly RevocationCache $revocations;
     private ?Payload $cachedPayload = null;
     private bool $payloadResolved = false;
 
-    public function __construct(?Verifier $verifier = null)
+    public function __construct(?Verifier $verifier = null, ?RevocationCache $revocations = null)
     {
-        $this->verifier = $verifier ?? new Verifier();
+        $this->verifier    = $verifier ?? new Verifier();
+        $this->revocations = $revocations ?? new RevocationCache();
     }
 
     public function plan(): string
@@ -150,6 +152,11 @@ class Gate
 
     private function isRevoked(Payload $payload): bool
     {
+        // Fonte de verdade: lista remota do license server (cron diário, falha aberta).
+        if ($this->revocations->isRevoked($payload->jti)) {
+            return true;
+        }
+        // Override manual de emergência (revogar na unha sem depender do servidor).
         $list = get_option('guardkids_license_revoked', []);
         return \is_array($list) && \in_array($payload->jti, $list, true);
     }
