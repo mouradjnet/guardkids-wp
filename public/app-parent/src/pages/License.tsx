@@ -3,6 +3,7 @@ import { useState, type FormEvent } from 'react';
 import { activateLicense, deactivateLicense, type LicenseStatus } from '../api/license';
 import { ApiError } from '../api/client';
 import { Icon } from '../components/Icon';
+import { MutationError } from '../components/MutationError';
 import { PageHeader } from '../components/PageHeader';
 import { useLicense } from '../hooks/useLicense';
 
@@ -72,6 +73,7 @@ export function License() {
         <DeactivateCard
           onDeactivate={() => deactivate.mutate()}
           deactivating={deactivate.isPending}
+          error={deactivate.error}
         />
       ) : null}
     </main>
@@ -327,9 +329,11 @@ function ActivateCard({
 function DeactivateCard({
   onDeactivate,
   deactivating,
+  error,
 }: {
   onDeactivate: () => void;
   deactivating: boolean;
+  error: unknown;
 }) {
   function confirmAndDeactivate() {
     if (
@@ -370,6 +374,10 @@ function DeactivateCard({
         />
         {deactivating ? 'Desativando…' : 'Desativar nesta instalação'}
       </button>
+
+      {error !== null && error !== undefined && (
+        <MutationError error={error} prefix="Erro ao desativar" />
+      )}
     </article>
   );
 }

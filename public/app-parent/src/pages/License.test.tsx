@@ -208,6 +208,23 @@ describe('License page', () => {
     expect(deactivateLicenseMock).not.toHaveBeenCalled();
   });
 
+  it('mostra erro quando a desativação falha (não é silenciosa)', async () => {
+    getLicenseMock.mockResolvedValueOnce(ACTIVE_SNAPSHOT);
+    deactivateLicenseMock.mockRejectedValueOnce(
+      new ApiError('deactivate_failed', 'Falha ao desativar', 500),
+    );
+    window.confirm = vi.fn().mockReturnValue(true);
+    renderInClient(<License />);
+    await screen.findByTestId('license-hero');
+
+    fireEvent.click(
+      screen.getByRole('button', { name: /desativar nesta instalação/i }),
+    );
+
+    const alert = await screen.findByRole('alert');
+    expect(alert).toHaveTextContent(/falha ao desativar/i);
+  });
+
   it('botão ativar fica desabilitado quando textarea está vazio', async () => {
     getLicenseMock.mockResolvedValueOnce(FREE_NONE);
     renderInClient(<License />);

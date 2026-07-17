@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Icon } from './Icon';
+import { MutationError } from './MutationError';
 import { destroyOtherSessions, listSessions } from '../api/sessions';
 
 function formatAccess(ts: number): string {
@@ -71,6 +72,10 @@ export function SessionsSection() {
         >
           {destroy.isPending ? 'Encerrando…' : 'Sair de todos os outros aparelhos'}
         </button>
+      ) : null}
+
+      {destroy.error ? (
+        <MutationError prefix="Falha ao encerrar sessões" error={destroy.error} />
       ) : null}
     </div>
   );
