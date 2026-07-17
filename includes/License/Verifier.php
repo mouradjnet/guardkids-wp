@@ -24,7 +24,7 @@ final class Verifier
      * --gen-keys`. Rotacionar essa constante invalida todas as chaves
      * emitidas com a privkey anterior — não faça isso à toa.
      */
-    public const DEFAULT_ISSUER_PUBKEY_B64 = 'VgG6LMMSO7+U/7IrQJXFuc5WqEy8f1T8MRO7YSelPck=';
+    public const DEFAULT_ISSUER_PUBKEY_B64 = 'b7YkmSwjK1QXFGDnY8CblwJhuNLSgnH8z2pF0Ikr2F8=';
 
     private readonly string $pubkey;
 
