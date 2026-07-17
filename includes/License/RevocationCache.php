@@ -59,7 +59,12 @@ final class RevocationCache
         if ($this->base === '') {
             return;
         }
-        $res = wp_remote_get(trailingslashit($this->base) . 'revoked', ['timeout' => 10]);
+        // Cache-buster: revogação precisa propagar no mesmo dia. Sem a query única,
+        // o edge da Hostinger serve a lista cacheada (viu-se max-age=604800 = 7 dias)
+        // e uma des-revogação nunca chegava. O servidor também manda no-cache, mas
+        // isto garante fresco mesmo se algum intermediário insistir.
+        $url = trailingslashit($this->base) . 'revoked?_=' . time();
+        $res = wp_remote_get($url, ['timeout' => 10]);
         if (is_wp_error($res) || (int) wp_remote_retrieve_response_code($res) !== 200) {
             return; // falha aberta
         }

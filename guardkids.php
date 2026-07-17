@@ -2,7 +2,7 @@
 /**
  * Plugin Name:       GuardKids WP
  * Description:       Controle parental web premium — painel dos pais, painel infantil e navegador seguro, com PWA instalável.
- * Version:           1.36.5
+ * Version:           1.36.6
  * Requires at least: 6.4
  * Requires PHP:      8.2
  * Author:            Djair Falcão
