@@ -23,7 +23,7 @@ export function ZonasSeguras() {
           <PremiumLock
             featureId="location"
             title="Zonas seguras é uma feature Premium"
-            description="Defina escola, casa de avós e outros pontos pra ver chegadas e saídas."
+            description="Defina escola, casa de avós e outros pontos e veja-os no mapa da Localização."
           />
         </div>
       </main>
