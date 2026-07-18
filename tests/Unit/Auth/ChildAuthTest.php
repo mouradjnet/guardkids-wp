@@ -48,7 +48,20 @@ final class ChildAuthTest extends TestCase
 
             public function get_results($sql, $output = OBJECT)
             {
-                return [];
+                $out = [];
+                if (preg_match("/setting_key LIKE '([^%']+)%'/", (string) $sql, $m) === 1) {
+                    foreach ($this->store as $key => $value) {
+                        if (str_starts_with($key, $m[1])) {
+                            $out[] = ['setting_key' => $key, 'value' => $value];
+                        }
+                    }
+                }
+                return $out;
+            }
+
+            public function esc_like($text)
+            {
+                return $text;
             }
 
             public function insert($table, $data, $format = null)
@@ -137,5 +150,23 @@ final class ChildAuthTest extends TestCase
 
         self::assertNotSame($a['token'], $b['token']);
         self::assertNotSame($a['hash'], $b['hash']);
+    }
+
+    public function test_pairedChildIds_returns_distinct_ids_from_tokens(): void
+    {
+        $auth = new ChildAuth();
+        $auth->issueToken(1, 'tablet');
+        $auth->issueToken(1, 'celular'); // mesmo filho, 2 tokens
+        $auth->issueToken(2, null);
+
+        $ids = $auth->pairedChildIds();
+        sort($ids);
+
+        self::assertSame([1, 2], $ids);
+    }
+
+    public function test_pairedChildIds_empty_without_tokens(): void
+    {
+        self::assertSame([], (new ChildAuth())->pairedChildIds());
     }
 }

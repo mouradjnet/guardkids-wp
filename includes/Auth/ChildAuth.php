@@ -57,6 +57,23 @@ final class ChildAuth
     }
 
     /**
+     * IDs distintos dos filhos que têm ao menos um token de pareamento.
+     * Fonte da verdade de "pareado" (existe token ⟺ pareado).
+     *
+     * @return list<int>
+     */
+    public function pairedChildIds(): array
+    {
+        $ids = [];
+        foreach ($this->settings->valuesByPrefix(self::KEY_PREFIX) as $payload) {
+            if (is_array($payload) && isset($payload['childId'])) {
+                $ids[(int) $payload['childId']] = true;
+            }
+        }
+        return array_keys($ids);
+    }
+
+    /**
      * Lê o token do request, valida e devolve o childId, ou null.
      */
     public function resolveChildId(WP_REST_Request $request): ?int
