@@ -18,7 +18,7 @@ declare(strict_types=1);
 
 defined('ABSPATH') || exit;
 
-define('GUARDKIDS_VERSION', '1.35.0');
+define('GUARDKIDS_VERSION', '1.36.7');
 define('GUARDKIDS_DB_VERSION', 25);
 define('GUARDKIDS_FILE', __FILE__);
 define('GUARDKIDS_DIR', plugin_dir_path(__FILE__));
