@@ -366,8 +366,7 @@ function StepRadius({ radius, onChange }: { radius: number; onChange: (n: number
   return (
     <div className="space-y-4">
       <p className="text-label-md text-on-surface-variant">
-        Margem de tolerância em volta do ponto. Se a criança ficar fora desse raio, ela
-        é considerada fora da zona.
+        Define o tamanho da área desenhada em volta do ponto no mapa.
       </p>
       <div className="grid grid-cols-2 gap-2">
         {RADIUS_OPTIONS.map((r) => (
