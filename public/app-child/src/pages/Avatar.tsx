@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { equipAvatar, getAvatars } from '../api/avatars';
 import type { PageId } from '../data/mockData';
+import { FormError } from '../components/FormError';
 import { Icon } from '../components/Icon';
 
 export function Avatar({ onNavigate }: { onNavigate: (page: PageId) => void }) {
@@ -55,6 +56,8 @@ export function Avatar({ onNavigate }: { onNavigate: (page: PageId) => void }) {
           </li>
         ))}
       </ul>
+
+      {equipMut.isError && <FormError error={equipMut.error} />}
     </main>
   );
 }

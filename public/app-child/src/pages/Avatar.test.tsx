@@ -39,4 +39,12 @@ describe('Avatar', () => {
     fireEvent.click(await screen.findByTestId('avatar-option-star'));
     await waitFor(() => expect(equipAvatar).toHaveBeenCalledWith('star'));
   });
+
+  it('mostra erro visível quando equipar falha (não some mudo)', async () => {
+    getAvatars.mockResolvedValue(payload);
+    equipAvatar.mockRejectedValueOnce(new Error('servidor fora'));
+    renderWithClient(<Avatar onNavigate={() => {}} />);
+    fireEvent.click(await screen.findByTestId('avatar-option-star'));
+    expect(await screen.findByRole('alert')).toHaveTextContent(/servidor fora/i);
+  });
 });

@@ -156,6 +156,23 @@ describe('ZonasSeguras page', () => {
     });
   });
 
+  it('mostra erro no dialog quando o delete falha (não some mudo)', async () => {
+    listSafeZonesMock.mockResolvedValue([casa]);
+    deleteSafeZoneMock.mockRejectedValue(new Error('servidor fora'));
+    const user = userEvent.setup();
+    renderPage();
+
+    await screen.findByText('Casa');
+    await user.click(screen.getByRole('button', { name: /excluir/i }));
+
+    const dialog = screen.getByRole('dialog', { name: /excluir zona/i });
+    await user.click(within(dialog).getByRole('button', { name: /excluir/i }));
+
+    const alert = await within(dialog).findByRole('alert');
+    expect(alert).toHaveTextContent(/falha ao excluir/i);
+    expect(alert).toHaveTextContent(/servidor fora/i);
+  });
+
   it('renders error state when listSafeZones fails', async () => {
     listSafeZonesMock.mockRejectedValue(new Error('boom'));
     renderPage();

@@ -3,6 +3,7 @@ import { getCompanionStatus, revokeCompanion, type CompanionStatus } from '../ap
 import { ApiError } from '../api/client';
 import { formatRelative } from '../lib/requestDisplay';
 import { Icon } from './Icon';
+import { MutationError } from './MutationError';
 
 type Props = { childId: number; childName: string };
 
@@ -65,6 +66,8 @@ export function CompanionStatusCard({ childId, childName }: Props) {
           {revoke.isPending ? 'Revogando…' : 'Revogar dispositivo'}
         </button>
       )}
+
+      {revoke.isError && <MutationError error={revoke.error} prefix="Falha ao revogar" />}
     </article>
   );
 }

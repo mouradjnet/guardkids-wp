@@ -75,4 +75,17 @@ describe('AppBlocklist', () => {
     await screen.findByRole('checkbox', { name: /tiktok/i });
     expect(screen.queryByText(/requer acessibilidade ativa/i)).not.toBeInTheDocument();
   });
+
+  it('mostra erro visível quando salvar bloqueios falha (não some mudo)', async () => {
+    // accessibilityEnabled:true pra o único alert ser o do erro de save
+    vi.spyOn(api, 'getCompanionStatus').mockResolvedValue({ ...status, accessibilityEnabled: true });
+    vi.spyOn(api, 'setBlockedApps').mockRejectedValue(new Error('servidor fora'));
+
+    wrap(<AppBlocklist childId={3} />);
+    fireEvent.click(await screen.findByRole('button', { name: /salvar bloqueios/i }));
+
+    const alert = await screen.findByRole('alert');
+    expect(alert).toHaveTextContent(/falha ao salvar/i);
+    expect(alert).toHaveTextContent(/servidor fora/i);
+  });
 });

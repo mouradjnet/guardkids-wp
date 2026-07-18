@@ -1,4 +1,4 @@
-import { screen } from '@testing-library/react';
+import { fireEvent, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { renderWithClient } from '../test/queryClient';
 import { Loja } from './Loja';
@@ -45,5 +45,17 @@ describe('Loja', () => {
     ]);
     renderWithClient(<Loja onNavigate={() => {}} />);
     expect(await screen.findByText(/pendente/i)).toBeInTheDocument();
+  });
+
+  it('mostra erro visível quando o resgate falha (não some mudo)', async () => {
+    getStore.mockResolvedValueOnce(store);
+    getMyRedemptions.mockResolvedValueOnce([]);
+    redeem.mockRejectedValueOnce(new Error('saldo insuficiente'));
+    renderWithClient(<Loja onNavigate={() => {}} />);
+
+    const botao = (await screen.findAllByRole('button', { name: /resgatar/i }))[0];
+    fireEvent.click(botao);
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(/saldo insuficiente/i);
   });
 });

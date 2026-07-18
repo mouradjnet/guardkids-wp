@@ -134,6 +134,7 @@ function ChildProfileCard({ child, onPair, onEdit }: CardProps) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [pauseError, setPauseError] = useState<string | null>(null);
   const menuRef = useRef<HTMLDivElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -152,7 +153,11 @@ function ChildProfileCard({ child, onPair, onEdit }: CardProps) {
 
   const pauseMutation = useMutation({
     mutationFn: () => (paused ? resumeChild(child.id) : pauseChild(child.id)),
-    onSuccess: invalidate,
+    onSuccess: () => {
+      setPauseError(null);
+      invalidate();
+    },
+    onError: (err) => setPauseError(errorMessage(err)),
   });
 
   const deleteMutation = useMutation({
@@ -404,6 +409,11 @@ function ChildProfileCard({ child, onPair, onEdit }: CardProps) {
           Histórico
         </button>
       </div>
+      {pauseError && (
+        <p role="alert" className="mt-1 text-label-sm text-error">
+          Falha ao {paused ? 'retomar' : 'pausar'}: {pauseError}
+        </p>
+      )}
     </article>
   );
 }

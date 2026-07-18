@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 import { getCompanionStatus, setBlockedApps } from '../api/companion';
+import { MutationError } from './MutationError';
 
 export function AppBlocklist({ childId }: { childId: number }) {
   const queryClient = useQueryClient();
@@ -75,6 +76,7 @@ export function AppBlocklist({ childId }: { childId: number }) {
           >
             {save.isPending ? 'Salvando…' : 'Salvar bloqueios'}
           </button>
+          {save.isError && <MutationError error={save.error} prefix="Falha ao salvar" />}
         </>
       )}
     </div>

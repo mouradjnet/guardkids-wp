@@ -3,6 +3,7 @@ import {
   createRecommendation, deleteRecommendation, listRecommendations, reorderRecommendations,
   type Recommendation,
 } from '../api/content';
+import { MutationError } from './MutationError';
 
 type RecommendationManagerProps = { childId: number; contentOptions: { id: number; title: string }[] };
 
@@ -41,6 +42,12 @@ export function RecommendationManager({ childId, contentOptions }: Recommendatio
           Adicionar
         </button>
       </div>
+      {(add.isError || remove.isError || reorder.isError) && (
+        <MutationError
+          error={add.error ?? remove.error ?? reorder.error}
+          prefix="Falha na recomendação"
+        />
+      )}
       {recs.length === 0 && <p className="text-label-sm text-on-surface-variant">Nenhuma recomendação para este filho.</p>}
       <ul className="space-y-1">
         {recs.map((r: Recommendation, i) => (

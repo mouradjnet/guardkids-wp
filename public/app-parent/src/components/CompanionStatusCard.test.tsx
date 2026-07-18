@@ -49,4 +49,17 @@ describe('CompanionStatusCard', () => {
     await screen.findByText(/status do companion/i);
     expect(screen.queryByRole('button', { name: /revogar/i })).not.toBeInTheDocument();
   });
+
+  it('mostra erro visível quando a revogação falha (não some mudo)', async () => {
+    vi.spyOn(api, 'getCompanionStatus').mockResolvedValue({ ...pairedStatus });
+    vi.spyOn(api, 'revokeCompanion').mockRejectedValue(new Error('servidor fora'));
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+
+    wrap(<CompanionStatusCard childId={7} childName="Lucas" />);
+    fireEvent.click(await screen.findByRole('button', { name: /revogar/i }));
+
+    const alert = await screen.findByRole('alert');
+    expect(alert).toHaveTextContent(/falha ao revogar/i);
+    expect(alert).toHaveTextContent(/servidor fora/i);
+  });
 });

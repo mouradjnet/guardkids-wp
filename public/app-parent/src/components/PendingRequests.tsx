@@ -3,6 +3,7 @@ import { listChildren } from '../api/children';
 import { approveRequest, denyRequest, listRequests } from '../api/requests';
 import { accentFor, childBadge, formatRelative } from '../lib/requestDisplay';
 import { Icon } from './Icon';
+import { MutationError } from './MutationError';
 
 type Decision = 'approve' | 'deny';
 
@@ -113,6 +114,9 @@ export function PendingRequests() {
                   Negar
                 </button>
               </div>
+              {decide.isError && decide.variables?.id === req.id && (
+                <MutationError error={decide.error} prefix="Falha ao decidir" />
+              )}
             </div>
           );
         })}

@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { getMyRedemptions, getStore, redeem } from '../api/rewards';
 import type { PageId } from '../data/mockData';
+import { FormError } from '../components/FormError';
 import { Icon } from '../components/Icon';
 
 const STATUS_LABEL: Record<string, string> = {
@@ -77,6 +78,8 @@ export function Loja({ onNavigate }: { onNavigate: (page: PageId) => void }) {
           );
         })}
       </ul>
+
+      {redeemMut.isError && <FormError error={redeemMut.error} />}
 
       <div>
         <h3 className="mb-2 font-display text-label-md font-bold text-on-surface">Meus resgates</h3>

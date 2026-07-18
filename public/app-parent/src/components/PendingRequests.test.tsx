@@ -157,4 +157,18 @@ describe('PendingRequests', () => {
       expect(deny).toBeDisabled();
     });
   });
+
+  it('mostra erro visível quando a decisão falha (não some mudo)', async () => {
+    listRequestsMock.mockResolvedValue([extraTime]);
+    approveMock.mockRejectedValue(new Error('rede caiu'));
+    const user = userEvent.setup();
+    renderComponent();
+
+    await screen.findByText('Lucas');
+    await user.click(screen.getByRole('button', { name: /aprovar/i }));
+
+    const alert = await screen.findByRole('alert');
+    expect(alert).toHaveTextContent(/falha ao decidir/i);
+    expect(alert).toHaveTextContent(/rede caiu/i);
+  });
 });

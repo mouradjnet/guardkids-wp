@@ -4,6 +4,7 @@ import { ApiError } from '../api/client';
 import { deleteSafeZone, listSafeZones } from '../api/safeZones';
 import type { SafeZone } from '../api/types';
 import { Icon } from '../components/Icon';
+import { MutationError } from '../components/MutationError';
 import { PageHeader } from '../components/PageHeader';
 import { PremiumLock } from '../components/PremiumLock';
 import { SafeZoneDialog } from '../components/SafeZoneDialog';
@@ -100,6 +101,7 @@ function ZonasSegurasContent() {
         <ConfirmDialog
           name={confirmDelete.name}
           pending={deleteMutation.isPending}
+          error={deleteMutation.isError ? deleteMutation.error : null}
           onCancel={() => setConfirmDelete(null)}
           onConfirm={() => deleteMutation.mutate(confirmDelete.id)}
         />
@@ -202,11 +204,13 @@ function EmptyState({ onAdd }: { onAdd: () => void }) {
 function ConfirmDialog({
   name,
   pending,
+  error,
   onCancel,
   onConfirm,
 }: {
   name: string;
   pending: boolean;
+  error?: unknown;
   onCancel: () => void;
   onConfirm: () => void;
 }) {
@@ -227,6 +231,7 @@ function ConfirmDialog({
         <p className="mt-2 text-label-md text-on-surface-variant">
           Tem certeza que quer excluir <strong>{name}</strong>? Essa ação não pode ser desfeita.
         </p>
+        {error ? <MutationError error={error} prefix="Falha ao excluir" /> : null}
         <div className="mt-6 flex justify-end gap-2">
           <button
             type="button"

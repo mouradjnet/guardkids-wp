@@ -298,6 +298,20 @@ describe('Children page', () => {
     );
   });
 
+  it('mostra erro visível quando pausar o filho falha (não some mudo)', async () => {
+    listChildrenMock.mockResolvedValue([lucas]);
+    pauseChildMock.mockRejectedValue(new Error('rede caiu'));
+    const user = userEvent.setup();
+    renderPage();
+
+    await screen.findByText('Lucas');
+    await user.click(screen.getByRole('button', { name: /pausar/i }));
+
+    const alert = await screen.findByRole('alert');
+    expect(alert).toHaveTextContent(/falha ao pausar/i);
+    expect(alert).toHaveTextContent(/rede caiu/i);
+  });
+
   afterEach(() => {
     vi.restoreAllMocks();
   });

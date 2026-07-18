@@ -3,6 +3,7 @@ import { useState, type FormEvent } from 'react';
 import { createRequest, listMyRequests } from '../api/child';
 import { ApiError } from '../api/client';
 import type { CreateRequestInput, MyRequest, MyRequestStatus } from '../api/types';
+import { FormError } from '../components/FormError';
 import { Icon } from '../components/Icon';
 import { normalizeHost } from '../lib/domain';
 
@@ -392,21 +393,6 @@ function SiteRequestForm({
         {submitting ? 'Enviando…' : 'Enviar pedido'}
       </button>
     </form>
-  );
-}
-
-function FormError({ error }: { error: unknown }) {
-  if (!error) return null;
-  const message =
-    error instanceof ApiError
-      ? `${error.message} (${error.status})`
-      : error instanceof Error
-        ? error.message
-        : 'Erro desconhecido.';
-  return (
-    <p role="alert" className="mt-3 rounded-lg bg-error/10 p-2 text-label-sm text-error">
-      {message}
-    </p>
   );
 }
 
