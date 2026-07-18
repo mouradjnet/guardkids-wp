@@ -125,6 +125,12 @@ export function Recompensas() {
         {removeMut.error ? (
           <MutationError prefix="Falha ao remover" error={removeMut.error} />
         ) : null}
+        {(createMut.error ?? toggleMut.error) ? (
+          <MutationError
+            prefix="Falha na recompensa"
+            error={createMut.error ?? toggleMut.error}
+          />
+        ) : null}
       </section>
 
       <section className="rounded-2xl border border-outline-variant bg-surface p-4">

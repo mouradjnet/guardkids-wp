@@ -357,6 +357,22 @@ describe('Settings page', () => {
     confirmSpy.mockRestore();
   });
 
+  it('Segurança: mostra erro quando remover o PIN falha (não some mudo)', async () => {
+    listSettingsMock.mockResolvedValue({});
+    getPinStatusMock.mockResolvedValue({ pinSet: true });
+    clearPinMock.mockRejectedValue(new Error('servidor fora'));
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
+    const user = userEvent.setup();
+    renderPage();
+
+    await user.click(await screen.findByRole('button', { name: /^remover$/i }));
+
+    const alert = await screen.findByRole('alert');
+    expect(alert).toHaveTextContent(/falha ao remover o pin/i);
+    expect(alert).toHaveTextContent(/servidor fora/i);
+    confirmSpy.mockRestore();
+  });
+
   it('Notificações: liga resumo diário por email', async () => {
     listSettingsMock.mockResolvedValue({});
     updateSettingsMock.mockResolvedValue({});

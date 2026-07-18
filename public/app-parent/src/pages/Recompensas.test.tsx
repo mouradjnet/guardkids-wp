@@ -6,10 +6,12 @@ import { Recompensas } from './Recompensas';
 const listRewards = vi.fn();
 const listPendingRedemptions = vi.fn();
 const deleteReward = vi.fn();
+const createReward = vi.fn();
+const updateReward = vi.fn();
 vi.mock('../api/rewards', () => ({
   listRewards: () => listRewards(),
-  createReward: vi.fn(),
-  updateReward: vi.fn(),
+  createReward: (input: unknown) => createReward(input),
+  updateReward: (id: number, patch: unknown) => updateReward(id, patch),
   deleteReward: (id: number) => deleteReward(id),
   listPendingRedemptions: () => listPendingRedemptions(),
   approveRedemption: vi.fn(),
@@ -21,6 +23,8 @@ describe('Recompensas', () => {
     listRewards.mockReset();
     listPendingRedemptions.mockReset();
     deleteReward.mockReset();
+    createReward.mockReset();
+    updateReward.mockReset();
   });
 
   it('lista recompensas e resgates pendentes', async () => {
@@ -57,5 +61,36 @@ describe('Recompensas', () => {
 
     const alert = await screen.findByRole('alert');
     expect(alert).toHaveTextContent(/falha ao remover/i);
+  });
+
+  it('mostra erro quando criar recompensa falha (não some mudo)', async () => {
+    listRewards.mockResolvedValue([]);
+    listPendingRedemptions.mockResolvedValue([]);
+    createReward.mockRejectedValue(new Error('servidor fora'));
+    renderWithClient(<Recompensas />);
+
+    await screen.findByText(/nenhuma recompensa ainda/i);
+    fireEvent.change(screen.getByLabelText(/t[íi]tulo/i), { target: { value: 'Cinema' } });
+    fireEvent.change(screen.getByLabelText(/custo|moedas|pre[çc]o/i), { target: { value: '50' } });
+    fireEvent.click(screen.getByRole('button', { name: /adicionar/i }));
+
+    const alert = await screen.findByRole('alert');
+    expect(alert).toHaveTextContent(/falha na recompensa/i);
+    expect(alert).toHaveTextContent(/servidor fora/i);
+  });
+
+  it('mostra erro quando ativar/desativar recompensa falha (não some mudo)', async () => {
+    listRewards.mockResolvedValue([
+      { id: 1, title: 'Sorvete', costCoins: 100, icon: 'icecream', active: true },
+    ]);
+    listPendingRedemptions.mockResolvedValue([]);
+    updateReward.mockRejectedValue(new Error('servidor fora'));
+    renderWithClient(<Recompensas />);
+
+    fireEvent.click(await screen.findByRole('button', { name: /desativar/i }));
+
+    const alert = await screen.findByRole('alert');
+    expect(alert).toHaveTextContent(/falha na recompensa/i);
+    expect(alert).toHaveTextContent(/servidor fora/i);
   });
 });

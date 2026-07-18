@@ -215,6 +215,9 @@ export function Settings() {
           onManage={() => setPinOpen(true)}
           onClear={handleClearPin}
         />
+        {clearPinMutation.error ? (
+          <MutationError prefix="Falha ao remover o PIN" error={clearPinMutation.error} />
+        ) : null}
         {get('security.pin_child', true) && !hasPin ? (
           <p className="px-1 text-label-sm text-tertiary">
             Defina um PIN pra o desbloqueio funcionar no aparelho da criança.
