@@ -1,6 +1,6 @@
 import { Icon } from '../components/Icon';
 import { PageHeader } from '../components/PageHeader';
-import { planFeatures } from '../data/mockData';
+import { planFeatures } from '../data/planCatalog';
 import { useLicense } from '../hooks/useLicense';
 
 export function Upgrade() {

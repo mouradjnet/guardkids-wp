@@ -26,7 +26,8 @@ class Gate
 {
     /**
      * Features bloqueadas no plano Free — única source-of-truth do servidor.
-     * Mantém sincronizado com `mockData.planFeatures` no app-parent.
+     * Espelhado no client em `hooks/useLicense.ts` (PREMIUM_FEATURES); o
+     * comparativo de marketing vive em `data/planCatalog.ts`.
      *
      * @var list<string>
      */

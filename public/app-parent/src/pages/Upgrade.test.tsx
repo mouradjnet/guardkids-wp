@@ -125,7 +125,7 @@ describe('Upgrade page', () => {
     expect(freeCard.querySelector('button')).toBeNull();
   });
 
-  it('comparativo renderiza todas as 10 features do planFeatures', async () => {
+  it('comparativo renderiza as features do planCatalog', async () => {
     getLicenseMock.mockResolvedValueOnce(FREE_WITH_URL);
     renderInClient(<Upgrade />);
 
@@ -133,6 +133,8 @@ describe('Upgrade page', () => {
     // "Filhos cadastrados" aparece no PlanCard premium E no comparativo → 2 ocorrências
     expect(screen.getAllByText('Filhos cadastrados').length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText('Navegador infantil seguro').length).toBeGreaterThanOrEqual(1);
+    // Localização é premium de verdade (Gate::PREMIUM_FEATURES) → tem que aparecer no upsell
+    expect(screen.getAllByText('Localização e Zonas Seguras').length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText('Histórico completo').length).toBeGreaterThanOrEqual(1);
   });
 });

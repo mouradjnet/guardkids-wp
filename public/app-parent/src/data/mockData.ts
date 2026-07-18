@@ -33,16 +33,3 @@ export const navItems = [
   { id: 'license' as PageId, label: 'Licença', icon: 'key' },
   { id: 'upgrade' as PageId, label: 'Upgrade Premium', icon: 'workspace_premium' },
 ] as const;
-
-export const planFeatures = [
-  { id: 'kids', label: 'Filhos cadastrados', free: '1 filho', premium: 'Filhos ilimitados' },
-  { id: 'blacklist', label: 'Blacklist manual', free: true, premium: true },
-  { id: 'time', label: 'Limite diário básico', free: true, premium: true },
-  { id: 'browser', label: 'Navegador infantil seguro', free: false, premium: true },
-  { id: 'categories', label: 'Categorias inteligentes', free: false, premium: true },
-  { id: 'schedule', label: 'Rotina escolar', free: false, premium: true },
-  { id: 'reports', label: 'Relatórios completos', free: false, premium: true },
-  { id: 'notifications', label: 'Notificações push avançadas', free: false, premium: true },
-  { id: 'guardians', label: 'Múltiplos responsáveis', free: false, premium: true },
-  { id: 'history', label: 'Histórico completo', free: '7 dias', premium: 'Ilimitado' },
-] as const;
