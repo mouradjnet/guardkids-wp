@@ -50,7 +50,7 @@ export function Upgrade() {
         <PlanCard
           plan="premium"
           name="GuardKids Premium"
-          price="R$ 19/mês"
+          price="R$ 29,90/mês"
           tagline="Recomendado para famílias com 2+ filhos."
           isCurrentPlan={isPremium}
           upgradeUrl={upgradeUrl}
