@@ -94,11 +94,15 @@ def main() -> int:
     out_dir = Path(sys.argv[1]) if len(sys.argv) > 1 else ROOT.parent / "guardkids-wp-release"
     out_dir.mkdir(parents=True, exist_ok=True)
 
+    # Lê o campo `Version:` do header do plugin — a versão canônica que o
+    # WordPress reconhece. NÃO usar a constante GUARDKIDS_VERSION: ela já ficou
+    # dessincronizada do header e nomeou zips errados.
     version = "unknown"
     plugin_file = ROOT / "guardkids.php"
     for line in plugin_file.read_text(encoding="utf-8").splitlines():
-        if "GUARDKIDS_VERSION" in line and "define" in line:
-            version = line.split("'")[3]
+        stripped = line.lstrip(" *\t")
+        if stripped.startswith("Version:"):
+            version = stripped.split(":", 1)[1].strip()
             break
 
     out_path = out_dir / f"{PLUGIN_SLUG}-{version}.zip"
