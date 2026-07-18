@@ -52,10 +52,24 @@ final class SettingsRepositoryTest extends TestCase
             {
                 $this->log[] = ['method' => 'get_results', 'args' => [$sql]];
                 $out = [];
+                // valuesByPrefix: SELECT setting_key, value FROM ... WHERE setting_key LIKE 'PREFIX%'
+                if (preg_match("/setting_key LIKE '([^%']+)%'/", (string) $sql, $m) === 1) {
+                    foreach ($this->rows as $key => $value) {
+                        if (str_starts_with($key, $m[1])) {
+                            $out[] = ['setting_key' => $key, 'value' => $value];
+                        }
+                    }
+                    return $out;
+                }
                 foreach ($this->rows as $key => $value) {
                     $out[] = ['setting_key' => $key, 'value' => $value];
                 }
                 return $out;
+            }
+
+            public function esc_like($text)
+            {
+                return $text;
             }
 
             public function insert($table, $data, $format = null)
@@ -164,5 +178,20 @@ final class SettingsRepositoryTest extends TestCase
         self::assertSame(true, $all['a']);
         self::assertSame(['x'], $all['b']);
         self::assertSame('string', $all['c']);
+    }
+
+    public function test_valuesByPrefix_filters_and_decodes(): void
+    {
+        $repo = new SettingsRepository();
+        $repo->set('child_token:aaa', ['childId' => 1]);
+        $repo->set('child_token:bbb', ['childId' => 2]);
+        $repo->set('upgrade_url', 'https://x');
+
+        $out = $repo->valuesByPrefix('child_token:');
+
+        self::assertArrayHasKey('child_token:aaa', $out);
+        self::assertArrayHasKey('child_token:bbb', $out);
+        self::assertArrayNotHasKey('upgrade_url', $out);
+        self::assertSame(['childId' => 1], $out['child_token:aaa']);
     }
 }

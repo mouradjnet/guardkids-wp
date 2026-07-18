@@ -92,4 +92,29 @@ final class SettingsRepository extends Repository
         }
         return $out;
     }
+
+    /**
+     * Devolve as settings cujo `setting_key` começa com `$prefix`, já
+     * desserializadas. Evita carregar todas as settings via all().
+     *
+     * @return array<string, mixed> [setting_key => value_desserializado]
+     */
+    public function valuesByPrefix(string $prefix): array
+    {
+        $like = $this->db->esc_like($prefix) . '%';
+        $sql  = $this->db->prepare(
+            'SELECT setting_key, value FROM ' . $this->table() . ' WHERE setting_key LIKE %s',
+            $like,
+        );
+        $rows = $this->db->get_results($sql, ARRAY_A);
+        if (! is_array($rows)) {
+            return [];
+        }
+        $out = [];
+        foreach ($rows as $row) {
+            $decoded = json_decode((string) ($row['value'] ?? ''), true);
+            $out[(string) $row['setting_key']] = json_last_error() === JSON_ERROR_NONE ? $decoded : null;
+        }
+        return $out;
+    }
 }
