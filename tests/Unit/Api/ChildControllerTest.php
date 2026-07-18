@@ -26,6 +26,8 @@ final class ChildControllerTest extends TestCase
             public int $insert_id = 0;
             /** @var array<int, array<string, mixed>> */
             public array $rows = [];
+            /** @var array<string, string> chave child_token: -> JSON */
+            public array $tokenRows = [];
             /** @var array<int, array{method:string, args:array}> */
             public array $log = [];
 
@@ -62,7 +64,20 @@ final class ChildControllerTest extends TestCase
             public function get_results($sql, $output = OBJECT)
             {
                 $this->log[] = ['method' => 'get_results', 'args' => [$sql]];
+                // valuesByPrefix dos tokens: WHERE setting_key LIKE 'child_token:%'
+                if (str_contains((string) $sql, 'child_token:')) {
+                    $out = [];
+                    foreach ($this->tokenRows as $key => $value) {
+                        $out[] = ['setting_key' => $key, 'value' => $value];
+                    }
+                    return $out;
+                }
                 return array_values($this->rows);
+            }
+
+            public function esc_like($text)
+            {
+                return $text;
             }
 
             public function insert($table, $data, $format = null)
@@ -288,5 +303,26 @@ final class ChildControllerTest extends TestCase
         $res = (new ChildController())->issueDeviceToken($req);
         self::assertInstanceOf(WP_Error::class, $res);
         self::assertSame(404, $res->get_error_data()['status']);
+    }
+
+    public function test_index_includes_paired_flag_per_child(): void
+    {
+        $this->wpdb->rows = [
+            1 => ['id' => 1, 'slug' => 'lucas', 'name' => 'Lucas', 'status' => 'offline'],
+            2 => ['id' => 2, 'slug' => 'ana', 'name' => 'Ana', 'status' => 'offline'],
+        ];
+        // filho 1 tem token (pareado), filho 2 não
+        $this->wpdb->tokenRows = [
+            'child_token:hash1' => json_encode(['childId' => 1]),
+        ];
+
+        $data = (new ChildController())->index()->get_data();
+        $byId = [];
+        foreach ($data as $c) {
+            $byId[$c['id']] = $c;
+        }
+
+        self::assertTrue($byId[1]['paired']);
+        self::assertFalse($byId[2]['paired']);
     }
 }

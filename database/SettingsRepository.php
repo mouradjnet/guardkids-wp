@@ -112,6 +112,9 @@ final class SettingsRepository extends Repository
         }
         $out = [];
         foreach ($rows as $row) {
+            if (! isset($row['setting_key'])) {
+                continue;
+            }
             $decoded = json_decode((string) ($row['value'] ?? ''), true);
             $out[(string) $row['setting_key']] = json_last_error() === JSON_ERROR_NONE ? $decoded : null;
         }

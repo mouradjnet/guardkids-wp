@@ -254,6 +254,10 @@ if (! class_exists('wpdb')) {
         {
             return $query;
         }
+        public function esc_like($text)
+        {
+            return $text;
+        }
         public function get_row($sql, $output = OBJECT, $y = 0)
         {
             return null;

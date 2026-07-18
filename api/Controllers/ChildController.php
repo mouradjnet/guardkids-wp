@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace GuardKids\Api\Controllers;
 
+use GuardKids\Auth\ChildAuth;
 use GuardKids\Database\ChildRepository;
 use GuardKids\License\Gate;
 use WP_Error;
@@ -69,7 +70,10 @@ final class ChildController
 
     public function index(): WP_REST_Response
     {
-        return rest_ensure_response(array_map([$this, 'toJson'], $this->repo->findAll('name')));
+        $pairedIds = $this->pairedIds();
+        return rest_ensure_response(
+            array_map(fn (array $r): array => $this->toJson($r, $pairedIds), $this->repo->findAll('name')),
+        );
     }
 
     public function show(WP_REST_Request $req): WP_REST_Response|WP_Error
@@ -78,7 +82,7 @@ final class ChildController
         if ($row === null) {
             return new WP_Error('not_found', 'Filho não encontrado.', ['status' => 404]);
         }
-        return rest_ensure_response($this->toJson($row));
+        return rest_ensure_response($this->toJson($row, $this->pairedIds()));
     }
 
     public function create(WP_REST_Request $req): WP_REST_Response|WP_Error
@@ -125,7 +129,7 @@ final class ChildController
         }
 
         $created = $this->repo->findById($id);
-        return new WP_REST_Response($this->toJson($created ?? []), 201);
+        return new WP_REST_Response($this->toJson($created ?? [], $this->pairedIds()), 201);
     }
 
     /**
@@ -197,7 +201,7 @@ final class ChildController
         if ($patch !== [] && ! $this->repo->update($id, $patch)) {
             return new WP_Error('db_error', 'Falha ao atualizar.', ['status' => 500]);
         }
-        return rest_ensure_response($this->toJson($this->repo->findById($id) ?? []));
+        return rest_ensure_response($this->toJson($this->repo->findById($id) ?? [], $this->pairedIds()));
     }
 
     /**
@@ -252,7 +256,7 @@ final class ChildController
         if (! $this->repo->update($id, ['status' => $status])) {
             return new WP_Error('db_error', 'Falha ao atualizar.', ['status' => 500]);
         }
-        return rest_ensure_response($this->toJson($this->repo->findById($id) ?? []));
+        return rest_ensure_response($this->toJson($this->repo->findById($id) ?? [], $this->pairedIds()));
     }
 
     public function issueDeviceToken(WP_REST_Request $req): WP_REST_Response|WP_Error
@@ -277,11 +281,18 @@ final class ChildController
         ], 201);
     }
 
+    /** @return list<int> */
+    private function pairedIds(): array
+    {
+        return (new ChildAuth())->pairedChildIds();
+    }
+
     /**
      * @param array<string, mixed> $row
+     * @param list<int> $pairedIds
      * @return array<string, mixed>
      */
-    private function toJson(array $row): array
+    private function toJson(array $row, array $pairedIds = []): array
     {
         return [
             'id'           => (int) ($row['id'] ?? 0),
@@ -300,6 +311,7 @@ final class ChildController
             'bedtimeEnd'      => isset($row['bedtime_end']) && is_string($row['bedtime_end'])
                                  ? substr($row['bedtime_end'], 0, 5) : null,
             'allowedWeekdays' => (string) ($row['allowed_weekdays'] ?? 'YYYYYYY'),
+            'paired'       => in_array((int) ($row['id'] ?? 0), $pairedIds, true),
             'createdAt'    => $row['created_at'] ?? null,
             'updatedAt'    => $row['updated_at'] ?? null,
         ];
