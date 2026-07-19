@@ -7,6 +7,7 @@ import { HeroDashboard } from '../components/HeroDashboard';
 import { Icon } from '../components/Icon';
 import { PendingRequests } from '../components/PendingRequests';
 import { EventsTimeline } from '../components/EventsTimeline';
+import { OnboardingChecklist } from '../components/OnboardingChecklist';
 import { ProximasAcoes } from '../components/ProximasAcoes';
 
 export function Dashboard() {
@@ -25,6 +26,7 @@ export function Dashboard() {
 
   return (
     <main className="mx-auto flex w-full max-w-[1440px] flex-1 flex-col gap-stack-lg p-container-padding-mobile pb-24 md:ml-64 md:p-container-padding-desktop md:pb-container-padding-desktop">
+      <OnboardingChecklist />
       <HeroDashboard />
 
       <div className="grid grid-cols-1 gap-gutter lg:grid-cols-3">

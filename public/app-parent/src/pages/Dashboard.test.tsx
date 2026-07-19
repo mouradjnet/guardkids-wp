@@ -32,6 +32,9 @@ vi.mock('../api/me', () => ({
 vi.mock('../api/reports', () => ({
   getRecentBlocks: getRecentBlocksMock,
 }));
+vi.mock('../components/OnboardingChecklist', () => ({
+  OnboardingChecklist: () => <div data-testid="onboarding-checklist" />,
+}));
 
 import { Dashboard } from './Dashboard';
 
@@ -66,6 +69,12 @@ describe('Dashboard page', () => {
     listChildrenMock.mockReturnValue(new Promise(() => {}));
     renderPage();
     expect(screen.getByText(/crianças ativas/i)).toBeInTheDocument();
+  });
+
+  it('monta o OnboardingChecklist no topo', async () => {
+    listChildrenMock.mockResolvedValue([]);
+    renderPage();
+    expect(await screen.findByTestId('onboarding-checklist')).toBeInTheDocument();
   });
 
   it('renders ChildCard for each child from API', async () => {
