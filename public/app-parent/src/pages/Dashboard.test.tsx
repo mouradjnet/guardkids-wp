@@ -38,6 +38,7 @@ import { Dashboard } from './Dashboard';
 const lucas: Child = {
   id: 1, slug: 'lucas', name: 'Lucas', age: 9, avatarUrl: null,
   device: 'Tablet', status: 'online', usedMinutes: 30, limitMinutes: 60,
+  paired: false,
   dailyLimitEnabled: false,
   bedtimeEnabled: false, bedtimeStart: null, bedtimeEnd: null,
   allowedWeekdays: 'YYYYYYY',

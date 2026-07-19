@@ -22,6 +22,7 @@ const baseChild: Child = {
   age: 9,
   avatarUrl: 'https://example.com/lucas.jpg',
   device: null,
+  paired: false,
   status: 'offline',
   usedMinutes: 0,
   limitMinutes: 60,

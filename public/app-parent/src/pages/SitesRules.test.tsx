@@ -34,6 +34,7 @@ import { SitesRules } from './SitesRules';
 const lucas: Child = {
   id: 1, slug: 'lucas', name: 'Lucas', age: 9, avatarUrl: null,
   device: null, status: 'online', usedMinutes: 0, limitMinutes: 60,
+  paired: false,
   dailyLimitEnabled: false,
   bedtimeEnabled: false, bedtimeStart: null, bedtimeEnd: null,
   allowedWeekdays: 'YYYYYYY',

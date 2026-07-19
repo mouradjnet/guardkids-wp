@@ -10,6 +10,7 @@ const baseChild: Child = {
   age: 9,
   avatarUrl: null,
   device: null,
+  paired: false,
   status: 'online',
   usedMinutes: 0,
   limitMinutes: 60,

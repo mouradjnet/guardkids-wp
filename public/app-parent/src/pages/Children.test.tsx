@@ -45,6 +45,7 @@ const lucas: Child = {
   age: 9,
   avatarUrl: null,
   device: 'Tablet',
+  paired: false,
   status: 'online',
   usedMinutes: 30,
   limitMinutes: 60,
@@ -65,6 +66,7 @@ const paloma: Child = {
   age: 6,
   status: 'offline',
   device: null,
+  paired: false,
 };
 
 const pausedKid: Child = {

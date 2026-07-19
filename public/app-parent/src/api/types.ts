@@ -5,6 +5,7 @@ export type Child = {
   age: number | null;
   avatarUrl: string | null;
   device: string | null;
+  paired: boolean;
   status: 'online' | 'offline' | 'paused';
   usedMinutes: number;
   limitMinutes: number;
