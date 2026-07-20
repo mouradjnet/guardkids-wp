@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Circle, MapContainer, Marker, Popup, TileLayer, Tooltip } from 'react-leaflet';
+import L from 'leaflet';
 import { listChildren } from '../api/children';
 import { ApiError } from '../api/client';
 import { listLocations } from '../api/locations';
@@ -91,7 +92,12 @@ function LocalizacaoContent() {
             <ActivationChecklist child={child} locationEnabled={locationEnabled} />
           )}
           {lastFix !== null && child !== null && (
-            <LocationMap fix={lastFix} childName={child.name} childOnline={isChildOnline(child)} />
+            <LocationMap
+              fix={lastFix}
+              childName={child.name}
+              childAvatarUrl={child.avatarUrl}
+              childOnline={isChildOnline(child)}
+            />
           )}
         </>
       )}
@@ -242,10 +248,12 @@ function ChildSelector({
 function LocationMap({
   fix,
   childName,
+  childAvatarUrl,
   childOnline,
 }: {
   fix: LocationFix;
   childName: string;
+  childAvatarUrl: string | null;
   childOnline: boolean;
 }) {
   // As zonas eram cadastro sem consumidor: ninguém as desenhava e nada no
@@ -261,6 +269,22 @@ function LocationMap({
   const ageMin = Math.max(1, Math.floor((Date.now() - recordedAtMs) / 60_000));
   const ageLabel =
     ageMin < 60 ? `${ageMin} min atrás` : `${Math.floor(ageMin / 60)} h atrás`;
+
+  // Marcador com a foto do filho em vez do pin genérico do Leaflet. Sem foto,
+  // retorna undefined e a prop `icon` é OMITIDA no <Marker> (passar icon={undefined}
+  // quebra o Leaflet: ele sobrescreve o default e chama undefined.createIcon()).
+  // Anel verde quando online, cinza quando é só a última posição — o sinal do badge.
+  const avatarIcon = useMemo(() => {
+    if (!childAvatarUrl) return undefined;
+    const ring = online ? '#16a34a' : '#94a3b8';
+    return L.divIcon({
+      className: '',
+      iconSize: [44, 44],
+      iconAnchor: [22, 22],
+      popupAnchor: [0, -24],
+      html: `<div style="width:44px;height:44px;border-radius:9999px;border:3px solid ${ring};box-shadow:0 2px 6px rgba(0,0,0,.35);overflow:hidden;background:#fff;"><img src="${childAvatarUrl}" style="width:100%;height:100%;object-fit:cover;display:block;" alt="" /></div>`,
+    });
+  }, [childAvatarUrl, online]);
 
   return (
     <>
@@ -285,7 +309,7 @@ function LocationMap({
               <Tooltip>{zone.name}</Tooltip>
             </Circle>
           ))}
-          <Marker position={position}>
+          <Marker position={position} {...(avatarIcon ? { icon: avatarIcon } : {})}>
             <Popup>
               <strong>{childName}</strong>
               <br />
