@@ -24,6 +24,7 @@ use GuardKids\Api\Controllers\MeController;
 use GuardKids\Api\Controllers\PrivacyController;
 use GuardKids\Api\Controllers\ContentController;
 use GuardKids\Api\Controllers\GamificationController;
+use GuardKids\Api\Controllers\GeocodeController;
 use GuardKids\Api\Controllers\MissionController;
 use GuardKids\Api\Controllers\MedalController;
 use GuardKids\Api\Controllers\RewardController;
@@ -61,6 +62,7 @@ final class RestApi
         $this->registerReportsRoutes();
         $this->registerLocationsRoutes();
         $this->registerSafeZonesRoutes();
+        $this->registerGeocodeRoute();
         $this->registerLicenseRoutes();
         $this->registerGuardiansRoutes();
         $this->registerMeRoute();
@@ -682,6 +684,20 @@ final class RestApi
                 'methods'             => \WP_REST_Server::DELETABLE,
                 'callback'            => [$controller, 'destroy'],
                 'permission_callback' => [self::class, 'requireAdmin'],
+            ],
+        ]);
+    }
+
+    private function registerGeocodeRoute(): void
+    {
+        $controller = new GeocodeController();
+
+        register_rest_route(self::NAMESPACE, '/geocode', [
+            [
+                'methods'             => \WP_REST_Server::READABLE,
+                'callback'            => [$controller, 'index'],
+                'permission_callback' => [self::class, 'requireAdmin'],
+                'args'                => $controller->indexArgs(),
             ],
         ]);
     }
