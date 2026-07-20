@@ -11,7 +11,7 @@ namespace GuardKids\Database;
  * Mesma semântica do NotificationRepository::createIfAbsent, sem o feed — o
  * guardião não tem página de alertas; o destino do push é o próprio painel.
  */
-final class GuardianPushDedupRepository extends Repository
+class GuardianPushDedupRepository extends Repository
 {
     protected function tableSuffix(): string
     {

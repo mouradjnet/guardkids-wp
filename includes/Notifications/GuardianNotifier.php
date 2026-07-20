@@ -112,4 +112,37 @@ final class GuardianNotifier
             'O acesso foi bloqueado pelas regras.',
         );
     }
+
+    /**
+     * Entrada numa zona. Dedupa pelo token da transição (o timestamp), então
+     * cada entrada/saída do dia gera seu próprio aviso.
+     */
+    public function notifyPlaceEntered(int $childId, string $placeName, string $icon, string $eventToken): void
+    {
+        if ($childId === 0 || $placeName === '') {
+            return;
+        }
+
+        $badge = $icon !== '' ? $icon . ' ' : '📍 ';
+
+        $this->emit(
+            'place:in:' . $childId . ':' . $eventToken,
+            $badge . $this->childName($childId) . ' chegou em: ' . $placeName,
+            'Toque para ver no mapa.',
+        );
+    }
+
+    /** Saída de uma zona. Mesmo dedupe por token da transição. */
+    public function notifyPlaceLeft(int $childId, string $placeName, string $eventToken): void
+    {
+        if ($childId === 0 || $placeName === '') {
+            return;
+        }
+
+        $this->emit(
+            'place:out:' . $childId . ':' . $eventToken,
+            $this->childName($childId) . ' saiu de: ' . $placeName,
+            'Toque para ver no mapa.',
+        );
+    }
 }
