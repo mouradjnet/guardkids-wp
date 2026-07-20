@@ -2,6 +2,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useState, type FormEvent, type ReactNode } from 'react';
 import { MapContainer, Marker, TileLayer, useMapEvents } from 'react-leaflet';
 import { ApiError } from '../api/client';
+import { geocodeAddress } from '../api/geocode';
 import { createSafeZone, updateSafeZone } from '../api/safeZones';
 import type { SafeZone } from '../api/types';
 import { Icon } from './Icon';
@@ -38,7 +39,9 @@ const TEMPLATES: Template[] = [
   { id: 'custom', icon: 'edit', label: '✏️ Personalizada', defaultName: '' },
 ];
 
-const RADIUS_OPTIONS = [100, 250, 500, 1000] as const;
+const RADIUS_OPTIONS = [50, 100, 200] as const;
+
+const EMOJI_PRESETS = ['🏠', '👵', '🏫', '⚽', '🏥', '🎹'] as const;
 
 const inputClass =
   'w-full rounded-lg border border-outline-variant bg-surface-container-low px-3 py-2 text-base text-on-surface placeholder:text-on-surface-variant focus:border-primary focus:outline-none';
@@ -50,7 +53,10 @@ export function SafeZoneDialog({ open, mode, initial, onClose }: Props) {
   const [address, setAddress] = useState('');
   const [lat, setLat] = useState(DEFAULT_LAT);
   const [lng, setLng] = useState(DEFAULT_LNG);
-  const [radius, setRadius] = useState<number>(250);
+  const [radius, setRadius] = useState<number>(100);
+  const [icon, setIcon] = useState<string>('');
+  const [geocoding, setGeocoding] = useState(false);
+  const [geoError, setGeoError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!open) return;
@@ -60,15 +66,19 @@ export function SafeZoneDialog({ open, mode, initial, onClose }: Props) {
       setLat(initial.latitude);
       setLng(initial.longitude);
       setRadius(initial.radiusMeters);
+      setIcon(initial.icon ?? '');
       setStep(0); // edit também começa no step 0 pra permitir editar o nome
     } else {
       setName('');
       setAddress('');
       setLat(DEFAULT_LAT);
       setLng(DEFAULT_LNG);
-      setRadius(250);
+      setRadius(100);
+      setIcon('');
       setStep(0);
     }
+    setGeoError(null);
+    setGeocoding(false);
   }, [open, mode, initial]);
 
   const mutation = useMutation({
@@ -116,8 +126,24 @@ export function SafeZoneDialog({ open, mode, initial, onClose }: Props) {
       latitude: lat,
       longitude: lng,
       radius_meters: radius,
-      icon: initial?.icon ?? null,
+      icon: icon || null,
     });
+  }
+
+  async function handleGeocode() {
+    const q = address.trim();
+    if (!q) return;
+    setGeoError(null);
+    setGeocoding(true);
+    try {
+      const r = await geocodeAddress(q);
+      setLat(r.lat);
+      setLng(r.lng);
+    } catch {
+      setGeoError('Endereço não encontrado. Ajuste o pino no mapa.');
+    } finally {
+      setGeocoding(false);
+    }
   }
 
   const errorMessage =
@@ -174,6 +200,8 @@ export function SafeZoneDialog({ open, mode, initial, onClose }: Props) {
               name={name}
               onNameChange={setName}
               onPick={pickTemplate}
+              icon={icon}
+              onIconChange={setIcon}
             />
           )}
           {step === 1 && (
@@ -186,6 +214,9 @@ export function SafeZoneDialog({ open, mode, initial, onClose }: Props) {
                 setLat(la);
                 setLng(ln);
               }}
+              onSearch={handleGeocode}
+              searching={geocoding}
+              error={geoError}
             />
           )}
           {step === 2 && <StepRadius radius={radius} onChange={setRadius} />}
@@ -268,10 +299,14 @@ function StepTemplate({
   name,
   onNameChange,
   onPick,
+  icon,
+  onIconChange,
 }: {
   name: string;
   onNameChange: (v: string) => void;
   onPick: (t: Template) => void;
+  icon: string;
+  onIconChange: (v: string) => void;
 }) {
   return (
     <div className="space-y-4">
@@ -304,6 +339,43 @@ function StepTemplate({
           autoFocus
         />
       </Field>
+
+      <div>
+        <span className="mb-1 block text-label-sm font-semibold text-on-surface-variant">
+          Emoji (opcional)
+        </span>
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            aria-label="Sem emoji"
+            aria-pressed={icon === ''}
+            onClick={() => onIconChange('')}
+            className={
+              icon === ''
+                ? 'flex h-11 w-11 items-center justify-center rounded-xl bg-primary text-xl text-white shadow-sm'
+                : 'flex h-11 w-11 items-center justify-center rounded-xl border border-outline-variant bg-surface-container-low text-xl text-on-surface hover:bg-surface-variant'
+            }
+          >
+            —
+          </button>
+          {EMOJI_PRESETS.map((e) => (
+            <button
+              key={e}
+              type="button"
+              aria-label={`Emoji ${e}`}
+              aria-pressed={icon === e}
+              onClick={() => onIconChange(e)}
+              className={
+                icon === e
+                  ? 'flex h-11 w-11 items-center justify-center rounded-xl bg-primary text-xl shadow-sm ring-2 ring-primary'
+                  : 'flex h-11 w-11 items-center justify-center rounded-xl border border-outline-variant bg-surface-container-low text-xl hover:bg-surface-variant'
+              }
+            >
+              {e}
+            </button>
+          ))}
+        </div>
+      </div>
     </div>
   );
 }
@@ -314,25 +386,53 @@ function StepLocation({
   lat,
   lng,
   onPick,
+  onSearch,
+  searching,
+  error,
 }: {
   address: string;
   onAddressChange: (v: string) => void;
   lat: number;
   lng: number;
   onPick: (lat: number, lng: number) => void;
+  onSearch: () => void;
+  searching: boolean;
+  error: string | null;
 }) {
   return (
     <div className="space-y-4">
-      <Field label="Endereço (opcional)" htmlFor="sz-address">
-        <input
-          id="sz-address"
-          type="text"
-          value={address}
-          onChange={(e) => onAddressChange(e.target.value)}
-          className={inputClass}
-          placeholder="Rua X, 123"
-        />
-      </Field>
+      <div>
+        <Field label="Endereço (opcional)" htmlFor="sz-address">
+          <div className="flex gap-2">
+            <input
+              id="sz-address"
+              type="text"
+              value={address}
+              onChange={(e) => onAddressChange(e.target.value)}
+              className={inputClass}
+              placeholder="Rua X, 123"
+            />
+            <button
+              type="button"
+              onClick={onSearch}
+              disabled={searching || address.trim() === ''}
+              className="inline-flex shrink-0 items-center gap-1 rounded-lg bg-primary px-3 py-2 text-label-md font-semibold text-white shadow-ambient transition-colors hover:bg-primary-container disabled:opacity-60"
+            >
+              {searching ? (
+                <Icon name="progress_activity" className="animate-spin text-sm" />
+              ) : (
+                <Icon name="search" className="text-sm" />
+              )}
+              Buscar
+            </button>
+          </div>
+        </Field>
+        {error && (
+          <p role="alert" className="mt-1 text-label-sm text-error">
+            {error}
+          </p>
+        )}
+      </div>
 
       <div>
         <span className="mb-1 block text-label-sm font-semibold text-on-surface-variant">

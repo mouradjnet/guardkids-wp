@@ -5,13 +5,17 @@ import type { ReactNode } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { SafeZone } from '../api/types';
 
-const { createMock, updateMock } = vi.hoisted(() => ({
+const { createMock, updateMock, geocodeMock } = vi.hoisted(() => ({
   createMock: vi.fn(),
   updateMock: vi.fn(),
+  geocodeMock: vi.fn(),
 }));
 vi.mock('../api/safeZones', () => ({
   createSafeZone: createMock,
   updateSafeZone: updateMock,
+}));
+vi.mock('../api/geocode', () => ({
+  geocodeAddress: geocodeMock,
 }));
 vi.mock('react-leaflet', () => ({
   MapContainer: ({ children }: { children: ReactNode }) => <div data-testid="map">{children}</div>,
@@ -42,6 +46,9 @@ describe('SafeZoneDialog', () => {
   beforeEach(() => {
     createMock.mockReset().mockResolvedValue(undefined);
     updateMock.mockReset().mockResolvedValue(undefined);
+    geocodeMock
+      .mockReset()
+      .mockResolvedValue({ lat: -8.05, lng: -34.88, displayName: 'Recife' });
   });
 
   it('não renderiza nada quando open=false', () => {
@@ -62,7 +69,7 @@ describe('SafeZoneDialog', () => {
     expect(screen.getByRole('button', { name: /próximo/i })).toBeDisabled();
   });
 
-  it('fluxo completo cria a zona com o payload certo (raio default 250)', async () => {
+  it('fluxo completo cria a zona com o payload certo (raio default 100)', async () => {
     const user = userEvent.setup();
     renderDialog();
 
@@ -77,11 +84,43 @@ describe('SafeZoneDialog', () => {
         address: null,
         latitude: -8.0476,
         longitude: -34.877,
-        radius_meters: 250,
+        radius_meters: 100,
         icon: null,
       }),
     );
     expect(updateMock).not.toHaveBeenCalled();
+  });
+
+  it('mostra o seletor de emoji com os presets no passo do nome', () => {
+    renderDialog();
+    expect(screen.getByRole('button', { name: /emoji 🏠/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /emoji 🏫/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /emoji 🏥/i })).toBeInTheDocument();
+  });
+
+  it('oferece os raios 50/100/200 no passo do raio', async () => {
+    const user = userEvent.setup();
+    renderDialog();
+    await user.click(screen.getByRole('button', { name: /escola/i })); // → passo 2 (posição)
+    await user.click(await screen.findByRole('button', { name: /próximo/i })); // → passo 3 (raio)
+
+    expect(await screen.findByRole('button', { name: /^50m$/ })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /^100m$/ })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /^200m$/ })).toBeInTheDocument();
+  });
+
+  it('clicar em Buscar chama geocodeAddress com o endereço digitado', async () => {
+    const user = userEvent.setup();
+    renderDialog();
+    await user.click(screen.getByRole('button', { name: /escola/i })); // → passo 2 (posição)
+
+    const addressInput = await screen.findByPlaceholderText(/rua x/i);
+    await user.type(addressInput, 'Av Boa Viagem 1000, Recife');
+    await user.click(screen.getByRole('button', { name: /buscar/i }));
+
+    await waitFor(() =>
+      expect(geocodeMock).toHaveBeenCalledWith('Av Boa Viagem 1000, Recife'),
+    );
   });
 
   it('modo edit prefila e salva via updateSafeZone(id, ...)', async () => {
