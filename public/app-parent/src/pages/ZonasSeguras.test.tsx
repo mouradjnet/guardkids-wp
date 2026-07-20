@@ -90,7 +90,7 @@ describe('ZonasSeguras page', () => {
     );
 
     expect(
-      await screen.findByText(/zonas seguras é uma feature premium/i),
+      await screen.findByText(/marcar locais é uma feature premium/i),
     ).toBeInTheDocument();
     // CTA de criar zona não deve aparecer
     expect(screen.queryByRole('button', { name: /nova zona/i })).not.toBeInTheDocument();
@@ -123,7 +123,7 @@ describe('ZonasSeguras page', () => {
     const newButtons = screen.getAllByRole('button', { name: /nova zona/i });
     await user.click(newButtons[0]);
 
-    expect(screen.getByRole('dialog', { name: /nova zona segura/i })).toBeInTheDocument();
+    expect(screen.getByRole('dialog', { name: /novo local/i })).toBeInTheDocument();
   });
 
   it('opens edit dialog pre-populated from card button', async () => {
@@ -134,7 +134,7 @@ describe('ZonasSeguras page', () => {
     await screen.findByText('Casa');
     await user.click(screen.getByRole('button', { name: /editar/i }));
 
-    expect(screen.getByRole('dialog', { name: /editar zona/i })).toBeInTheDocument();
+    expect(screen.getByRole('dialog', { name: /editar local/i })).toBeInTheDocument();
     const nameInput = screen.getByLabelText(/nome \*/i) as HTMLInputElement;
     expect(nameInput.value).toBe('Casa');
   });

@@ -42,13 +42,13 @@ export function ProtectionMode() {
           tone="primary"
           title="Modo Familiar"
           level="8,5/10"
-          description="Controle de tempo, aprovação de pedidos, sites permitidos/bloqueados, relatórios, localização, zonas seguras e comunicação pais ↔ filhos."
+          description="Controle de tempo, aprovação de pedidos, sites permitidos/bloqueados, relatórios, localização, locais e comunicação pais ↔ filhos."
           features={[
             'Controle de tempo de tela',
             'Aprovação de pedidos',
             'Sites permitidos e bloqueados',
             'Relatórios + Localização',
-            'Zonas seguras',
+            'Locais',
           ]}
           disabled={setMode.isPending}
           onSelect={() => setMode.mutate('family')}

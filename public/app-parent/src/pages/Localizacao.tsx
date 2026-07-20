@@ -26,7 +26,7 @@ export function Localizacao() {
           <PremiumLock
             featureId="location"
             title="Localização é uma feature Premium"
-            description="Acompanhe em tempo real onde seu filho está, com histórico e zonas seguras."
+            description="Acompanhe em tempo real onde seu filho está, com histórico e locais."
           />
         </div>
       </main>

@@ -44,7 +44,7 @@ describe('SideNav', () => {
     expect(screen.getByRole('button', { name: /painel/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /filhos/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /localização/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /zonas seguras/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /locais/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /aprovações/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /sites & regras/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /limites de tempo/i })).toBeInTheDocument();

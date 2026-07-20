@@ -19,7 +19,7 @@ export const navItems = [
   { id: 'dashboard' as PageId, label: 'Painel', icon: 'dashboard' },
   { id: 'children' as PageId, label: 'Filhos', icon: 'family_restroom' },
   { id: 'location' as PageId, label: 'Localização', icon: 'location_on' },
-  { id: 'safe-zones' as PageId, label: 'Zonas Seguras', icon: 'shield' },
+  { id: 'safe-zones' as PageId, label: 'Locais', icon: 'shield' },
   // sem `badge` aqui: a contagem vem do servidor, na SideNav
   { id: 'approvals' as PageId, label: 'Aprovações', icon: 'task_alt' },
   { id: 'sites-rules' as PageId, label: 'Sites & Regras', icon: 'app_blocking' },

@@ -10,7 +10,7 @@ export const planFeatures = [
   { id: 'browser', label: 'Navegador infantil seguro', free: false, premium: true },
   { id: 'categories', label: 'Categorias inteligentes', free: false, premium: true },
   { id: 'schedule', label: 'Rotina escolar', free: false, premium: true },
-  { id: 'location', label: 'Localização e Zonas Seguras', free: false, premium: true },
+  { id: 'location', label: 'Localização e Locais', free: false, premium: true },
   { id: 'reports', label: 'Relatórios completos', free: false, premium: true },
   { id: 'notifications', label: 'Notificações push avançadas', free: false, premium: true },
   { id: 'guardians', label: 'Múltiplos responsáveis', free: false, premium: true },

@@ -176,7 +176,7 @@ export function SafeZoneDialog({ open, mode, initial, onClose }: Props) {
         <div className="flex items-start justify-between">
           <div>
             <h2 id="safe-zone-title" className="font-display text-headline-md text-on-surface">
-              {mode === 'edit' ? 'Editar zona' : 'Nova zona segura'}
+              {mode === 'edit' ? 'Editar local' : 'Novo local'}
             </h2>
             <p className="mt-0.5 text-label-sm text-on-surface-variant">
               Passo {step + 1} de 4 — {STEPS[step].subtitle}

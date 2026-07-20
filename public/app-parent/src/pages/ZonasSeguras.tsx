@@ -17,13 +17,13 @@ export function ZonasSeguras() {
     return (
       <main className="mx-auto flex w-full max-w-[1440px] flex-1 flex-col gap-stack-lg p-container-padding-mobile pb-24 md:ml-64 md:p-container-padding-desktop md:pb-container-padding-desktop">
         <PageHeader
-          title="Zonas seguras"
+          title="Locais"
           subtitle="Marque os lugares importantes da rotina e veja-os no mapa da Localização."
         />
         <div className="min-h-[300px]">
           <PremiumLock
             featureId="location"
-            title="Zonas seguras é uma feature Premium"
+            title="Marcar locais é uma feature Premium"
             description="Defina escola, casa de avós e outros pontos e veja-os no mapa da Localização."
           />
         </div>
@@ -60,7 +60,7 @@ function ZonasSegurasContent() {
   return (
     <main className="mx-auto flex w-full max-w-[1440px] flex-1 flex-col gap-stack-lg p-container-padding-mobile pb-24 md:ml-64 md:p-container-padding-desktop md:pb-container-padding-desktop">
       <PageHeader
-        title="Zonas Seguras"
+        title="Locais"
         subtitle="Cadastre lugares importantes — casa, escola, casa da avó. Eles aparecem no mapa da Localização."
         action={
           <button

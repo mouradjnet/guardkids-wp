@@ -134,7 +134,7 @@ describe('Upgrade page', () => {
     expect(screen.getAllByText('Filhos cadastrados').length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText('Navegador infantil seguro').length).toBeGreaterThanOrEqual(1);
     // Localização é premium de verdade (Gate::PREMIUM_FEATURES) → tem que aparecer no upsell
-    expect(screen.getAllByText('Localização e Zonas Seguras').length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText('Localização e Locais').length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText('Histórico completo').length).toBeGreaterThanOrEqual(1);
   });
 });
