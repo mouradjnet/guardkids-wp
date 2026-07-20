@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace GuardKids\Api\Controllers;
 
 use GuardKids\Auth\ChildAuth;
+use GuardKids\Database\ChildPlaceRepository;
 use GuardKids\Database\ChildRepository;
+use GuardKids\Database\SafeZoneRepository;
 use GuardKids\Database\UsageEventRepository;
 use GuardKids\License\Gate;
 use WP_Error;
@@ -244,6 +246,7 @@ final class ChildController
         if (! $this->repo->delete($id)) {
             return new WP_Error('db_error', 'Falha ao deletar.', ['status' => 500]);
         }
+        (new ChildPlaceRepository())->deleteByChild($id);
         return rest_ensure_response(['deleted' => true, 'id' => $id]);
     }
 
@@ -298,6 +301,36 @@ final class ChildController
     }
 
     /**
+     * Lugar atual do filho (zona de segurança em que ele está), derivado de
+     * `child_place` + `safe_zones`. Null quando não há linha ou zona resolvida.
+     *
+     * @return array{zoneId:int, name:string, icon:string, since:string}|null
+     */
+    private function currentPlace(int $childId): ?array
+    {
+        if ($childId === 0) {
+            return null;
+        }
+        $place = (new ChildPlaceRepository())->get($childId);
+        $zoneId = isset($place['current_zone_id']) && $place['current_zone_id'] !== null
+            ? (int) $place['current_zone_id']
+            : 0;
+        if ($zoneId === 0) {
+            return null;
+        }
+        $zone = (new SafeZoneRepository())->findById($zoneId);
+        if ($zone === null) {
+            return null;
+        }
+        return [
+            'zoneId' => $zoneId,
+            'name'   => (string) ($zone['name'] ?? ''),
+            'icon'   => (string) ($zone['icon'] ?? ''),
+            'since'  => (string) ($place['current_since'] ?? ''),
+        ];
+    }
+
+    /**
      * @param array<string, mixed> $row
      * @param list<int> $pairedIds
      * @return array<string, mixed>
@@ -324,6 +357,7 @@ final class ChildController
             'bedtimeEnd'      => isset($row['bedtime_end']) && is_string($row['bedtime_end'])
                                  ? substr($row['bedtime_end'], 0, 5) : null,
             'allowedWeekdays' => (string) ($row['allowed_weekdays'] ?? 'YYYYYYY'),
+            'currentPlace' => $this->currentPlace((int) ($row['id'] ?? 0)),
             'paired'       => in_array((int) ($row['id'] ?? 0), $pairedIds, true),
             'createdAt'    => $row['created_at'] ?? null,
             'updatedAt'    => $row['updated_at'] ?? null,

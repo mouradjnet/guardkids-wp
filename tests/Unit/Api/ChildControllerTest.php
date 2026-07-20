@@ -30,6 +30,10 @@ final class ChildControllerTest extends TestCase
             public array $tokenRows = [];
             /** @var array<int, array{child_id:int, last_seen:string}> heartbeat agregado por filho */
             public array $heartbeatRows = [];
+            /** @var array<int, array<string, mixed>> linhas de child_place indexadas por child_id */
+            public array $placeRows = [];
+            /** @var array<int, array<string, mixed>> linhas de safe_zones indexadas por id */
+            public array $zoneRows = [];
             /** @var array<int, array{method:string, args:array}> */
             public array $log = [];
 
@@ -49,6 +53,17 @@ final class ChildControllerTest extends TestCase
             public function get_row($sql, $output = OBJECT, $y = 0)
             {
                 $this->log[] = ['method' => 'get_row', 'args' => [$sql]];
+                // child_place: SELECT * ... WHERE child_id = N
+                if (str_contains((string) $sql, 'child_place')
+                    && preg_match('/WHERE child_id = (\d+)/', (string) $sql, $m) === 1) {
+                    return $this->placeRows[(int) $m[1]] ?? null;
+                }
+                // safe_zones: SELECT * ... WHERE id = N (checado antes do genérico
+                // pra não colidir com as linhas de filho)
+                if (str_contains((string) $sql, 'safe_zones')
+                    && preg_match('/WHERE id = (\d+)/', (string) $sql, $m) === 1) {
+                    return $this->zoneRows[(int) $m[1]] ?? null;
+                }
                 if (preg_match('/WHERE id = (\d+)/', (string) $sql, $m) === 1) {
                     return $this->rows[(int) $m[1]] ?? null;
                 }
@@ -349,5 +364,55 @@ final class ChildControllerTest extends TestCase
 
         self::assertTrue($byId[1]['paired']);
         self::assertFalse($byId[2]['paired']);
+    }
+
+    public function testToJsonIncludesCurrentPlaceWithZoneNameAndIcon(): void
+    {
+        $this->wpdb->rows = [
+            1 => ['id' => 1, 'slug' => 'joao', 'name' => 'João', 'status' => 'offline'],
+        ];
+        // child_place aponta pra zona 3; safe_zones traz nome + ícone.
+        $this->wpdb->placeRows = [
+            1 => ['child_id' => 1, 'current_zone_id' => 3, 'current_since' => '2026-07-20 10:00:00'],
+        ];
+        $this->wpdb->zoneRows = [
+            3 => ['id' => 3, 'name' => 'Casa da Avó', 'icon' => '👵'],
+        ];
+
+        $json = (new ChildController())->index()->get_data()[0];
+
+        self::assertSame(3, $json['currentPlace']['zoneId']);
+        self::assertSame('Casa da Avó', $json['currentPlace']['name']);
+        self::assertSame('👵', $json['currentPlace']['icon']);
+        self::assertSame('2026-07-20 10:00:00', $json['currentPlace']['since']);
+    }
+
+    public function testToJsonCurrentPlaceNullWhenNoPlaceRow(): void
+    {
+        $this->wpdb->rows = [
+            1 => ['id' => 1, 'slug' => 'joao', 'name' => 'João', 'status' => 'offline'],
+        ];
+        // Sem child_place → currentPlace deve ser null.
+        $json = (new ChildController())->index()->get_data()[0];
+
+        self::assertNull($json['currentPlace']);
+    }
+
+    public function testDestroyCleansUpChildPlaceRow(): void
+    {
+        $this->wpdb->rows[5] = ['id' => 5, 'name' => 'Lucas'];
+
+        $req = new WP_REST_Request('DELETE', '/children/5');
+        $req['id'] = 5;
+
+        (new ChildController())->destroy($req);
+
+        $placeDeletes = array_values(array_filter(
+            $this->wpdb->log,
+            static fn ($e): bool => $e['method'] === 'delete'
+                && str_contains((string) ($e['args'][0] ?? ''), 'child_place'),
+        ));
+        self::assertNotEmpty($placeDeletes);
+        self::assertSame(5, $placeDeletes[0]['args'][1]['child_id']);
     }
 }
