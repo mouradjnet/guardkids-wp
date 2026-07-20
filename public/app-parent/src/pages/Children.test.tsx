@@ -56,6 +56,8 @@ const lucas: Child = {
   allowedWeekdays: 'YYYYYYY',
   createdAt: null,
   updatedAt: null,
+  // heartbeat agora → online (isChildOnline deriva daqui, não do status)
+  lastSeenAt: new Date().toISOString(),
 };
 
 const paloma: Child = {
@@ -67,6 +69,7 @@ const paloma: Child = {
   status: 'offline',
   device: null,
   paired: false,
+  lastSeenAt: null, // nunca mandou heartbeat → offline (não herda o do lucas)
 };
 
 const pausedKid: Child = {

@@ -6,6 +6,7 @@ namespace GuardKids\Api\Controllers;
 
 use GuardKids\Auth\ChildAuth;
 use GuardKids\Database\ChildRepository;
+use GuardKids\Database\UsageEventRepository;
 use GuardKids\License\Gate;
 use WP_Error;
 use WP_REST_Request;
@@ -14,12 +15,14 @@ use WP_REST_Response;
 final class ChildController
 {
     private readonly ChildRepository $repo;
+    private readonly UsageEventRepository $events;
     private readonly Gate $gate;
 
     public function __construct(?Gate $gate = null)
     {
-        $this->repo = new ChildRepository();
-        $this->gate = $gate ?? new Gate();
+        $this->repo   = new ChildRepository();
+        $this->events = new UsageEventRepository();
+        $this->gate   = $gate ?? new Gate();
     }
 
     /**
@@ -71,8 +74,12 @@ final class ChildController
     public function index(): WP_REST_Response
     {
         $pairedIds = $this->pairedIds();
+        $lastSeen  = $this->events->lastHeartbeatByChild();
         return rest_ensure_response(
-            array_map(fn (array $r): array => $this->toJson($r, $pairedIds), $this->repo->findAll('name')),
+            array_map(
+                fn (array $r): array => $this->toJson($r, $pairedIds, $lastSeen[(int) ($r['id'] ?? 0)] ?? null),
+                $this->repo->findAll('name'),
+            ),
         );
     }
 
@@ -82,7 +89,10 @@ final class ChildController
         if ($row === null) {
             return new WP_Error('not_found', 'Filho não encontrado.', ['status' => 404]);
         }
-        return rest_ensure_response($this->toJson($row, $this->pairedIds()));
+        $lastSeen = $this->events->lastHeartbeatByChild();
+        return rest_ensure_response(
+            $this->toJson($row, $this->pairedIds(), $lastSeen[(int) ($row['id'] ?? 0)] ?? null),
+        );
     }
 
     public function create(WP_REST_Request $req): WP_REST_Response|WP_Error
@@ -292,12 +302,15 @@ final class ChildController
      * @param list<int> $pairedIds
      * @return array<string, mixed>
      */
-    private function toJson(array $row, array $pairedIds = []): array
+    private function toJson(array $row, array $pairedIds = [], ?string $lastSeenAt = null): array
     {
         return [
             'id'           => (int) ($row['id'] ?? 0),
             'slug'         => (string) ($row['slug'] ?? ''),
             'name'         => (string) ($row['name'] ?? ''),
+            'lastSeenAt'   => $lastSeenAt !== null && $lastSeenAt !== ''
+                              ? gmdate('Y-m-d\TH:i:s\Z', (int) strtotime($lastSeenAt))
+                              : null,
             'age'          => isset($row['age']) ? (int) $row['age'] : null,
             'avatarUrl'    => $row['avatar_url'] ?? null,
             'device'       => $row['device'] ?? null,

@@ -229,7 +229,7 @@ function DetailsCard({
       <ul className="space-y-2 text-label-md text-on-surface">
         {email && <DetailRow icon="alternate_email" label="E-mail" value={email} />}
         {activatedAt && (
-          <DetailRow icon="event_available" label="Ativada em" value={activatedAt} />
+          <DetailRow icon="event_available" label="Ativada em" value={formatDateTime(activatedAt)} />
         )}
         {expiresAt && (
           <DetailRow icon="event_busy" label="Expira em" value={formatDate(expiresAt)} />
@@ -412,8 +412,24 @@ function errorMessage(error: unknown): string {
 
 function formatDate(iso: string): string {
   try {
-    return new Date(iso).toLocaleDateString('pt-BR');
+    // expiresAt vem como meia-noite UTC (`...T00:00:00Z`). Renderizar no fuso
+    // local deslizaria pro dia anterior (em UTC-3, 31/12 00:00Z vira 30/12 21:00).
+    // A data de expiração é uma data de calendário — mostrar em UTC preserva o dia.
+    return new Date(iso).toLocaleDateString('pt-BR', { timeZone: 'UTC' });
   } catch {
     return iso;
+  }
+}
+
+// activatedAt vem do backend em GMT no formato mysql (`Y-m-d H:i:s`, sem 'Z').
+// Trata como UTC e converte pro fuso local do navegador, mostrando data + hora.
+function formatDateTime(mysqlUtc: string): string {
+  try {
+    const iso = /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(mysqlUtc)
+      ? mysqlUtc.replace(' ', 'T') + 'Z'
+      : mysqlUtc;
+    return new Date(iso).toLocaleString('pt-BR');
+  } catch {
+    return mysqlUtc;
   }
 }

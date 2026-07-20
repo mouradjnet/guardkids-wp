@@ -1,5 +1,6 @@
 import { Icon } from './Icon';
 import { formatRelative } from '../lib/requestDisplay';
+import { isChildOnline } from '../lib/online';
 import type { Child } from '../api/types';
 
 function formatHM(min: number) {
@@ -14,8 +15,9 @@ export function ChildCard({ child, pendingCount = 0 }: ChildCardProps) {
   const pct = child.limitMinutes > 0
     ? Math.min(100, Math.round((child.usedMinutes / child.limitMinutes) * 100))
     : 0;
-  const offline = child.status === 'offline';
-  const isPaused = offline;
+  const online = isChildOnline(child);
+  const offline = !online;
+  const isPaused = child.status === 'paused';
   const lastSync = child.updatedAt ? formatRelative(child.updatedAt) : null;
 
   return (
@@ -42,14 +44,14 @@ export function ChildCard({ child, pendingCount = 0 }: ChildCardProps) {
             )}
             <div
               className={`absolute bottom-0 right-0 h-3.5 w-3.5 rounded-full border-2 border-white ${
-                child.status === 'online' ? 'bg-secondary pulse-green' : 'bg-outline-variant'
+                online ? 'bg-secondary pulse-green' : 'bg-outline-variant'
               }`}
             />
           </div>
           <div>
             <h4 className="text-lg font-semibold text-on-surface">{child.name}</h4>
             <div className="mt-1 flex flex-wrap items-center gap-2">
-              {child.status === 'online' ? (
+              {online ? (
                 <span className="inline-flex items-center gap-1 rounded-full bg-secondary-container/30 px-2 py-0.5 text-label-sm text-secondary">
                   <span className="h-1.5 w-1.5 rounded-full bg-secondary" />
                   Online

@@ -8,12 +8,11 @@ import { listSafeZones } from '../api/safeZones';
 import { listSettings } from '../api/settings';
 import type { Child, LocationFix, SafeZone } from '../api/types';
 import { formatRelative } from '../lib/requestDisplay';
+import { isChildOnline, ONLINE_THRESHOLD_MS } from '../lib/online';
 import { Icon } from '../components/Icon';
 import { PageHeader } from '../components/PageHeader';
 import { PremiumLock } from '../components/PremiumLock';
 import { useLicense } from '../hooks/useLicense';
-
-const ONLINE_THRESHOLD_MS = 5 * 60 * 1000;
 
 export function Localizacao() {
   const license = useLicense();
@@ -92,7 +91,7 @@ function LocalizacaoContent() {
             <ActivationChecklist child={child} locationEnabled={locationEnabled} />
           )}
           {lastFix !== null && child !== null && (
-            <LocationMap fix={lastFix} childName={child.name} childOnline={child.status === 'online'} />
+            <LocationMap fix={lastFix} childName={child.name} childOnline={isChildOnline(child)} />
           )}
         </>
       )}
@@ -101,7 +100,7 @@ function LocalizacaoContent() {
 }
 
 function DeviceStatus({ child, locationEnabled }: { child: Child; locationEnabled: boolean }) {
-  const isOnline = child.status === 'online';
+  const isOnline = isChildOnline(child);
   const lastSync = child.updatedAt ? formatRelative(child.updatedAt) : 'desconhecido';
   return (
     <div className="glass-panel grid grid-cols-1 gap-3 rounded-2xl p-4 sm:grid-cols-3">
@@ -168,7 +167,7 @@ function ActivationChecklist({
     { id: 'install', label: 'Instalar o GuardKids no dispositivo da criança', done: true },
     { id: 'pair', label: 'Fazer pareamento com token do painel', done: true },
     { id: 'permission', label: 'Autorizar permissão de localização', done: locationEnabled },
-    { id: 'open', label: 'Abrir o aplicativo e mantê-lo ativo', done: child.status === 'online' },
+    { id: 'open', label: 'Abrir o aplicativo e mantê-lo ativo', done: isChildOnline(child) },
   ];
   const pending = items.filter((i) => !i.done).length;
 

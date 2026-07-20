@@ -90,7 +90,11 @@ describe('License page', () => {
 
     // Detalhes
     expect(screen.getByText('djair@example.test')).toBeInTheDocument();
-    expect(screen.getByText('2026-06-08 14:00:00')).toBeInTheDocument();
+    // activatedAt (GMT mysql) é convertido pro fuso local — computa o esperado
+    // do mesmo jeito que o componente pra o teste não depender do TZ da máquina.
+    expect(
+      screen.getByText(new Date('2026-06-08T14:00:00Z').toLocaleString('pt-BR')),
+    ).toBeInTheDocument();
 
     // Chips de features
     for (const f of PREMIUM_FEATURES) {

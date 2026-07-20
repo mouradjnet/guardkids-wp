@@ -188,21 +188,21 @@ describe('Localizacao page', () => {
     expect(screen.getByText(/bateria: 58%/i)).toBeInTheDocument();
   });
 
-  it('marks status as Online when last fix < 5min', async () => {
-    listChildrenMock.mockResolvedValue([lucas]);
-    listLocationsMock.mockResolvedValue([
-      recentFix({ recordedAt: new Date(Date.now() - 2 * 60_000).toISOString() }),
+  it('marks status as Online when last heartbeat < 5min', async () => {
+    listChildrenMock.mockResolvedValue([
+      { ...lucas, lastSeenAt: new Date(Date.now() - 2 * 60_000).toISOString() },
     ]);
+    listLocationsMock.mockResolvedValue([recentFix({})]);
     renderPage();
 
     expect(await screen.findByText(/^Online$/)).toBeInTheDocument();
   });
 
-  it('marks status as Offline when last fix > 5min', async () => {
-    listChildrenMock.mockResolvedValue([lucas]);
-    listLocationsMock.mockResolvedValue([
-      recentFix({ recordedAt: new Date(Date.now() - 10 * 60_000).toISOString() }),
+  it('marks status as Offline when last heartbeat > 5min', async () => {
+    listChildrenMock.mockResolvedValue([
+      { ...lucas, lastSeenAt: new Date(Date.now() - 10 * 60_000).toISOString() },
     ]);
+    listLocationsMock.mockResolvedValue([recentFix({})]);
     renderPage();
 
     expect(await screen.findByText(/^Offline$/)).toBeInTheDocument();

@@ -253,6 +253,35 @@ final class UsageEventRepository extends Repository
         return (int) floor(((int) $this->db->get_var($sql)) / 60);
     }
 
+    /**
+     * Mapa child_id => created_at (UTC, formato mysql) do heartbeat mais recente
+     * de cada filho. Base do status "online" no painel dos pais: o app-child manda
+     * heartbeat a cada ~60s enquanto visível, então um heartbeat recente = app
+     * aberto agora. Uma query agregada só (sem N+1); sem input de usuário no SQL.
+     *
+     * @return array<int, string>
+     */
+    public function lastHeartbeatByChild(): array
+    {
+        $sql = 'SELECT child_id, MAX(created_at) AS last_seen FROM ' . $this->table()
+            . " WHERE type = 'heartbeat' GROUP BY child_id";
+
+        $rows = $this->db->get_results($sql, ARRAY_A);
+        if (! is_array($rows)) {
+            return [];
+        }
+
+        $map = [];
+        foreach ($rows as $r) {
+            $childId = (int) ($r['child_id'] ?? 0);
+            $lastSeen = (string) ($r['last_seen'] ?? '');
+            if ($childId > 0 && $lastSeen !== '') {
+                $map[$childId] = $lastSeen;
+            }
+        }
+        return $map;
+    }
+
     private function sumDurationSeconds(int $childId, string $fromIso, string $toIso): int
     {
         $base = 'SELECT COALESCE(SUM(duration_seconds), 0) FROM ' . $this->table()

@@ -16,6 +16,10 @@ export type Child = {
   allowedWeekdays: string;
   createdAt: string | null;
   updatedAt: string | null;
+  // Último heartbeat do app-child (ISO UTC) ou null se nunca. Base do "online":
+  // heartbeat recente = app aberto agora. Ver isChildOnline() em lib/online.ts.
+  // Opcional no tipo só pra não forçar todos os fixtures de teste a declarar.
+  lastSeenAt?: string | null;
 };
 
 export type ApprovalRequestStatus = 'pending' | 'approved' | 'denied';

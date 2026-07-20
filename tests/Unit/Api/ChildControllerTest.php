@@ -28,6 +28,8 @@ final class ChildControllerTest extends TestCase
             public array $rows = [];
             /** @var array<string, string> chave child_token: -> JSON */
             public array $tokenRows = [];
+            /** @var array<int, array{child_id:int, last_seen:string}> heartbeat agregado por filho */
+            public array $heartbeatRows = [];
             /** @var array<int, array{method:string, args:array}> */
             public array $log = [];
 
@@ -64,6 +66,10 @@ final class ChildControllerTest extends TestCase
             public function get_results($sql, $output = OBJECT)
             {
                 $this->log[] = ['method' => 'get_results', 'args' => [$sql]];
+                // lastHeartbeatByChild: SELECT child_id, MAX(created_at) ... GROUP BY child_id
+                if (str_contains((string) $sql, 'MAX(created_at)')) {
+                    return $this->heartbeatRows;
+                }
                 // valuesByPrefix dos tokens: WHERE setting_key LIKE 'child_token:%'
                 if (str_contains((string) $sql, 'child_token:')) {
                     $out = [];
@@ -143,6 +149,25 @@ final class ChildControllerTest extends TestCase
         self::assertCount(2, $data);
         self::assertSame('Lucas', $data[0]['name']);
         self::assertSame('Paloma', $data[1]['name']);
+    }
+
+    public function testIndexExposesLastSeenAtFromHeartbeat(): void
+    {
+        $this->wpdb->rows = [
+            1 => ['id' => 1, 'slug' => 'lucas', 'name' => 'Lucas', 'status' => 'offline', 'used_minutes' => 0, 'limit_minutes' => 60],
+            2 => ['id' => 2, 'slug' => 'paloma', 'name' => 'Paloma', 'status' => 'offline', 'used_minutes' => 0, 'limit_minutes' => 60],
+        ];
+        // Só o Lucas mandou heartbeat; Paloma nunca.
+        $ts = '2026-07-20 17:00:00';
+        $this->wpdb->heartbeatRows = [
+            ['child_id' => 1, 'last_seen' => $ts],
+        ];
+
+        $data = (new ChildController())->index()->get_data();
+
+        // Lucas: lastSeenAt = heartbeat convertido pra ISO UTC; Paloma: null.
+        self::assertSame(gmdate('Y-m-d\TH:i:s\Z', (int) strtotime($ts)), $data[0]['lastSeenAt']);
+        self::assertNull($data[1]['lastSeenAt']);
     }
 
     public function testShowReturnsChildJsonWhenFound(): void

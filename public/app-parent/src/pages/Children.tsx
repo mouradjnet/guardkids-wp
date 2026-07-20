@@ -10,6 +10,7 @@ import {
 } from '../api/children';
 import type { Child } from '../api/types';
 import { ApiError } from '../api/client';
+import { isChildOnline } from '../lib/online';
 import { AddChildDialog } from '../components/AddChildDialog';
 import { Icon } from '../components/Icon';
 import { PageHeader } from '../components/PageHeader';
@@ -128,7 +129,7 @@ function ChildProfileCard({ child, onPair, onEdit }: CardProps) {
   const queryClient = useQueryClient();
   const pct =
     child.limitMinutes > 0 ? Math.round((child.usedMinutes / child.limitMinutes) * 100) : 0;
-  const online = child.status === 'online';
+  const online = isChildOnline(child);
   const paused = child.status === 'paused';
 
   const [menuOpen, setMenuOpen] = useState(false);
