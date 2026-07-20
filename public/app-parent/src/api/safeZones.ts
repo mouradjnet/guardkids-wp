@@ -7,6 +7,7 @@ export type SafeZoneInput = {
   latitude: number;
   longitude: number;
   radius_meters: number;
+  icon: string | null;
 };
 
 export function listSafeZones(): Promise<SafeZone[]> {

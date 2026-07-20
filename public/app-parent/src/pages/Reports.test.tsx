@@ -27,7 +27,7 @@ const lucas: Child = {
   dailyLimitEnabled: false,
   bedtimeEnabled: false, bedtimeStart: null, bedtimeEnd: null,
   allowedWeekdays: 'YYYYYYY',
-  createdAt: null, updatedAt: null,
+  createdAt: null, updatedAt: null, currentPlace: null,
 };
 
 const sampleReport: Report = {

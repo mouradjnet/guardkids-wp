@@ -36,7 +36,7 @@ const lucas: Child = {
   device: null, status: 'offline', usedMinutes: 0, limitMinutes: 60,
   paired: false,
   dailyLimitEnabled: false, bedtimeEnabled: false, bedtimeStart: null, bedtimeEnd: null,
-  allowedWeekdays: 'YYYYYYY', createdAt: null, updatedAt: null,
+  allowedWeekdays: 'YYYYYYY', createdAt: null, updatedAt: null, currentPlace: null,
 };
 
 function renderPage() {

@@ -78,6 +78,7 @@ export function SafeZoneDialog({ open, mode, initial, onClose }: Props) {
       latitude: number;
       longitude: number;
       radius_meters: number;
+      icon: string | null;
     }) =>
       mode === 'edit' && initial
         ? updateSafeZone(initial.id, input)
@@ -115,6 +116,7 @@ export function SafeZoneDialog({ open, mode, initial, onClose }: Props) {
       latitude: lat,
       longitude: lng,
       radius_meters: radius,
+      icon: initial?.icon ?? null,
     });
   }
 

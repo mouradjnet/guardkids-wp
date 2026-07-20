@@ -35,7 +35,7 @@ function renderDialog(props: Partial<Parameters<typeof SafeZoneDialog>[0]> = {})
 
 const escola: SafeZone = {
   id: 7, name: 'Escola Velha', address: 'Rua X', latitude: -8.1, longitude: -34.9,
-  radiusMeters: 500, createdAt: null, updatedAt: null,
+  radiusMeters: 500, icon: null, createdAt: null, updatedAt: null,
 };
 
 describe('SafeZoneDialog', () => {
@@ -78,6 +78,7 @@ describe('SafeZoneDialog', () => {
         latitude: -8.0476,
         longitude: -34.877,
         radius_meters: 250,
+        icon: null,
       }),
     );
     expect(updateMock).not.toHaveBeenCalled();

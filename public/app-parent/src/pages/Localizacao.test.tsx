@@ -79,6 +79,7 @@ const lucas: Child = {
   allowedWeekdays: 'YYYYYYY',
   createdAt: null,
   updatedAt: null,
+  currentPlace: null,
 };
 
 const paloma: Child = { ...lucas, id: 2, slug: 'paloma', name: 'Paloma' };

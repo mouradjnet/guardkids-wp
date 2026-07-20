@@ -24,7 +24,7 @@ const child = (over: Partial<Child>): Child => ({
   id: 1, slug: 'lucas', name: 'Lucas', age: 9, avatarUrl: null, device: null,
   paired: false, status: 'offline', usedMinutes: 0, limitMinutes: 60,
   dailyLimitEnabled: false, bedtimeEnabled: false, bedtimeStart: null, bedtimeEnd: null,
-  allowedWeekdays: 'YYYYYYY', createdAt: null, updatedAt: null, ...over,
+  allowedWeekdays: 'YYYYYYY', createdAt: null, updatedAt: null, currentPlace: null, ...over,
 });
 
 function renderWith(children: Child[]) {

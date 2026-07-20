@@ -25,6 +25,7 @@ describe('api/safeZones', () => {
       latitude: -8.05,
       longitude: -34.88,
       radius_meters: 100,
+      icon: 'home',
     });
     expect(apiFetchMock).toHaveBeenCalledWith('/safe-zones', {
       method: 'POST',
@@ -34,6 +35,7 @@ describe('api/safeZones', () => {
         latitude: -8.05,
         longitude: -34.88,
         radius_meters: 100,
+        icon: 'home',
       }),
     });
   });
@@ -44,6 +46,7 @@ describe('api/safeZones', () => {
       latitude: -8.06,
       longitude: -34.89,
       radius_meters: 200,
+      icon: 'school',
     });
     expect(apiFetchMock).toHaveBeenCalledWith('/safe-zones/5', {
       method: 'PUT',
@@ -52,6 +55,7 @@ describe('api/safeZones', () => {
         latitude: -8.06,
         longitude: -34.89,
         radius_meters: 200,
+        icon: 'school',
       }),
     });
   });

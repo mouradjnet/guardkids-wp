@@ -56,6 +56,7 @@ const lucas: Child = {
   allowedWeekdays: 'YYYYYYY',
   createdAt: null,
   updatedAt: null,
+  currentPlace: null,
   // heartbeat agora → online (isChildOnline deriva daqui, não do status)
   lastSeenAt: new Date().toISOString(),
 };

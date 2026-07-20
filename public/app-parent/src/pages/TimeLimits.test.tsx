@@ -31,7 +31,7 @@ const lucas: Child = {
   dailyLimitEnabled: false,
   bedtimeEnabled: false, bedtimeStart: null, bedtimeEnd: null,
   allowedWeekdays: 'YYYYYYY',
-  createdAt: null, updatedAt: null,
+  createdAt: null, updatedAt: null, currentPlace: null,
 };
 const paloma: Child = {
   ...lucas, id: 2, slug: 'paloma', name: 'Paloma', limitMinutes: 120,

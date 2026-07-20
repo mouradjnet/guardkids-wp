@@ -49,6 +49,7 @@ const casa: SafeZone = {
   latitude: -8.05,
   longitude: -34.88,
   radiusMeters: 100,
+  icon: null,
   createdAt: null,
   updatedAt: null,
 };

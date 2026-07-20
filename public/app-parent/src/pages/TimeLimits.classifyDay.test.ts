@@ -21,6 +21,7 @@ const baseChild: Child = {
   allowedWeekdays: 'YYYYYYY',
   createdAt: null,
   updatedAt: null,
+  currentPlace: null,
 };
 
 function emptyHours(): UsageHourly {

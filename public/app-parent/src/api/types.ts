@@ -20,6 +20,9 @@ export type Child = {
   // heartbeat recente = app aberto agora. Ver isChildOnline() em lib/online.ts.
   // Opcional no tipo só pra não forçar todos os fixtures de teste a declarar.
   lastSeenAt?: string | null;
+  // Zona segura em que a criança está agora (espelha o payload do ChildController
+  // do PHP) ou null se fora de qualquer zona / sem localização recente.
+  currentPlace: { zoneId: number; name: string; icon: string; since: string } | null;
 };
 
 export type ApprovalRequestStatus = 'pending' | 'approved' | 'denied';
@@ -96,6 +99,7 @@ export type SafeZone = {
   latitude: number;
   longitude: number;
   radiusMeters: number;
+  icon: string | null;
   createdAt: string | null;
   updatedAt: string | null;
 };
