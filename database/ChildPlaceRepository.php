@@ -8,7 +8,7 @@ namespace GuardKids\Database;
  * Estado de geofencing por filho (uma linha por child_id). PK é child_id, então
  * não herda o insert/update do Repository base (que assume `id`).
  */
-final class ChildPlaceRepository extends Repository
+class ChildPlaceRepository extends Repository
 {
     protected function tableSuffix(): string
     {
