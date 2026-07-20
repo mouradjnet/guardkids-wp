@@ -69,7 +69,7 @@ function ZonasSegurasContent() {
             className="inline-flex items-center gap-2 rounded-full bg-primary px-5 py-3 text-label-md font-semibold text-white shadow-ambient transition-colors hover:bg-primary-container"
           >
             <Icon name="add" className="text-lg" />
-            Nova zona
+            Novo local
           </button>
         }
       />
@@ -159,7 +159,7 @@ function LoadingState() {
   return (
     <div className="glass-panel flex h-40 items-center justify-center rounded-2xl text-on-surface-variant">
       <Icon name="progress_activity" className="animate-spin text-2xl" />
-      <span className="ml-2 text-label-md">Carregando zonas…</span>
+      <span className="ml-2 text-label-md">Carregando locais…</span>
     </div>
   );
 }
@@ -184,10 +184,10 @@ function EmptyState({ onAdd }: { onAdd: () => void }) {
   return (
     <div className="glass-panel flex flex-col items-center justify-center gap-3 rounded-2xl p-8 text-on-surface-variant">
       <Icon name="shield" className="text-4xl text-primary" />
-      <p className="font-display text-headline-md text-on-surface">Nenhuma zona cadastrada</p>
+      <p className="font-display text-headline-md text-on-surface">Nenhum local cadastrado</p>
       <p className="max-w-md text-center text-label-sm">
-        Cadastre os lugares da rotina dos seus filhos — Casa, Escola, Casa da avó. Cada zona
-        aparece desenhada no mapa da Localização, junto de onde eles estão agora.
+        Cadastre os lugares da rotina dos seus filhos — Casa, Escola, Casa da avó. Cada local
+        aparece desenhado no mapa da Localização, junto de onde eles estão agora.
       </p>
       <button
         type="button"
@@ -195,7 +195,7 @@ function EmptyState({ onAdd }: { onAdd: () => void }) {
         className="inline-flex items-center gap-2 rounded-full bg-primary px-5 py-3 text-label-md font-semibold text-white shadow-ambient transition-colors hover:bg-primary-container"
       >
         <Icon name="add" className="text-lg" />
-        Criar primeira zona
+        Criar primeiro local
       </button>
     </div>
   );
@@ -226,7 +226,7 @@ function ConfirmDialog({
     >
       <div className="glass-panel w-full max-w-sm rounded-2xl bg-surface p-6 shadow-ambient">
         <h2 id="confirm-delete-title" className="font-display text-headline-md text-on-surface">
-          Excluir zona
+          Excluir local
         </h2>
         <p className="mt-2 text-label-md text-on-surface-variant">
           Tem certeza que quer excluir <strong>{name}</strong>? Essa ação não pode ser desfeita.

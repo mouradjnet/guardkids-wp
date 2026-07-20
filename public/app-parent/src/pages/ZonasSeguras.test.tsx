@@ -93,15 +93,15 @@ describe('ZonasSeguras page', () => {
       await screen.findByText(/marcar locais é uma feature premium/i),
     ).toBeInTheDocument();
     // CTA de criar zona não deve aparecer
-    expect(screen.queryByRole('button', { name: /nova zona/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /novo local/i })).not.toBeInTheDocument();
   });
 
   it('renders empty state with CTA when list is empty', async () => {
     listSafeZonesMock.mockResolvedValue([]);
     renderPage();
 
-    expect(await screen.findByText(/nenhuma zona cadastrada/i)).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /criar primeira zona/i })).toBeInTheDocument();
+    expect(await screen.findByText(/nenhum local cadastrado/i)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /criar primeiro local/i })).toBeInTheDocument();
   });
 
   it('renders list of zones with address fallback', async () => {
@@ -120,7 +120,7 @@ describe('ZonasSeguras page', () => {
     renderPage();
 
     await screen.findByText('Casa');
-    const newButtons = screen.getAllByRole('button', { name: /nova zona/i });
+    const newButtons = screen.getAllByRole('button', { name: /novo local/i });
     await user.click(newButtons[0]);
 
     expect(screen.getByRole('dialog', { name: /novo local/i })).toBeInTheDocument();
@@ -148,7 +148,7 @@ describe('ZonasSeguras page', () => {
     await screen.findByText('Casa');
     await user.click(screen.getByRole('button', { name: /excluir/i }));
 
-    const dialog = screen.getByRole('dialog', { name: /excluir zona/i });
+    const dialog = screen.getByRole('dialog', { name: /excluir local/i });
     await user.click(within(dialog).getByRole('button', { name: /excluir/i }));
 
     await waitFor(() => {
@@ -166,7 +166,7 @@ describe('ZonasSeguras page', () => {
     await screen.findByText('Casa');
     await user.click(screen.getByRole('button', { name: /excluir/i }));
 
-    const dialog = screen.getByRole('dialog', { name: /excluir zona/i });
+    const dialog = screen.getByRole('dialog', { name: /excluir local/i });
     await user.click(within(dialog).getByRole('button', { name: /excluir/i }));
 
     const alert = await within(dialog).findByRole('alert');
