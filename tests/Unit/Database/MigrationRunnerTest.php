@@ -205,4 +205,12 @@ final class MigrationRunnerTest extends TestCase
             )
         );
     }
+
+    public function testMigration026FileExistsAndIsCallable(): void
+    {
+        $path = dirname(__DIR__, 3) . '/database/migrations/026_child_place_and_zone_icon.php';
+        self::assertFileExists($path);
+        $factory = require $path;
+        self::assertIsCallable($factory);
+    }
 }
