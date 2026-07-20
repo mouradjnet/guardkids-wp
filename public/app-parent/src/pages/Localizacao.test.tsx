@@ -218,6 +218,38 @@ describe('Localizacao page', () => {
     expect(await screen.findAllByText('—')).not.toHaveLength(0);
   });
 
+  it('mostra banner de local atual quando child.currentPlace existe', async () => {
+    listChildrenMock.mockResolvedValue([
+      {
+        ...lucas,
+        currentPlace: {
+          zoneId: 7,
+          name: 'Casa da Avó',
+          icon: '👵',
+          since: new Date(Date.now() - 30 * 60_000).toISOString(),
+        },
+      },
+    ]);
+    listLocationsMock.mockResolvedValue([recentFix()]);
+    renderPage();
+
+    // O nome do local fica num <strong>, então o texto "está na" e "Casa da Avó"
+    // ficam em nós diferentes — casamos pelo textContent do banner (role=status).
+    const banner = await screen.findByText(
+      (_content, el) =>
+        el?.tagName === 'P' && (el.textContent ?? '').includes('está na Casa da Avó'),
+    );
+    expect(banner).toBeInTheDocument();
+  });
+
+  it('mostra banner "fora dos locais" quando child.currentPlace é null', async () => {
+    listChildrenMock.mockResolvedValue([lucas]);
+    listLocationsMock.mockResolvedValue([recentFix()]);
+    renderPage();
+
+    expect(await screen.findByText(/fora dos locais cadastrados/i)).toBeInTheDocument();
+  });
+
   it('switches child via dropdown and refetches', async () => {
     listChildrenMock.mockResolvedValue([lucas, paloma]);
     listLocationsMock.mockResolvedValue([]);

@@ -87,6 +87,8 @@ function LocalizacaoContent() {
             <DeviceStatus child={child} locationEnabled={locationEnabled} />
           )}
 
+          {child !== null && <CurrentPlaceBanner child={child} />}
+
           {selectedId !== null && locationQuery.isFetching && lastFix === null && <LoadingState />}
           {selectedId !== null && !locationQuery.isFetching && lastFix === null && child !== null && (
             <ActivationChecklist child={child} locationEnabled={locationEnabled} />
@@ -102,6 +104,38 @@ function LocalizacaoContent() {
         </>
       )}
     </main>
+  );
+}
+
+function CurrentPlaceBanner({ child }: { child: Child }) {
+  const place = child.currentPlace;
+  // Só computa "· desde HH:MM" quando `since` é uma string parseável; senão
+  // omite o sufixo em vez de renderizar "Invalid Date".
+  let since = '';
+  if (place?.since) {
+    const parsed = new Date(place.since);
+    if (!Number.isNaN(parsed.getTime())) {
+      since = parsed.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+    }
+  }
+  return (
+    <div role="status" className="glass-panel flex items-center gap-3 rounded-2xl px-4 py-3">
+      <span className="text-2xl" aria-hidden>
+        {place?.icon || '📍'}
+      </span>
+      <p className="text-label-md text-on-surface">
+        {place ? (
+          <>
+            <strong>{child.name}</strong> está na <strong>{place.name}</strong>
+            {since && <> · desde {since}</>}
+          </>
+        ) : (
+          <>
+            <strong>{child.name}</strong> está fora dos locais cadastrados
+          </>
+        )}
+      </p>
+    </div>
   );
 }
 
