@@ -7,8 +7,10 @@ namespace GuardKids\Api\Controllers;
 use GuardKids\Auth\ChildAuth;
 use GuardKids\Auth\ChildPin;
 use GuardKids\Avatars\AvatarCatalog;
+use GuardKids\Database\ChildPlaceRepository;
 use GuardKids\Database\ChildRepository;
 use GuardKids\Database\LocationRepository;
+use GuardKids\Database\SafeZoneRepository;
 use GuardKids\Database\NotificationRepository;
 use GuardKids\Database\ProgressionRepository;
 use GuardKids\Database\PushSubscriptionRepository;
@@ -16,6 +18,7 @@ use GuardKids\Database\RequestRepository;
 use GuardKids\Database\SettingsRepository;
 use GuardKids\Database\SiteRepository;
 use GuardKids\Database\UsageEventRepository;
+use GuardKids\Geo\PlaceTracker;
 use GuardKids\Notifications\GuardianNotifier;
 use GuardKids\Notifications\Notifier;
 use GuardKids\Notifications\WebPush\VapidKeys;
@@ -419,6 +422,28 @@ final class ChildSelfController
 
         if ($id === 0) {
             return new WP_Error('db_error', 'Não foi possível salvar.', ['status' => 500]);
+        }
+
+        // Geofencing: avalia o Local e notifica transições. Fail-open — qualquer
+        // erro aqui NÃO pode derrubar o fix já salvo (o 201 sai normalmente).
+        try {
+            $tracker = new PlaceTracker(new SafeZoneRepository(), new ChildPlaceRepository());
+            $event = $tracker->evaluate(
+                $childId,
+                (float) $req->get_param('latitude'),
+                (float) $req->get_param('longitude'),
+                is_numeric($accuracy) ? (int) $accuracy : null,
+            );
+            if ($event !== null) {
+                $notifier = new GuardianNotifier();
+                if ($event['type'] === 'entered') {
+                    $notifier->notifyPlaceEntered($childId, $event['placeName'], $event['icon'], $event['token']);
+                } else {
+                    $notifier->notifyPlaceLeft($childId, $event['placeName'], $event['token']);
+                }
+            }
+        } catch (\Throwable $e) {
+            error_log('[GuardKids] geofence falhou (fix salvo mesmo assim): ' . $e->getMessage());
         }
 
         return new WP_REST_Response([
