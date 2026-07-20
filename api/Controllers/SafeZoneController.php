@@ -104,6 +104,11 @@ final class SafeZoneController
                 'required'          => true,
                 'sanitize_callback' => 'sanitize_text_field',
             ],
+            'icon' => [
+                'type'              => 'string',
+                'required'          => false,
+                'sanitize_callback' => 'sanitize_text_field',
+            ],
             'address' => [
                 'type'              => 'string',
                 'sanitize_callback' => 'sanitize_text_field',
@@ -145,6 +150,10 @@ final class SafeZoneController
         $address = $req->get_param('address');
         return [
             'name'          => (string) $req->get_param('name'),
+            'icon'          => (function () use ($req) {
+                $icon = $req->get_param('icon');
+                return is_string($icon) && $icon !== '' ? $icon : null;
+            })(),
             'address'       => is_string($address) && $address !== '' ? $address : null,
             'latitude'      => (float) $req->get_param('latitude'),
             'longitude'     => (float) $req->get_param('longitude'),
@@ -161,6 +170,7 @@ final class SafeZoneController
         return [
             'id'           => (int) ($row['id'] ?? 0),
             'name'         => (string) ($row['name'] ?? ''),
+            'icon'         => $row['icon'] ?? null,
             'address'      => $row['address'] ?? null,
             'latitude'     => isset($row['latitude'])  ? (float) $row['latitude']  : 0.0,
             'longitude'    => isset($row['longitude']) ? (float) $row['longitude'] : 0.0,

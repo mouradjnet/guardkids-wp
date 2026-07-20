@@ -188,6 +188,19 @@ final class SafeZoneControllerTest extends TestCase
         self::assertSame(404, $res->get_error_data()['status']);
     }
 
+    public function testCreateAcceptsAndReturnsIcon(): void
+    {
+        $req = $this->zoneRequest('POST', 'Escola', -8.05, -34.88, 200);
+        $req->set_param('icon', '🏫');
+
+        $res = (new SafeZoneController(new AlwaysAllowGate()))->create($req);
+
+        self::assertInstanceOf(WP_REST_Response::class, $res);
+        self::assertSame(201, $res->get_status());
+        $data = $res->get_data();
+        self::assertSame('🏫', $data['icon']);
+    }
+
     public function testCreateArgsValidatesRadiusBounds(): void
     {
         $args = (new SafeZoneController(new AlwaysAllowGate()))->createArgs();
