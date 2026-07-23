@@ -27,7 +27,11 @@ const styleFor: Record<string, { icon: string; bg: string; text: string }> = {
 
 export function Alerts() {
   const queryClient = useQueryClient();
-  const query = useQuery({ queryKey: ['child', 'notifications'], queryFn: listNotifications });
+  const query = useQuery({
+    queryKey: ['child', 'notifications'],
+    queryFn: listNotifications,
+    refetchInterval: 60_000,
+  });
   const markRead = useMutation({
     mutationFn: markNotificationsRead,
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['child', 'me'] }),

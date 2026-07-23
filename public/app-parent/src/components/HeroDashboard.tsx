@@ -26,10 +26,18 @@ function firstName(full: string): string {
 }
 
 export function HeroDashboard() {
-  const childrenQ = useQuery({ queryKey: ['children'], queryFn: listChildren });
+  // 30s no status (heartbeat do filho é 1/min), 60s nos pedidos como rede de
+  // segurança do push: em aparelho sem notificação ativada, o push nunca chega
+  // e sem isto o dashboard ficaria parado até o pai recarregar na mão.
+  const childrenQ = useQuery({
+    queryKey: ['children'],
+    queryFn: listChildren,
+    refetchInterval: 30_000,
+  });
   const pendingQ = useQuery({
     queryKey: ['requests', 'pending'],
     queryFn: () => listRequests('pending'),
+    refetchInterval: 60_000,
   });
   const settingsQ = useQuery({ queryKey: ['settings'], queryFn: listSettings });
   const meQ = useQuery({ queryKey: ['me'], queryFn: getMe });

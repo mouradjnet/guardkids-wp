@@ -28,7 +28,14 @@ function formatRelative(iso: string | null): string {
 export function Requests() {
   const [openForm, setOpenForm] = useState<FormKind>('none');
   const queryClient = useQueryClient();
-  const listQuery = useQuery({ queryKey: ['child', 'requests'], queryFn: listMyRequests });
+  // Rede de segurança do push: sem notificação ativada no aparelho da criança,
+  // o push nunca chega e ela ficaria olhando "pendente" mesmo depois de o pai
+  // já ter respondido.
+  const listQuery = useQuery({
+    queryKey: ['child', 'requests'],
+    queryFn: listMyRequests,
+    refetchInterval: 60_000,
+  });
 
   const mutation = useMutation({
     mutationFn: createRequest,
