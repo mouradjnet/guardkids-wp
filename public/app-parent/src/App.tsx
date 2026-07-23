@@ -3,6 +3,7 @@ import { AutoLogoutGuard } from './components/AutoLogoutGuard';
 import { BottomNav } from './components/BottomNav';
 import { SideNav } from './components/SideNav';
 import { TopNav } from './components/TopNav';
+import { usePushRefresh } from './hooks/usePushRefresh';
 import { Approvals } from './pages/Approvals';
 import { Children } from './pages/Children';
 import { ContentDashboard } from './pages/ContentDashboard';
@@ -22,6 +23,7 @@ import type { PageId } from './data/mockData';
 
 export default function App() {
   const [activePage, setActivePage] = useState<PageId>('dashboard');
+  usePushRefresh();
 
   return (
     <div className="flex min-h-screen flex-col bg-background text-on-background md:flex-row">

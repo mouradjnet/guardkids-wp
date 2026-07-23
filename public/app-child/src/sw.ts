@@ -14,6 +14,23 @@ registerRoute(
   new CacheFirst({ cacheName: 'gfonts' }),
 );
 
+/**
+ * Avisa as abas abertas do painel-filho que chegou push.
+ *
+ * A notificação entrega o AVISO ao usuário; isto entrega o DADO à tela que ele
+ * já está olhando — sem F5 e sem pendurar um refetchInterval em cada página.
+ * Filtra pela URL igual ao notificationclick: matchAll devolve todo client da
+ * origem, inclusive abas do painel-pais, que não têm nada a ver com este SW.
+ */
+async function notifyOpenClients(): Promise<void> {
+  const clients = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+  for (const client of clients) {
+    if (client.url.includes('/painel-filho')) {
+      client.postMessage({ type: 'guardkids:push' });
+    }
+  }
+}
+
 self.addEventListener('push', (event: PushEvent) => {
   let data: { title?: string; body?: string; url?: string; tag?: string } = {};
   try {
@@ -22,13 +39,16 @@ self.addEventListener('push', (event: PushEvent) => {
     data = { body: event.data?.text() };
   }
   event.waitUntil(
-    self.registration.showNotification(data.title ?? 'GuardKids', {
-      body: data.body ?? '',
-      icon: '/painel-filho/pwa-192x192.png',
-      badge: '/painel-filho/pwa-64x64.png',
-      tag: data.tag,
-      data: { url: data.url ?? '/painel-filho/' },
-    }),
+    Promise.all([
+      self.registration.showNotification(data.title ?? 'GuardKids', {
+        body: data.body ?? '',
+        icon: '/painel-filho/pwa-192x192.png',
+        badge: '/painel-filho/pwa-64x64.png',
+        tag: data.tag,
+        data: { url: data.url ?? '/painel-filho/' },
+      }),
+      notifyOpenClients(),
+    ]),
   );
 });
 

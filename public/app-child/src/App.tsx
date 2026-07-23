@@ -5,6 +5,7 @@ import { getStoredToken, setStoredToken } from './api/token';
 import { BottomNav } from './components/BottomNav';
 import { Header } from './components/Header';
 import { createLocationTracker, type LocationTracker } from './lib/locationTracker';
+import { usePushRefresh } from './lib/usePushRefresh';
 import { createUsageTracker, setActiveTracker, type UsageTracker } from './lib/usageTracker';
 import { Alerts } from './pages/Alerts';
 import { Avatar } from './pages/Avatar';
@@ -24,6 +25,7 @@ let locationTrackerSingleton: LocationTracker | null = null;
 export default function App() {
   const [token, setToken] = useState<string | null>(() => getStoredToken());
   const [activePage, setActivePage] = useState<PageId>('home');
+  usePushRefresh();
 
   // /child/me em alto nível pra (a) compartilhar cache com Home e (b) detectar
   // schedule.isBlocked e forçar entrada em <Blocked />. Refetch a cada 60s pra
