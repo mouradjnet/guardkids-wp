@@ -5,6 +5,8 @@ import { getStoredToken, setStoredToken } from './api/token';
 import { BottomNav } from './components/BottomNav';
 import { Header } from './components/Header';
 import { createLocationTracker, type LocationTracker } from './lib/locationTracker';
+import { AlertCard } from './components/AlertCard';
+import { useDecisionAlert } from './lib/useDecisionAlert';
 import { usePushRefresh } from './lib/usePushRefresh';
 import { createUsageTracker, setActiveTracker, type UsageTracker } from './lib/usageTracker';
 import { Alerts } from './pages/Alerts';
@@ -26,6 +28,7 @@ export default function App() {
   const [token, setToken] = useState<string | null>(() => getStoredToken());
   const [activePage, setActivePage] = useState<PageId>('home');
   usePushRefresh();
+  const { alerta, dispensar } = useDecisionAlert(!!token);
 
   // /child/me em alto nível pra (a) compartilhar cache com Home e (b) detectar
   // schedule.isBlocked e forçar entrada em <Blocked />. Refetch a cada 60s pra
@@ -131,6 +134,24 @@ export default function App() {
 
   return (
     <div className="flex min-h-screen flex-col overflow-x-hidden bg-surface pb-24 text-on-surface">
+      {alerta ? (
+        <AlertCard
+          titulo={
+            alerta.status === 'approved' ? 'Seu pedido foi aprovado! 🎉' : 'Seu pedido não foi aprovado'
+          }
+          descricao={
+            [alerta.description, alerta.highlight].filter(Boolean).join(' ').trim() ||
+            'Toque para ver.'
+          }
+          aprovado={alerta.status === 'approved'}
+          acaoLabel="Ver pedidos"
+          onAcao={() => {
+            setActivePage('requests');
+            dispensar();
+          }}
+          onFechar={dispensar}
+        />
+      ) : null}
       <Header activePage={activePage} onNavigate={setActivePage} />
       <PageRenderer page={activePage} onNavigate={setActivePage} />
       <BottomNav

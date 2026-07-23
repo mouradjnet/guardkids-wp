@@ -1,8 +1,12 @@
 import { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { listChildren } from './api/children';
+import { AlertCard } from './components/AlertCard';
 import { AutoLogoutGuard } from './components/AutoLogoutGuard';
 import { BottomNav } from './components/BottomNav';
 import { SideNav } from './components/SideNav';
 import { TopNav } from './components/TopNav';
+import { useNewRequestAlert } from './hooks/useNewRequestAlert';
 import { usePushRefresh } from './hooks/usePushRefresh';
 import { Approvals } from './pages/Approvals';
 import { Children } from './pages/Children';
@@ -24,10 +28,29 @@ import type { PageId } from './data/mockData';
 export default function App() {
   const [activePage, setActivePage] = useState<PageId>('dashboard');
   usePushRefresh();
+  const { alerta, dispensar } = useNewRequestAlert();
+  const { data: children } = useQuery({ queryKey: ['children'], queryFn: listChildren });
+
+  const nomeDoFilho = children?.find((c) => c.id === alerta?.childId)?.name ?? 'Seu filho';
 
   return (
     <div className="flex min-h-screen flex-col bg-background text-on-background md:flex-row">
       <AutoLogoutGuard />
+      {alerta ? (
+        <AlertCard
+          titulo={`${nomeDoFilho} fez um pedido`}
+          descricao={
+            [alerta.description, alerta.highlight].filter(Boolean).join(' ').trim() ||
+            'Toque para decidir.'
+          }
+          acaoLabel="Ver pedido"
+          onAcao={() => {
+            setActivePage('approvals');
+            dispensar();
+          }}
+          onFechar={dispensar}
+        />
+      ) : null}
       <TopNav />
       <SideNav activePage={activePage} onNavigate={setActivePage} />
       <PageRenderer page={activePage} />
