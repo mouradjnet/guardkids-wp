@@ -59,6 +59,28 @@ async function registerSw(): Promise<ServiceWorkerRegistration> {
   return reg;
 }
 
+/**
+ * ESTE aparelho recebe push?
+ *
+ * O toggle de Configurações mostrava a setting `notifications.push`, que é da
+ * família e vive no banco — aparecia LIGADO num celular que nunca concedeu
+ * permissão, e o pai concluía que estava tudo certo enquanto nada chegava.
+ * Push é por dispositivo: quem manda é a subscription local.
+ *
+ * Não usa registerSw(): consultar estado não pode ter efeito colateral de
+ * registrar service worker. Sem registro ⇒ este aparelho não assinou.
+ */
+export async function hasDeviceSubscription(): Promise<boolean> {
+  if (!isPushSupported() || getPermission() !== 'granted') return false;
+
+  const swUrl = window.guardkidsApi?.swUrl;
+  if (!swUrl) return false;
+
+  const reg = await navigator.serviceWorker.getRegistration(swUrl);
+  const sub = await reg?.pushManager.getSubscription();
+  return !!sub;
+}
+
 export async function subscribe(): Promise<void> {
   const { publicKey } = await apiFetch<{ publicKey: string }>('/guardian/push/key');
 

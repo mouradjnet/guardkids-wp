@@ -23,6 +23,21 @@ function urlBase64ToUint8Array(base64: string): Uint8Array {
   return out;
 }
 
+/**
+ * ESTE aparelho recebe push?
+ *
+ * Espelha o hasDeviceSubscription do painel. Usa getRegistration e NÃO
+ * `serviceWorker.ready`: ready nunca resolve se não houver SW controlando a
+ * página, e a consulta ficaria pendurada em silêncio.
+ */
+export async function hasDeviceSubscription(): Promise<boolean> {
+  if (!isPushSupported() || getPermission() !== 'granted') return false;
+
+  const reg = await navigator.serviceWorker.getRegistration();
+  const sub = await reg?.pushManager.getSubscription();
+  return !!sub;
+}
+
 export async function subscribe(): Promise<void> {
   const { publicKey } = await apiFetch<{ publicKey: string }>('/child/push/key');
   const registration = await navigator.serviceWorker.ready;

@@ -1,11 +1,25 @@
-import { useState } from 'react';
-import { getPermission, isPushSupported, subscribe } from '../lib/push';
+import { useEffect, useState } from 'react';
+import { getPermission, hasDeviceSubscription, isPushSupported, subscribe } from '../lib/push';
 import { Icon } from './Icon';
 
 export function EnableAlertsCard() {
-  const [hidden, setHidden] = useState(!isPushSupported() || getPermission() !== 'default');
+  // Esconder por `permission !== 'default'` deixava a criança SEM caminho: com
+  // a permissão já concedida mas nenhuma subscription neste aparelho (caso real
+  // em produção — a tabela de subscriptions estava vazia), o card sumia e não
+  // havia como assinar. Quem manda é a subscription, não a permissão.
+  const [hidden, setHidden] = useState(!isPushSupported() || getPermission() === 'denied');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(false);
+
+  useEffect(() => {
+    let vivo = true;
+    void hasDeviceSubscription().then((assinado) => {
+      if (vivo && assinado) setHidden(true);
+    });
+    return () => {
+      vivo = false;
+    };
+  }, []);
 
   if (hidden) return null;
 

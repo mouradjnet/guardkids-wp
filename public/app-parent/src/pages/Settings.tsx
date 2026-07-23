@@ -11,7 +11,13 @@ import {
 import { clearHistory, deleteAllData, exportData } from '../api/privacy';
 import { clearPin, getPinStatus, setPin } from '../api/security';
 import { listSettings, updateSettings, type SettingsBag } from '../api/settings';
-import { getPermission, isPushSupported, subscribe as pushSubscribe, unsubscribe as pushUnsubscribe } from '../lib/push';
+import {
+  getPermission,
+  hasDeviceSubscription,
+  isPushSupported,
+  subscribe as pushSubscribe,
+  unsubscribe as pushUnsubscribe,
+} from '../lib/push';
 import type { Guardian, GuardianRole, GuardianWithInvite } from '../api/types';
 import { Icon } from '../components/Icon';
 import { DeleteAccountDialog } from '../components/DeleteAccountDialog';
@@ -42,6 +48,16 @@ export function Settings() {
   // vai falhar toda vez. Melhor dizer onde resolver do que deixar o pai tentar
   // e apanhar sem entender por quê.
   const pushBloqueadoNoBrowser = pushSupported && getPermission() === 'denied';
+
+  // O toggle mostra o estado DESTE aparelho, não a setting da família: push é
+  // por dispositivo, e a setting no banco aparecia ligada em celular que nunca
+  // deu permissão. `false` enquanto carrega — mentir "ligado" é o bug.
+  const pushDoAparelhoQuery = useQuery({
+    queryKey: ['push', 'device'],
+    queryFn: hasDeviceSubscription,
+    enabled: pushSupported,
+  });
+  const pushNesteAparelho = pushDoAparelhoQuery.data === true;
 
   const pinStatusQuery = useQuery({ queryKey: ['security', 'pin'], queryFn: getPinStatus });
   const hasPin = pinStatusQuery.data?.pinSet ?? false;
@@ -102,6 +118,14 @@ export function Settings() {
   };
   const set = (key: string, value: boolean) => mutation.mutate({ [key]: value });
 
+  // Ligado no banco mas não aqui = ativado em OUTRO aparelho. Sem dizer isso, o
+  // pai que ativou no celular abre no computador, vê desligado e conclui que o
+  // app perdeu a configuração.
+  const pushEmOutroAparelho = get('notifications.push', false) && !pushNesteAparelho;
+
+  // O toggle do push lê o aparelho, não o banco — por isso ignora a chave.
+  const getPush = () => pushNesteAparelho;
+
   // O push é efeito colateral do toggle, não substituto: só persiste o setting
   // se a assinatura no browser der certo. Falha => volta pro desligado com o
   // motivo na tela, nunca mente que está ligado.
@@ -117,6 +141,9 @@ export function Settings() {
       setPushError(err instanceof Error ? err : new Error('Não foi possível ativar as notificações.'));
       return;
     }
+    // O toggle passou a refletir o aparelho: sem reconsultar, ele voltaria ao
+    // estado anterior mesmo com o subscribe/unsubscribe tendo dado certo.
+    void pushDoAparelhoQuery.refetch();
     set(key, value);
   };
 
@@ -143,16 +170,17 @@ export function Settings() {
               ? 'Este navegador não suporta notificações push.'
               : pushBloqueadoNoBrowser
                 ? 'Você bloqueou as notificações deste site. Libere nas configurações do navegador (o cadeado ao lado do endereço) para poder ativar.'
-                : 'Recebe alertas no celular sobre pedidos e bloqueios.'
+                : pushEmOutroAparelho
+                  ? 'Ativado em outro aparelho. Ligue aqui para receber neste também — a permissão vale por aparelho.'
+                  : 'Recebe alertas neste aparelho sobre pedidos e bloqueios.'
           }
-          // fallback=false: enquanto o toggle era `locked`, "ligado por padrão"
-          // era cosmético. Agora que é funcional, um default true mostraria
-          // ligado sem existir subscription nenhuma.
+          // O `get` deste toggle ignora a chave e lê o aparelho, então o
+          // fallback nunca é consultado.
           fallback={false}
-          loading={settingsQuery.isLoading}
+          loading={settingsQuery.isLoading || pushDoAparelhoQuery.isLoading}
           saving={mutation.isPending}
           locked={!pushSupported || pushBloqueadoNoBrowser}
-          get={get}
+          get={getPush}
           set={setPush}
         />
         {/* sem prefix: "permissão negada" não é falha ao salvar */}
