@@ -15,6 +15,44 @@ class Geocoder
     private const CACHE_TTL = 604800; // 7 dias
 
     /**
+     * O Nominatim não entende abreviação brasileira: "Av Gov Agamenon
+     * Magalhaes 222, Jaboatao dos Guararapes" devolve VAZIO, enquanto
+     * "Avenida Governador Agamenon Magalhaes 222, ..." acha na primeira
+     * tentativa (comprovado contra a API real). Como todo pai escreve "Av.",
+     * sem isto a busca falharia no caso mais comum que existe.
+     *
+     * @var array<string, string>
+     */
+    private const ABREVIACOES = [
+        'av' => 'Avenida', 'avn' => 'Avenida', 'r' => 'Rua', 'ru' => 'Rua',
+        'rod' => 'Rodovia', 'trav' => 'Travessa', 'tv' => 'Travessa',
+        'al' => 'Alameda', 'pc' => 'Praça', 'pca' => 'Praça', 'lgo' => 'Largo',
+        'estr' => 'Estrada', 'vd' => 'Viaduto', 'gov' => 'Governador',
+        'pres' => 'Presidente', 'dr' => 'Doutor', 'dra' => 'Doutora',
+        'prof' => 'Professor', 'profa' => 'Professora', 'mal' => 'Marechal',
+        'cel' => 'Coronel', 'eng' => 'Engenheiro', 'sto' => 'Santo',
+        'sta' => 'Santa', 'jd' => 'Jardim', 'pq' => 'Parque', 'vl' => 'Vila',
+    ];
+
+    /**
+     * Troca abreviações por extenso, preservando o resto do texto (números,
+     * vírgulas, acentos). Palavra que não está no mapa sai intacta.
+     */
+    public static function expandirAbreviacoes(string $query): string
+    {
+        $expandido = preg_replace_callback(
+            '/(?<![\p{L}])(\p{L}+)\.?(?![\p{L}])/u',
+            static function (array $m): string {
+                $chave = mb_strtolower($m[1]);
+                return self::ABREVIACOES[$chave] ?? $m[0];
+            },
+            $query,
+        );
+
+        return is_string($expandido) ? $expandido : $query;
+    }
+
+    /**
      * @return array{lat:float, lng:float, displayName:string}|null
      */
     public function geocode(string $query): ?array
@@ -23,6 +61,10 @@ class Geocoder
         if ($query === '') {
             return null;
         }
+
+        // Expandir ANTES do cache: "Av X" e "Avenida X" viram a mesma chave, em
+        // vez de duas entradas — uma delas com o resultado vazio.
+        $query = self::expandirAbreviacoes($query);
 
         $cacheKey = 'gk_geocode_' . md5(mb_strtolower($query));
         $cached = $this->cacheGet($cacheKey);
