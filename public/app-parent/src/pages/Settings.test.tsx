@@ -40,17 +40,25 @@ vi.mock('../api/guardians', () => ({
 
 // jsdom não tem navigator.serviceWorker: sem este mock, isPushSupported() daria
 // false e o toggle de push nasceria travado em todos os testes.
-const { isPushSupportedMock, pushSubscribeMock, pushUnsubscribeMock, getPermissionMock } = vi.hoisted(() => ({
+const {
+  isPushSupportedMock,
+  pushSubscribeMock,
+  pushUnsubscribeMock,
+  getPermissionMock,
+  hasDeviceSubscriptionMock,
+} = vi.hoisted(() => ({
   isPushSupportedMock: vi.fn(() => true),
   pushSubscribeMock: vi.fn(),
   pushUnsubscribeMock: vi.fn(),
   getPermissionMock: vi.fn(() => 'granted'),
+  hasDeviceSubscriptionMock: vi.fn(async () => false),
 }));
 vi.mock('../lib/push', () => ({
   isPushSupported: isPushSupportedMock,
   subscribe: pushSubscribeMock,
   unsubscribe: pushUnsubscribeMock,
   getPermission: getPermissionMock,
+  hasDeviceSubscription: hasDeviceSubscriptionMock,
 }));
 
 const { exportDataMock, clearHistoryMock, deleteAllDataMock } = vi.hoisted(() => ({
@@ -155,6 +163,7 @@ describe('Settings page', () => {
     getPermissionMock.mockReset().mockReturnValue('granted');
     pushSubscribeMock.mockReset().mockResolvedValue(undefined);
     pushUnsubscribeMock.mockReset().mockResolvedValue(undefined);
+    hasDeviceSubscriptionMock.mockReset().mockResolvedValue(false);
   });
   afterEach(() => vi.restoreAllMocks());
 
@@ -257,6 +266,34 @@ describe('Settings page', () => {
     expect(toggleFor('Alertas em tempo real')).toHaveAttribute('aria-checked', 'false');
     expect(toggleFor('Logout automático por inatividade')).toHaveAttribute('aria-checked', 'false');
     expect(toggleFor('PIN no painel infantil')).toHaveAttribute('aria-checked', 'true');
+  });
+
+  // O bug que enganou o Djair em produção: o toggle lia a setting da família no
+  // banco, então aparecia LIGADO num aparelho que nunca deu permissão — ele
+  // concluiu que estava ativado e nenhuma notificação chegava.
+  it('mostra DESLIGADO quando o banco diz ligado mas este aparelho não assinou', async () => {
+    listSettingsMock.mockResolvedValue({ 'notifications.push': true });
+    hasDeviceSubscriptionMock.mockResolvedValue(false);
+    renderPage();
+    await screen.findByText('Notificações push');
+
+    // Esperar a descrição PRIMEIRO: ela só aparece com o bag já carregado
+    // dizendo true. Asserir aria-checked antes disso passaria trivialmente,
+    // porque o toggle nasce false enquanto as settings não chegaram.
+    expect(await screen.findByText(/ativado em outro aparelho/i)).toBeInTheDocument();
+    expect(toggleFor('Notificações push')).toHaveAttribute('aria-checked', 'false');
+  });
+
+  it('mostra LIGADO quando este aparelho tem subscription', async () => {
+    listSettingsMock.mockResolvedValue({ 'notifications.push': true });
+    hasDeviceSubscriptionMock.mockResolvedValue(true);
+    renderPage();
+    await screen.findByText('Notificações push');
+
+    await waitFor(() => {
+      expect(toggleFor('Notificações push')).toHaveAttribute('aria-checked', 'true');
+    });
+    expect(screen.queryByText(/ativado em outro aparelho/i)).not.toBeInTheDocument();
   });
 
   it('overrides fallback with server value', async () => {
@@ -641,6 +678,9 @@ describe('Settings page', () => {
 
     it('cancela a assinatura ao desligar', async () => {
       listSettingsMock.mockResolvedValue({ 'notifications.push': true });
+      // O toggle passou a refletir o APARELHO: sem subscription local ele nasce
+      // desligado por mais que o banco diga true, e não haveria o que desligar.
+      hasDeviceSubscriptionMock.mockResolvedValue(true);
       pushUnsubscribeMock.mockResolvedValue(undefined);
       const user = userEvent.setup();
       renderPage();

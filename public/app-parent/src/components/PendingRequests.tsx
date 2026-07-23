@@ -12,6 +12,7 @@ export function PendingRequests() {
   const requestsQuery = useQuery({
     queryKey: ['requests', 'pending'],
     queryFn: () => listRequests('pending'),
+    refetchInterval: 60_000,
   });
 
   const queryClient = useQueryClient();

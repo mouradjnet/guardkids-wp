@@ -16,9 +16,13 @@ export function Approvals() {
   const [filterChildId, setFilterChildId] = useState<'all' | number>('all');
 
   const childrenQuery = useQuery({ queryKey: ['children'], queryFn: listChildren });
+  // Rede de segurança do push (que chega em ~2s quando existe): em aparelho sem
+  // notificação ativada não chega push nenhum, e a tela de Aprovações aberta
+  // ficaria parada enquanto o filho espera resposta.
   const requestsQuery = useQuery({
     queryKey: ['requests', 'all'],
     queryFn: () => listRequests('all'),
+    refetchInterval: 60_000,
   });
 
   const queryClient = useQueryClient();

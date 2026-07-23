@@ -24,6 +24,7 @@ export function SideNav({ activePage, onNavigate }: SideNavProps) {
   const pendentesQuery = useQuery({
     queryKey: ['requests', 'pending'],
     queryFn: () => listRequests('pending'),
+    refetchInterval: 60_000,
   });
   const pendentes = pendentesQuery.data?.length ?? 0;
 

@@ -29,9 +29,14 @@ function errorMessage(err: unknown): string {
 }
 
 export function Children() {
+  // 30s: o "Online" deriva do heartbeat do filho (1/min). Sem refetch, o badge
+  // congela no estado de quando o pai abriu a tela — o filho conecta e o painel
+  // segue dizendo offline pra sempre. Push não cobre isto: heartbeat não gera
+  // push, e gerar um por minuto seria absurdo.
   const { data, isLoading, error } = useQuery({
     queryKey: ['children'],
     queryFn: listChildren,
+    refetchInterval: 30_000,
   });
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Child | null>(null);
