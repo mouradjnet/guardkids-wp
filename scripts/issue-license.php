@@ -36,6 +36,7 @@ const ALL_FEATURES = [
     'location',
     'unlimited_kids',
     'full_history',
+    'ai_insights',
 ];
 
 main($argv);
