@@ -6,7 +6,7 @@ import type { CurrentRole } from '../api/me';
  * `requireCollaboratorOrAbove` no backend (GET /children, GET/approve/deny
  * de /requests). Tudo que não está aqui exige role=admin.
  */
-export const COLLAB_ALLOWED_PAGES: readonly PageId[] = ['dashboard', 'approvals'];
+export const COLLAB_ALLOWED_PAGES: readonly PageId[] = ['dashboard', 'academy', 'approvals'];
 
 export function canAccessPage(role: CurrentRole, page: PageId): boolean {
   if (role === 'collaborator') {

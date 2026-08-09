@@ -9,6 +9,7 @@ import { SideNav } from './components/SideNav';
 import { TopNav } from './components/TopNav';
 import { useNewRequestAlert } from './hooks/useNewRequestAlert';
 import { usePushRefresh } from './hooks/usePushRefresh';
+import { Academy } from './pages/Academy';
 import { Approvals } from './pages/Approvals';
 import { Children } from './pages/Children';
 import { ContentDashboard } from './pages/ContentDashboard';
@@ -63,6 +64,8 @@ export default function App() {
 
 function PageRenderer({ page }: { page: PageId }) {
   switch (page) {
+    case 'academy':
+      return <Academy />;
     case 'children':
       return <Children />;
     case 'location':

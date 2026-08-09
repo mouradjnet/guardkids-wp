@@ -124,6 +124,22 @@ O `AcademyButton` já é global (montado no `App.tsx`, recebe `activePage`). Bas
 existir uma regra para aquela `PageId` que ele aparece — não há nada por tela a
 configurar.
 
+## Trilhas (Onda 2)
+
+A **Academia** (`pages/Academy.tsx`) agrupa as aulas em **trilhas** ordenadas
+(`academy/tracks.ts`). A trilha é a fonte da ordem (`Track.lessonIds`); o progresso
+(`trackProgress`) é derivado do **mesmo `completed`** do usermeta — concluir uma aula
+pela pílula contextual OU pela Academia conta igual. Sem tabela nova.
+
+### Adicionar uma aula a uma trilha
+1. Crie a aula em `lessons.ts` (id estável).
+2. Coloque o id na posição desejada de `Track.lessonIds` em `tracks.ts`.
+3. O teste de integridade (`tracks.test.ts`) garante que todo id referenciado existe.
+
+### Adicionar / liberar uma trilha
+- Nova trilha: item em `TRACKS` com `status: 'available'` e a lista ordenada de
+  `lessonIds`. `coming-soon` = `lessonIds: []` (aparece bloqueada com selo "Em breve").
+
 ## Arquivos
 
 | Papel                    | Arquivo                                            |
