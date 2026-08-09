@@ -39,6 +39,7 @@ class Gate
         'location',
         'unlimited_kids',
         'full_history',
+        'ai_insights',
     ];
 
     private readonly Verifier $verifier;

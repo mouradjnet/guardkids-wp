@@ -17,6 +17,7 @@ export const PREMIUM_FEATURES = [
   'location',
   'unlimited_kids',
   'full_history',
+  'ai_insights',
 ] as const;
 export type PremiumFeature = (typeof PREMIUM_FEATURES)[number];
 

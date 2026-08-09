@@ -12,6 +12,7 @@ export const planFeatures = [
   { id: 'schedule', label: 'Rotina escolar', free: false, premium: true },
   { id: 'location', label: 'Localização e Locais', free: false, premium: true },
   { id: 'reports', label: 'Relatórios completos', free: false, premium: true },
+  { id: 'ai_insights', label: 'Insights com IA', free: false, premium: true },
   { id: 'notifications', label: 'Notificações push avançadas', free: false, premium: true },
   { id: 'guardians', label: 'Múltiplos responsáveis', free: false, premium: true },
   { id: 'history', label: 'Histórico completo', free: '7 dias', premium: 'Ilimitado' },

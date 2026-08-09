@@ -5,7 +5,9 @@ import { ApiError } from '../api/client';
 import { getReport, type Report, type ReportPerChild, type ReportRange, type ReportTopSite } from '../api/reports';
 import type { Child } from '../api/types';
 import { Icon } from '../components/Icon';
+import { InsightsCard } from '../components/InsightsCard';
 import { PageHeader } from '../components/PageHeader';
+import { PremiumLock } from '../components/PremiumLock';
 import { downloadReportCsv } from '../lib/exportReportCsv';
 
 const CHILD_COLORS = ['#00236f', '#F59E0B', '#006c49', '#6B46C1'] as const;
@@ -99,6 +101,13 @@ export function Reports() {
       {report && report.dailyByChild.length > 0 && (
         <>
           <Kpis kpis={report.kpis} />
+          <PremiumLock
+            featureId="ai_insights"
+            title="Insights com IA"
+            description="Faça o upgrade pra receber leituras inteligentes do uso da família."
+          >
+            <InsightsCard range={range} childId={childId} />
+          </PremiumLock>
           <ChartSection report={report} colorFor={(id) => colorAt(childIndex.get(id) ?? 0)} />
           <TopSitesSection sites={report.topSites} perChild={report.perChild} />
           <PerChildSection perChild={report.perChild} children={children} />

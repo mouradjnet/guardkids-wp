@@ -13,6 +13,7 @@ use GuardKids\Api\Controllers\GuardianPushController;
 use GuardKids\Api\Controllers\LicenseController;
 use GuardKids\Api\Controllers\LocationController;
 use GuardKids\Api\Controllers\ReportsController;
+use GuardKids\Api\Controllers\InsightsController;
 use GuardKids\Api\Controllers\RequestController;
 use GuardKids\Api\Controllers\SafeZoneController;
 use GuardKids\Api\Controllers\SecurityController;
@@ -62,6 +63,7 @@ final class RestApi
         $this->registerSessionsRoutes();
         $this->registerChildSelfRoutes();
         $this->registerReportsRoutes();
+        $this->registerInsightsRoutes();
         $this->registerLocationsRoutes();
         $this->registerSafeZonesRoutes();
         $this->registerGeocodeRoute();
@@ -862,6 +864,43 @@ final class RestApi
                 'date' => [
                     'type'    => 'string',
                     'pattern' => '^\\d{4}-\\d{2}-\\d{2}$',
+                ],
+            ],
+        ]);
+    }
+
+    private function registerInsightsRoutes(): void
+    {
+        $controller = new InsightsController();
+
+        register_rest_route(self::NAMESPACE, '/insights', [
+            'methods'             => \WP_REST_Server::READABLE,
+            'callback'            => [$controller, 'index'],
+            'permission_callback' => [self::class, 'requireAdmin'],
+            'args'                => [
+                'range' => [
+                    'type'    => 'string',
+                    'enum'    => ['week', 'month'],
+                    'default' => 'week',
+                ],
+                'child_id' => [
+                    'type' => 'integer',
+                ],
+            ],
+        ]);
+
+        register_rest_route(self::NAMESPACE, '/insights/refresh', [
+            'methods'             => \WP_REST_Server::CREATABLE,
+            'callback'            => [$controller, 'refresh'],
+            'permission_callback' => [self::class, 'requireAdmin'],
+            'args'                => [
+                'range' => [
+                    'type'    => 'string',
+                    'enum'    => ['week', 'month'],
+                    'default' => 'week',
+                ],
+                'child_id' => [
+                    'type' => 'integer',
                 ],
             ],
         ]);
