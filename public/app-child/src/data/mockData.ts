@@ -7,7 +7,8 @@ export type PageId =
   | 'alerts'
   | 'location'
   | 'store'
-  | 'avatar';
+  | 'avatar'
+  | 'academy';
 
 export const child = {
   name: 'Lucas',

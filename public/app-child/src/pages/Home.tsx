@@ -67,6 +67,17 @@ export function Home({ onNavigate }: HomeProps) {
         </span>
         <Icon name="chevron_right" className="text-on-surface-variant" />
       </button>
+      <button
+        type="button"
+        onClick={() => onNavigate('academy')}
+        className="flex items-center justify-between rounded-2xl bg-surface-container p-4 text-left shadow-sm"
+      >
+        <span className="flex items-center gap-2">
+          <Icon name="school" className="text-xl text-primary" filled />
+          <span className="font-display text-label-md font-bold text-on-surface">Academia</span>
+        </span>
+        <Icon name="chevron_right" className="text-on-surface-variant" />
+      </button>
       <Welcome child={child} />
       <ScreenTime child={child} />
       <QuickActions onNavigate={onNavigate} />

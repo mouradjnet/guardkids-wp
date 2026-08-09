@@ -15,6 +15,7 @@ const titles: Record<PageId, string> = {
   location: 'Minha Localização',
   store: 'Loja de Recompensas',
   avatar: 'Meu Avatar',
+  academy: 'Academia',
 };
 
 type HeaderProps = {
