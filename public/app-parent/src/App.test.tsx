@@ -14,6 +14,14 @@ vi.mock('./hooks/useCurrentRole', () => ({
 }));
 
 vi.mock('./components/AutoLogoutGuard', () => ({ AutoLogoutGuard: () => null }));
+// AcademyButton faz suas próprias queries (children/sites/progress); aqui só
+// provamos que ele é montado e recebe a tela ativa — o comportamento próprio tem
+// testes dedicados.
+vi.mock('./components/AcademyButton', () => ({
+  AcademyButton: ({ screen }: { screen: string }) => (
+    <div data-testid="academy-button" data-screen={screen} />
+  ),
+}));
 // A SideNav consulta a contagem real de pendentes desde que o badge deixou de
 // ser hardcoded; sem este mock ela tentaria bater na rede.
 vi.mock('./api/requests', () => ({
@@ -78,6 +86,18 @@ describe('App', () => {
     await user.click(screen.getByRole('button', { name: /^regras$/i }));
 
     expect(screen.getByTestId('page-sites-rules')).toBeInTheDocument();
+  });
+
+  it('monta o AcademyButton com a tela ativa (contexto)', async () => {
+    const user = userEvent.setup();
+    renderWithClient(<App />);
+
+    expect(screen.getByTestId('academy-button')).toHaveAttribute('data-screen', 'dashboard');
+
+    const buttons = screen.getAllByRole('button', { name: /^Filhos$/i });
+    await user.click(buttons[0]);
+
+    expect(screen.getByTestId('academy-button')).toHaveAttribute('data-screen', 'children');
   });
 
   it('volta pra Dashboard ao clicar em Painel', async () => {
