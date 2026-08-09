@@ -23,7 +23,8 @@ export function AcademyPanel({
   busy?: boolean;
   onClose: () => void;
   onComplete: () => void;
-  onDismiss: () => void;
+  /** opcional: na Academia (trilhas) não há "dispensar", só "Concluir" */
+  onDismiss?: () => void;
 }) {
   return (
     <div
@@ -57,14 +58,16 @@ export function AcademyPanel({
         </div>
 
         <div className="flex flex-wrap justify-end gap-2 border-t border-outline-variant p-4">
-          <button
-            type="button"
-            onClick={onDismiss}
-            disabled={busy}
-            className="rounded-lg border border-outline-variant px-4 py-2 text-label-lg text-on-surface-variant hover:bg-surface-container disabled:opacity-50"
-          >
-            Agora não
-          </button>
+          {onDismiss ? (
+            <button
+              type="button"
+              onClick={onDismiss}
+              disabled={busy}
+              className="rounded-lg border border-outline-variant px-4 py-2 text-label-lg text-on-surface-variant hover:bg-surface-container disabled:opacity-50"
+            >
+              Agora não
+            </button>
+          ) : null}
           <button
             type="button"
             onClick={onComplete}
