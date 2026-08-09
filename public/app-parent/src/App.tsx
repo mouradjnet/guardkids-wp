@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { listChildren } from './api/children';
+import { AcademyButton } from './components/AcademyButton';
 import { AlertCard } from './components/AlertCard';
 import { AutoLogoutGuard } from './components/AutoLogoutGuard';
 import { BottomNav } from './components/BottomNav';
@@ -55,6 +56,7 @@ export default function App() {
       <SideNav activePage={activePage} onNavigate={setActivePage} />
       <PageRenderer page={activePage} />
       <BottomNav activePage={activePage} onNavigate={setActivePage} />
+      <AcademyButton screen={activePage} />
     </div>
   );
 }
