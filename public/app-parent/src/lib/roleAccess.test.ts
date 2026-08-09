@@ -2,8 +2,9 @@ import { describe, expect, it } from 'vitest';
 import { canAccessPage, COLLAB_ALLOWED_PAGES } from './roleAccess';
 
 describe('roleAccess.canAccessPage', () => {
-  it('collaborator só acessa dashboard e approvals', () => {
+  it('collaborator acessa dashboard, academia e approvals', () => {
     expect(canAccessPage('collaborator', 'dashboard')).toBe(true);
+    expect(canAccessPage('collaborator', 'academy')).toBe(true);
     expect(canAccessPage('collaborator', 'approvals')).toBe(true);
     expect(canAccessPage('collaborator', 'children')).toBe(false);
     expect(canAccessPage('collaborator', 'settings')).toBe(false);
@@ -23,7 +24,7 @@ describe('roleAccess.canAccessPage', () => {
     expect(canAccessPage(null, 'dashboard')).toBe(true);
   });
 
-  it('COLLAB_ALLOWED_PAGES é exatamente dashboard + approvals', () => {
-    expect([...COLLAB_ALLOWED_PAGES]).toEqual(['dashboard', 'approvals']);
+  it('COLLAB_ALLOWED_PAGES é exatamente dashboard + academia + approvals', () => {
+    expect([...COLLAB_ALLOWED_PAGES]).toEqual(['dashboard', 'academy', 'approvals']);
   });
 });

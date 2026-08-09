@@ -31,6 +31,7 @@ vi.mock('./api/requests', () => ({
 }));
 
 vi.mock('./pages/Dashboard', () => ({ Dashboard: () => <div data-testid="page-dashboard" /> }));
+vi.mock('./pages/Academy', () => ({ Academy: () => <div data-testid="page-academy" /> }));
 vi.mock('./pages/Children', () => ({ Children: () => <div data-testid="page-children" /> }));
 vi.mock('./pages/Approvals', () => ({ Approvals: () => <div data-testid="page-approvals" /> }));
 vi.mock('./pages/SitesRules', () => ({ SitesRules: () => <div data-testid="page-sites-rules" /> }));
@@ -59,6 +60,7 @@ describe('App', () => {
   });
 
   it.each([
+    ['Academia', 'page-academy'],
     ['Filhos', 'page-children'],
     ['Aprovações', 'page-approvals'],
     ['Sites & Regras', 'page-sites-rules'],

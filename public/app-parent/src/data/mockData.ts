@@ -1,5 +1,6 @@
 export type PageId =
   | 'dashboard'
+  | 'academy'
   | 'children'
   | 'location'
   | 'safe-zones'
@@ -17,6 +18,7 @@ export type PageId =
 
 export const navItems = [
   { id: 'dashboard' as PageId, label: 'Painel', icon: 'dashboard' },
+  { id: 'academy' as PageId, label: 'Academia', icon: 'school' },
   { id: 'children' as PageId, label: 'Filhos', icon: 'family_restroom' },
   { id: 'location' as PageId, label: 'Localização', icon: 'location_on' },
   { id: 'safe-zones' as PageId, label: 'Locais', icon: 'shield' },
