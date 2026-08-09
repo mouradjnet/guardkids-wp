@@ -9,6 +9,7 @@ import { AlertCard } from './components/AlertCard';
 import { useDecisionAlert } from './lib/useDecisionAlert';
 import { usePushRefresh } from './lib/usePushRefresh';
 import { createUsageTracker, setActiveTracker, type UsageTracker } from './lib/usageTracker';
+import { Academy } from './pages/Academy';
 import { Alerts } from './pages/Alerts';
 import { Avatar } from './pages/Avatar';
 import { Blocked } from './pages/Blocked';
@@ -185,6 +186,8 @@ function PageRenderer({
       return <Loja onNavigate={onNavigate} />;
     case 'avatar':
       return <Avatar onNavigate={onNavigate} />;
+    case 'academy':
+      return <Academy onNavigate={onNavigate} />;
     case 'home':
     default:
       return <Home onNavigate={onNavigate} />;
