@@ -30,6 +30,7 @@ use GuardKids\Api\Controllers\MedalController;
 use GuardKids\Api\Controllers\RewardController;
 use GuardKids\Api\Controllers\RedemptionController;
 use GuardKids\Api\Controllers\AvatarController;
+use GuardKids\Api\Controllers\AcademyController;
 use GuardKids\Auth\ChildAuth;
 use GuardKids\Auth\GuardianAuth;
 
@@ -72,6 +73,26 @@ final class RestApi
         $this->registerGamificationRoutes();
         $this->registerRewardsRoutes();
         $this->registerAvatarRoutes();
+        $this->registerAcademyRoutes();
+    }
+
+    private function registerAcademyRoutes(): void
+    {
+        $controller = new AcademyController();
+
+        register_rest_route(self::NAMESPACE, '/academy/progress', [
+            [
+                'methods'             => \WP_REST_Server::READABLE,
+                'callback'            => [$controller, 'index'],
+                'permission_callback' => [self::class, 'requireCollaboratorOrAbove'],
+            ],
+            [
+                'methods'             => \WP_REST_Server::CREATABLE,
+                'callback'            => [$controller, 'update'],
+                'permission_callback' => [self::class, 'requireCollaboratorOrAbove'],
+                'args'                => $controller->updateArgs(),
+            ],
+        ]);
     }
 
     private function registerAvatarRoutes(): void
