@@ -21,13 +21,6 @@ export function getAcademy(): Promise<AcademyState> {
   return apiFetch<AcademyState>('/child/academy');
 }
 
-export function completeLesson(lessonKey: string): Promise<CompleteResult> {
-  return apiFetch<CompleteResult>('/child/academy/complete', {
-    method: 'POST',
-    body: JSON.stringify({ lesson_key: lessonKey }),
-  });
-}
-
 /**
  * Envia as respostas do quiz. O servidor corrige (gabarito nunca vem ao cliente)
  * e, se aprovar, conclui a aula e credita o XP.
