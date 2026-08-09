@@ -111,13 +111,28 @@ Ambos reusam **exatamente** as mesmas agregações do `ReportsController`
 6. Nenhum nome real de criança, endereço ou dado de outra família chega ao prompt.
 7. `pnpm test` (vitest) + `vendor/bin/phpunit` verdes + build ok. Sem migration.
 
-## Sequência de trabalho (1 commit por passo)
+## Sequência de trabalho (1 commit por passo) — entregue
 
-1. `AnthropicClient` + `InsightsService` (puros) + PHPUnit → commit
-2. `InsightsController` + rota + Gate `ai_insights` + PHPUnit → commit
-3. `api/insights.ts` + `useLicense`/`planCatalog` (espelhos) → commit
-4. `InsightsCard` + montagem + vitest → commit
-5. `docs/academy/ONDA-5.md` + gate final (`pnpm test` + PHPUnit verdes) → PR
+1. `AnthropicClient` + `InsightsService` (puros) + PHPUnit ✅
+2. `InsightsController` + rota + Gate `ai_insights` + PHPUnit ✅
+3. `api/insights.ts` + `useLicense`/`planCatalog` (espelhos) ✅
+4. `InsightsCard` + montagem em `Reports.tsx` (envolto em `PremiumLock`) + vitest ✅
+5. `docs/academy/ONDA-5.md` + gate final → PR ✅
+
+**Gate final:** PHPUnit 677 verde · vitest (app-parent) 448 verde · `tsc -b` + build ok.
+Falsificados de propósito e re-verdes: vazamento de PII no prompt (PHP) e chamada da
+IA no plano Free / no cache hit (custo).
+
+## Pendências de deploy (fora do código do plugin)
+
+1. **Chave em prod:** definir `GUARDKIDS_ANTHROPIC_KEY` no `wp-config.php` do site
+   (ou a option `guardkids_anthropic_key`). Sem ela o card mostra "indisponível" e
+   nenhuma chamada é feita. Sem crédito na conta Anthropic → mesma degradação.
+2. **Reemissão de licença:** `Gate::can('ai_insights')` exige a feature no
+   `payload.features` da licença. As licenças de prod foram emitidas antes desta
+   feature existir — o license server precisa passar a emitir `ai_insights` e as
+   licenças ativas precisam ser reemitidas pro card acender pros clientes Pro atuais.
+   (Mesmo padrão de quando entraram `reports`/`location`.) Ver [[project-guardkids-wp-license-prod-e-fix-fuso]].
 
 **Fora do escopo:** chat kid-facing, tutor de IA da criança, quiz gerado por IA,
 geração de conteúdo de aula, XP do responsável.
