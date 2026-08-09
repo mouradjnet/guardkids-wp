@@ -88,11 +88,11 @@ final class RestApi
             'permission_callback' => (new ChildAuth())->requireToken(),
         ]);
 
-        register_rest_route(self::NAMESPACE, '/child/academy/complete', [
+        register_rest_route(self::NAMESPACE, '/child/academy/quiz', [
             'methods'             => \WP_REST_Server::CREATABLE,
-            'callback'            => [$controller, 'complete'],
+            'callback'            => [$controller, 'quiz'],
             'permission_callback' => (new ChildAuth())->requireToken(),
-            'args'                => $controller->completeArgs(),
+            'args'                => $controller->quizArgs(),
         ]);
     }
 
