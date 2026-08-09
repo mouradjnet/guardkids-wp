@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { completeLesson, getAcademy } from '../api/academy';
+import { getAcademy, submitQuiz } from '../api/academy';
 import { renderMarkdown } from '../academy/markdown';
 import { findLesson } from '../academy/lessons';
+import { findQuiz, type QuizQuestion } from '../academy/quizzes';
 import { findTrack, TRACKS, trackProgress } from '../academy/tracks';
 import type { PageId } from '../data/mockData';
 import { FormError } from '../components/FormError';
@@ -15,16 +16,22 @@ export function Academy({ onNavigate }: { onNavigate: (page: PageId) => void }) 
   const [openTrackId, setOpenTrackId] = useState<string | null>(null);
   const [openLessonId, setOpenLessonId] = useState<string | null>(null);
   const [celebration, setCelebration] = useState<{ xp: number; coins: number } | null>(null);
+  const [failed, setFailed] = useState<{ correct: number; total: number } | null>(null);
 
-  const completeMut = useMutation({
-    mutationFn: (key: string) => completeLesson(key),
+  const quizMut = useMutation({
+    mutationFn: (vars: { key: string; answers: number[] }) => submitQuiz(vars.key, vars.answers),
     onSuccess: (res) => {
-      // atualiza a carteira em todo lugar que a mostra (Academy, Home/Mundo).
-      qc.invalidateQueries({ queryKey: ['child', 'academy'] });
-      qc.invalidateQueries({ queryKey: ['child', 'me'] });
-      qc.invalidateQueries({ queryKey: ['child', 'progression'] });
-      if (res.awarded.justCompleted) {
-        setCelebration({ xp: res.awarded.xp, coins: res.awarded.coins });
+      if (res.passed) {
+        setFailed(null);
+        // atualiza a carteira em todo lugar que a mostra (Academy, Home/Mundo).
+        qc.invalidateQueries({ queryKey: ['child', 'academy'] });
+        qc.invalidateQueries({ queryKey: ['child', 'me'] });
+        qc.invalidateQueries({ queryKey: ['child', 'progression'] });
+        if (res.awarded.justCompleted) {
+          setCelebration({ xp: res.awarded.xp, coins: res.awarded.coins });
+        }
+      } else {
+        setFailed({ correct: res.correct, total: res.total });
       }
     },
   });
@@ -33,6 +40,12 @@ export function Academy({ onNavigate }: { onNavigate: (page: PageId) => void }) 
   const progression = academyQuery.data?.progression;
 
   const back = () => onNavigate('home');
+
+  const openLessonById = (id: string) => {
+    setOpenLessonId(id);
+    setCelebration(null);
+    setFailed(null);
+  };
 
   if (academyQuery.isLoading) {
     return (
@@ -46,9 +59,11 @@ export function Academy({ onNavigate }: { onNavigate: (page: PageId) => void }) 
   const openLesson = openLessonId ? findLesson(openLessonId) : undefined;
   if (openLesson) {
     const done = completedKeys.includes(openLesson.id);
+    const quiz = findQuiz(openLesson.id);
     const closeLesson = () => {
       setOpenLessonId(null);
       setCelebration(null);
+      setFailed(null);
     };
     return (
       <main className="flex flex-1 flex-col gap-stack-md px-container-padding-mobile py-stack-md">
@@ -64,7 +79,7 @@ export function Academy({ onNavigate }: { onNavigate: (page: PageId) => void }) 
           <div className="space-y-1">{renderMarkdown(openLesson.body)}</div>
         </article>
 
-        {completeMut.isError && <FormError error={completeMut.error} />}
+        {quizMut.isError && <FormError error={quizMut.error} />}
 
         {celebration ? (
           <div
@@ -88,16 +103,15 @@ export function Academy({ onNavigate }: { onNavigate: (page: PageId) => void }) 
           <div className="flex items-center justify-center gap-2 rounded-2xl bg-surface-container-low p-4 text-label-md font-semibold text-primary">
             <Icon name="check_circle" filled /> Aula concluída
           </div>
-        ) : (
-          <button
-            type="button"
-            disabled={completeMut.isPending}
-            onClick={() => completeMut.mutate(openLesson.id)}
-            className="rounded-2xl bg-primary px-5 py-3 text-title-md font-bold text-white shadow-sm disabled:opacity-40"
-          >
-            {completeMut.isPending ? 'Salvando…' : 'Concluí!'}
-          </button>
-        )}
+        ) : quiz ? (
+          <QuizForm
+            key={openLesson.id}
+            questions={quiz}
+            pending={quizMut.isPending}
+            failed={failed}
+            onSubmit={(answers) => quizMut.mutate({ key: openLesson.id, answers })}
+          />
+        ) : null}
       </main>
     );
   }
@@ -133,7 +147,7 @@ export function Academy({ onNavigate }: { onNavigate: (page: PageId) => void }) 
               <li key={id}>
                 <button
                   type="button"
-                  onClick={() => setOpenLessonId(id)}
+                  onClick={() => openLessonById(id)}
                   className="flex w-full items-center gap-3 rounded-2xl bg-surface-container p-4 text-left shadow-sm active:scale-[0.99]"
                 >
                   <div
@@ -182,7 +196,7 @@ export function Academy({ onNavigate }: { onNavigate: (page: PageId) => void }) 
       </div>
 
       <p className="text-label-md text-on-surface-variant">
-        Aprenda coisas legais e ganhe XP e moedas em cada aula!
+        Aprenda coisas legais, responda o quiz e ganhe XP e moedas em cada aula!
       </p>
 
       <ul className="space-y-3">
@@ -209,6 +223,84 @@ export function Academy({ onNavigate }: { onNavigate: (page: PageId) => void }) 
         })}
       </ul>
     </main>
+  );
+}
+
+/**
+ * Quiz da aula: seleciona uma alternativa por questão e envia. A correção é do
+ * servidor — aqui não há gabarito. Guarda a seleção localmente (o `key` no pai
+ * remonta a cada aula, zerando as respostas).
+ */
+function QuizForm({
+  questions,
+  pending,
+  failed,
+  onSubmit,
+}: {
+  questions: QuizQuestion[];
+  pending: boolean;
+  failed: { correct: number; total: number } | null;
+  onSubmit: (answers: number[]) => void;
+}) {
+  const [sel, setSel] = useState<(number | null)[]>(() => questions.map(() => null));
+  const allAnswered = sel.every((v) => v !== null);
+
+  return (
+    <div className="flex flex-col gap-stack-md">
+      <p className="font-display text-title-md font-bold text-on-surface">Quiz da aula</p>
+
+      {questions.map((q, qi) => (
+        <div key={qi} className="rounded-2xl bg-surface-container p-4 shadow-sm">
+          <p className="mb-2 text-label-md font-semibold text-on-surface">
+            {qi + 1}. {q.prompt}
+          </p>
+          <div className="flex flex-col gap-2">
+            {q.options.map((opt, oi) => {
+              const chosen = sel[qi] === oi;
+              return (
+                <button
+                  key={oi}
+                  type="button"
+                  aria-pressed={chosen}
+                  onClick={() =>
+                    setSel((prev) => {
+                      const next = [...prev];
+                      next[qi] = oi;
+                      return next;
+                    })
+                  }
+                  className={
+                    chosen
+                      ? 'rounded-xl bg-primary px-4 py-2 text-left text-label-md font-semibold text-white'
+                      : 'rounded-xl bg-surface-container-low px-4 py-2 text-left text-label-md text-on-surface active:scale-[0.99]'
+                  }
+                >
+                  {opt}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      ))}
+
+      {failed ? (
+        <div
+          role="status"
+          className="rounded-2xl bg-surface-container-low p-4 text-center text-label-md font-semibold text-on-surface"
+        >
+          Quase! Você acertou {failed.correct} de {failed.total}. Revê a aula e tenta de novo. 💪
+        </div>
+      ) : null}
+
+      <button
+        type="button"
+        disabled={!allAnswered || pending}
+        onClick={() => onSubmit(sel.map((v) => v ?? -1))}
+        className="rounded-2xl bg-primary px-5 py-3 text-title-md font-bold text-white shadow-sm disabled:opacity-40"
+      >
+        {pending ? 'Enviando…' : failed ? 'Tentar de novo' : 'Enviar respostas'}
+      </button>
+    </div>
   );
 }
 

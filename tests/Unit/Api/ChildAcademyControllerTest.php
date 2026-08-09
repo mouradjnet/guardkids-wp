@@ -115,11 +115,15 @@ final class ChildAcademyControllerTest extends TestCase
         return $req;
     }
 
-    private function completeReq(string $key, ?string $token = null): WP_REST_Request
+    /**
+     * @param list<int> $answers
+     */
+    private function quizReq(string $key, array $answers, ?string $token = null): WP_REST_Request
     {
-        $req = new WP_REST_Request('POST', '/child/academy/complete');
+        $req = new WP_REST_Request('POST', '/child/academy/quiz');
         $req->set_header('X-GuardKids-Token', $token ?? $this->token);
         $req->set_param('lesson_key', $key);
+        $req->set_param('answers', $answers);
         return $req;
     }
 
@@ -137,11 +141,14 @@ final class ChildAcademyControllerTest extends TestCase
         self::assertSame(0, $data['progression']['xp']);
     }
 
-    public function testCompleteCreditsBonusOnceAndIsIdempotent(): void
+    public function testQuizPassCreditsBonusOnceAndIsIdempotent(): void
     {
         $ctrl = new ChildAcademyController();
 
-        $first = $ctrl->complete($this->completeReq('senha-secreta'))->get_data();
+        // senha-secreta: gabarito [0,1,1]
+        $first = $ctrl->quiz($this->quizReq('senha-secreta', [0, 1, 1]))->get_data();
+        self::assertTrue($first['passed']);
+        self::assertSame(3, $first['correct']);
         self::assertTrue($first['awarded']['justCompleted']);
         self::assertSame(25, $first['awarded']['xp']);
         self::assertSame(15, $first['awarded']['coins']);
@@ -150,17 +157,29 @@ final class ChildAcademyControllerTest extends TestCase
         self::assertSame(15, $first['progression']['coins']);
         self::assertCount(1, $this->wpdb->t['academy_child_lessons'] ?? []);
 
-        // segunda conclusão da mesma aula: nada credita de novo
-        $second = $ctrl->complete($this->completeReq('senha-secreta'))->get_data();
+        // reenviar o quiz da aula já concluída: passa, mas não credita de novo
+        $second = $ctrl->quiz($this->quizReq('senha-secreta', [0, 1, 1]))->get_data();
+        self::assertTrue($second['passed']);
         self::assertFalse($second['awarded']['justCompleted']);
         self::assertSame(0, $second['awarded']['xp']);
         self::assertSame(25, $second['progression']['xp']);
         self::assertCount(1, $this->wpdb->t['academy_child_lessons'] ?? []);
     }
 
+    public function testQuizFailDoesNotCredit(): void
+    {
+        // senha-secreta correto é [0,1,1]; erra a 1ª → reprova
+        $data = (new ChildAcademyController())->quiz($this->quizReq('senha-secreta', [2, 1, 1]))->get_data();
+        self::assertFalse($data['passed']);
+        self::assertSame(2, $data['correct']);
+        self::assertSame([], $data['completedKeys']);
+        self::assertSame(0, $data['progression']['xp']);
+        self::assertArrayNotHasKey('academy_child_lessons', $this->wpdb->t);
+    }
+
     public function testInvalidLessonKeyIsRejectedAndCreditsNothing(): void
     {
-        $res = (new ChildAcademyController())->complete($this->completeReq('xp-gratis-farm'));
+        $res = (new ChildAcademyController())->quiz($this->quizReq('xp-gratis-farm', [0, 0, 0]));
         self::assertInstanceOf(WP_Error::class, $res);
         self::assertSame(400, $res->get_error_data()['status']);
         self::assertArrayNotHasKey('academy_child_lessons', $this->wpdb->t);
@@ -172,7 +191,8 @@ final class ChildAcademyControllerTest extends TestCase
             1 => ['id' => 1, 'child_id' => 1, 'xp' => 0, 'coins' => 0, 'streak_days' => 4, 'last_activity_date' => '2026-08-01'],
         ];
         $ctrl = new ChildAcademyController();
-        $ctrl->complete($this->completeReq('tempo-intro'));
+        // tempo-intro: gabarito [0,1,1]
+        $ctrl->quiz($this->quizReq('tempo-intro', [0, 1, 1]));
 
         $wallet = array_values($this->wpdb->t['progression'])[0];
         self::assertSame(25, (int) $wallet['xp']);
