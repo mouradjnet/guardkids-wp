@@ -6,12 +6,12 @@
 [![codecov](https://codecov.io/gh/mouradjnet/guardkids-wp/branch/master/graph/badge.svg)](https://codecov.io/gh/mouradjnet/guardkids-wp)
 [![PHP 8.2+](https://img.shields.io/badge/PHP-8.2%2B-777BB4?logo=php&logoColor=white)](composer.json)
 [![WordPress 6.4+](https://img.shields.io/badge/WordPress-6.4%2B-21759B?logo=wordpress&logoColor=white)](guardkids.php)
-[![Tests](https://img.shields.io/badge/tests-901%20passing-brightgreen)](#testes)
+[![Tests](https://img.shields.io/badge/tests-1483%20passing-brightgreen)](#testes)
 [![License: GPL-2.0+](https://img.shields.io/badge/license-GPL--2.0%2B-blue)](#licença)
 
 ## Visão geral
 
-Plugin WordPress que gerencia controle de tela e navegação de crianças. Toda a configuração vive em 10 tabelas próprias (`wp_guardkids_*`) e é exposta via REST sob o namespace `guardkids/v1` (17 controllers, 47 rotas). Além do controle parental, cobre **segurança da conta** (2FA TOTP + códigos de recuperação, PIN infantil, sessões ativas, auto-logout), **privacidade/LGPD** (exportar + apagar dados), **notificações por email** (resumos diário/semanal) e o **GuardKids Companion** (telemetria via app Android). Dois SPAs Vite/React/TS embarcados no plugin consomem essa REST:
+Plugin WordPress que gerencia controle de tela e navegação de crianças. Toda a configuração vive em 28 tabelas próprias (`wp_guardkids_*`) e é exposta via REST sob o namespace `guardkids/v1` (29 controllers, 94 rotas). Além do controle parental, cobre **geofencing** (zonas seguras + Localização Inteligente por endereço), **Academy** (trilha educacional com quiz + insights de IA), **gamificação** (medalhas, missões, recompensas), **segurança da conta** (2FA TOTP + códigos de recuperação, PIN infantil, sessões ativas, auto-logout), **privacidade/LGPD** (exportar + apagar dados), **notificações por email** (resumos diário/semanal) e o **GuardKids Companion** (telemetria via app Android). Dois SPAs Vite/React/TS embarcados no plugin consomem essa REST:
 
 - **`app-parent`** ([`/painel-pais`](#rotas-publicas)) — painel responsável (desktop/mobile). Autentica via cookie do WP + nonce; exige capability `manage_options`.
 - **`app-child`** ([`/painel-filho`](#rotas-publicas)) — PWA mobile-first instalável. Autentica via **token de dispositivo** (32 bytes hex) emitido pelo responsável; cada chamada manda `X-GuardKids-Token` no header.
@@ -26,7 +26,7 @@ Plugin WordPress que gerencia controle de tela e navegação de crianças. Toda 
            └───────────────┬──────────────┘
                            ▼
         ┌────────────────────────────────────┐
-        │ REST guardkids/v1 (17 ctrl·47 rotas)│
+        │ REST guardkids/v1 (29 ctrl·94 rotas)│
         │  permission_callback escopado      │
         └────────────────┬───────────────────┘
                          ▼
@@ -36,7 +36,7 @@ Plugin WordPress que gerencia controle de tela e navegação de crianças. Toda 
         │   ChildAuth · MigrationRunner      │
         └────────────────┬───────────────────┘
                          ▼
-                  $wpdb (10 tabelas)
+                  $wpdb (28 tabelas)
 ```
 
 ## Stack
@@ -59,16 +59,21 @@ guardkids-wp/
 ├── uninstall.php              # drop das tabelas + opções
 ├── composer.json              # só require-dev (PHPUnit)
 ├── api/                       # REST controllers + RestApi
-│   ├── RestApi.php            # registra 47 rotas em guardkids/v1
-│   └── Controllers/           # 17: Child, ChildSelf, Site, Category, Settings,
-│                              # Request, Reports, Location, SafeZone, License,
-│                              # Guardian, Me, Companion, Privacy, Security,
-│                              # Sessions, TwoFactor
+│   ├── RestApi.php            # registra 94 rotas em guardkids/v1
+│   └── Controllers/           # 29: Child, ChildSelf, Site, Category, Settings,
+│                              # Request, Reports, Location, SafeZone, Geocode,
+│                              # License, Guardian, GuardianPush, Me, Companion,
+│                              # Privacy, Security, Sessions, TwoFactor, Avatar,
+│                              # Gamification, Medal, Mission, Reward, Redemption,
+│                              # Content, Academy, ChildAcademy, Insights
 ├── includes/
 │   ├── Autoloader.php         # PSR-4 self-contained, 3 roots
 │   ├── Plugin.php             # boot + hooks + ativação
 │   ├── Auth/                  # ChildAuth (token SHA-256) + ChildPin + GuardianAuth + InviteToken
 │   ├── License/               # Verifier (Ed25519) + Gate + Payload (gating premium)
+│   ├── AI/                    # cliente Anthropic + InsightsService (dados pseudonimizados)
+│   ├── Academy/               # trilha educacional: aulas + quiz (gabarito no servidor)
+│   ├── Geo/                   # geofencing + geocoding (Nominatim) + PlaceTracker
 │   ├── Schedule/              # avaliação de bedtime/weekday limits
 │   ├── Security/              # 2FA (Totp/TwoFactorStore/TwoFactorLogin) + RecoveryCodes +
 │   │                          # sessões (SessionManager/Presenter) + RateLimiter +
@@ -82,11 +87,11 @@ guardkids-wp/
 │   ├── MigrationRunner.php
 │   ├── Repository.php         # base CRUD com prepare()
 │   ├── {Child,Request,Site,Category,Settings,UsageEvent,Location,SafeZone,Guardian,CompanionDevice}Repository.php
-│   └── migrations/            # 001..012 (DB version 12)
+│   └── migrations/            # 001..027 (DB version 27)
 ├── public/
 │   ├── app-parent/            # SPA do responsável (Vite + React)
 │   └── app-child/             # PWA infantil (Vite + React + Workbox)
-├── tests/{Unit,Integration,Support}/  # PHPUnit (352 unit + 196 integration)
+├── tests/{Unit,Integration,Support}/  # PHPUnit (677 unit + 202 integration)
 └── docs/superpowers/{specs,plans}/  # design + roadmap
 ```
 
@@ -134,7 +139,7 @@ Para integração REST funcionar fora de produção, copie `public/app-parent/.e
 
 ## Testes
 
-**PHPUnit Unit (352 tests):**
+**PHPUnit Unit (677 tests):**
 
 ```powershell
 & $php -d extension_dir="$(Split-Path $php)\ext" `
@@ -146,7 +151,7 @@ Cobre Repository base + subclasses (Child, Request, Site, Category, Settings, Us
 
 > No Windows local, `MigrationRunnerTest` pode falhar por causa do `glob()` sobre `C:\Windows\TEMP` (o `\W`/`\T` viram escape) — é artefato do ambiente, não do código; a CI (Linux) roda a suíte verde.
 
-**PHPUnit Integration (MySQL real, 196 tests):**
+**PHPUnit Integration (MySQL real, 202 tests):**
 
 ```powershell
 # 1) sobe MySQL 8 em :3307 (porta dedicada, nao colide com LocalWP)
@@ -163,7 +168,7 @@ Valida contra MySQL real (não stubs) que migrations rodam idempotentes, queries
 - **8 Repository tests** (60 testes): Child, Request, UsageEvent, Location, SafeZone, Site, Category, Settings — incluindo agregações reais (`SUM`/`GROUP BY DATE()`/subquery), janela diária `minutesUsedInWindow`, UNIQUE constraints, precisão `DECIMAL(10,7)` e defaults de schema.
 - **Api tests** (136 testes): Child, ChildSelf (PWA infantil + auth por token), Site, Category, Settings, Request (approve/deny), Reports (KPIs/topSites/perChild), Location, SafeZone, License (Ed25519 + persistência cross-instance + rollback), Guardian (lazy-seed do current user + last_admin + self_delete guards), mais **RolePermissions** (`RestApi::requireAdmin` / `requireCollaboratorOrAbove` contra cenários reais: manage_options, collaborator/admin guardian, pending bloqueia, email fallback, random user → 403).
 
-**Vitest app-parent (292 tests) + app-child (61 tests):**
+**Vitest app-parent (448 tests) + app-child (156 tests):**
 
 ```powershell
 cd public/app-parent
@@ -184,7 +189,7 @@ Documentação detalhada em [`docs/superpowers/`](docs/superpowers/):
 - [Design atual](docs/superpowers/specs/2026-05-21-guardkids-wp-fundacao-design.md) — schema, autenticação, REST endpoints, segurança.
 - [Plano de implementação](docs/superpowers/plans/2026-05-21-guardkids-wp-fundacao-plan.md) — fases entregues + próximos passos.
 
-Fundação completa: schema, autenticação dupla (parent + child), 17 controllers REST (47 rotas) + endpoint `/me`, License premium (Ed25519), Schedule (bedtime/weekday + limite diário de tela opt-in), Reports, Localização (Locations + SafeZones), gestão de Guardiões da família (admin/colaborador + lazy-seed do current user), permissões por role (admin vê tudo; collaborator só Painel + Aprovações), accept-invite real (`/aceitar-convite/{token}` cria WP user + ativa guardian automaticamente).
+Fundação completa: schema, autenticação dupla (parent + child), 29 controllers REST (94 rotas) + endpoint `/me`, License premium (Ed25519), Schedule (bedtime/weekday + limite diário de tela opt-in), Reports, Localização (Locations + SafeZones), gestão de Guardiões da família (admin/colaborador + lazy-seed do current user), permissões por role (admin vê tudo; collaborator só Painel + Aprovações), accept-invite real (`/aceitar-convite/{token}` cria WP user + ativa guardian automaticamente).
 
 Entregue além da fundação:
 
@@ -193,7 +198,7 @@ Entregue além da fundação:
 - **Notificações por email** — resumos diário/semanal opt-in via cron (`DigestData` + `DigestMailer`).
 - **GuardKids Companion** — pareamento + telemetria via app Android (token com expiração deslizante, kill-switch e rate-limit).
 
-Full suite de testes: **901 testes** (352 unit + 196 integration + 292 vitest parent + 61 vitest child).
+Full suite de testes: **1.483 testes** (677 unit + 202 integration + 448 vitest parent + 156 vitest child).
 
 ## Licença
 
