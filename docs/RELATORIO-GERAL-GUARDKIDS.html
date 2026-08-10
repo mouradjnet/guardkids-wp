@@ -1,0 +1,374 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>GuardKids WP — Relatório Geral</title>
+<style>
+  :root{
+    --navy:#1e2a3a; --navy2:#243447;
+    --green:#22a54a; --green-d:#1c8d3f; --green-l:#e7f6ec;
+    --ink:#222; --muted:#667; --line:#dfe4ea; --stripe:#f6f8fa;
+  }
+  *{box-sizing:border-box}
+  @page{ size:A4; margin:18mm 16mm 20mm; }
+  html,body{margin:0;padding:0}
+  body{ font:13px/1.55 -apple-system,"Segoe UI",Roboto,Arial,sans-serif; color:var(--ink); }
+  h1,h2,h3{color:var(--green-d); margin:0 0 .4em}
+  h2{ font-size:20px; border-bottom:2px solid var(--green-l); padding-bottom:6px; margin-top:6px }
+  h3{ font-size:14px; color:var(--navy); margin-top:14px }
+  p{margin:.5em 0}
+  table{ border-collapse:collapse; width:100%; margin:10px 0 14px; font-size:12px }
+  th{ background:var(--green); color:#fff; text-align:left; padding:7px 10px; font-weight:600 }
+  td{ padding:7px 10px; border-bottom:1px solid var(--line); vertical-align:top }
+  tbody tr:nth-child(even){ background:var(--stripe) }
+  .keytable td:first-child{ background:var(--green-l); font-weight:600; width:38% }
+  ul{ margin:.4em 0 .8em; padding-left:18px }
+  li{ margin:.25em 0 }
+  .box{ border-radius:6px; padding:10px 14px; margin:12px 0; font-size:12.5px }
+  .box b{ display:block; margin-bottom:2px }
+  .ok{ background:var(--green-l); border-left:4px solid var(--green) }
+  .warn{ background:#fff7e6; border-left:4px solid #e6a100 }
+  .info{ background:#eef4ff; border-left:4px solid #3f6fd6 }
+  .foot{ position:running(foot) }
+  .section{ page-break-inside:avoid }
+  .pagebreak{ page-break-before:always }
+  /* cover */
+  .cover{ page-break-after:always; }
+  .cover .band{ background:var(--navy); color:#fff; margin:-18mm -16mm 0; padding:64mm 16mm 22mm; text-align:center;
+                border-bottom:8px solid var(--green) }
+  .logo{ font-size:56px; font-weight:800; color:var(--green); letter-spacing:1px }
+  .cover h1{ color:#fff; font-size:34px; margin:22px 0 6px }
+  .cover .sub{ color:#bcd; font-size:16px; margin:0 }
+  .cover .meta{ margin-top:70mm }
+  .running{ color:var(--muted); font-size:10.5px; border-bottom:1px solid var(--line); padding-bottom:4px; margin-bottom:10px }
+</style>
+</head>
+<body>
+
+<!-- CAPA -->
+<section class="cover">
+  <div class="band">
+    <div class="logo">GK</div>
+    <h1>GuardKids WP</h1>
+    <p class="sub">Relatório Geral do Aplicativo</p>
+  </div>
+  <table class="keytable meta">
+    <tr><td>Versão</td><td><b>1.41.0</b> · schema de banco v27</td></tr>
+    <tr><td>Tipo</td><td>Plugin WordPress + 2 apps React (SPA/PWA)</td></tr>
+    <tr><td>Autor</td><td>Djair Falcão</td></tr>
+    <tr><td>Data do relatório</td><td>10/08/2026</td></tr>
+    <tr><td>Base</td><td>Código no disco (branch master, em paridade com origin) + testes executados agora</td></tr>
+  </table>
+</section>
+
+<!-- 1. SUMÁRIO EXECUTIVO -->
+<section class="section">
+  <div class="running">GuardKids WP — Relatório Geral · v1.41.0 · 10/08/2026</div>
+  <h2>1. Sumário executivo</h2>
+  <p>O <b>GuardKids WP</b> é uma plataforma de controle parental web premium empacotada como um único plugin
+  WordPress. Reúne um <b>painel dos pais</b> (SPA React), um <b>painel infantil instalável</b> (PWA) e um
+  <b>navegador seguro</b>, sobre uma API REST autenticada. Além do controle de tela e navegação, cobre
+  geolocalização com zonas seguras, gamificação (medalhas, missões, recompensas), uma trilha educacional
+  (<b>Academy</b>) com quiz e <b>insights de IA</b> para o responsável, segurança de conta (2FA, PIN, sessões),
+  privacidade/LGPD e o app companheiro Android (Companion).</p>
+
+  <div class="box ok">
+    <b>Estado geral: SAUDÁVEL, sem entrega represada</b>
+    O código está estável e com <b>1.281 testes automatizados 100% verdes</b> (executados nesta análise).
+    O <code>master</code> local está <b>sincronizado com o origin</b> e <b>em paridade com produção</b>
+    (v1.41.0 / DB v27). As últimas grandes entregas — Localização Inteligente por endereço e a plataforma
+    <b>Academy</b> completa (Ondas 1 a 5, incluindo os insights de IA) — já estão publicadas.
+  </div>
+
+  <div class="box info">
+    <b>Ação recomendada imediata</b>
+    Não há release pendente. O maior valor agora é de <b>engenharia de plataforma</b>: automatizar o deploy
+    (hoje SSH manual) via CI, adicionar E2E (Playwright) e versionar/atualizar a documentação
+    (README e estes relatórios).
+  </div>
+
+  <h3>Indicadores-chave</h3>
+  <table>
+    <thead><tr><th>Indicador</th><th>Valor</th></tr></thead>
+    <tbody>
+      <tr><td>Versão do plugin (disco)</td><td>1.41.0 · DB v27</td></tr>
+      <tr><td>Versão em produção</td><td>1.41.0 · DB v27 (histórico documentado)</td></tr>
+      <tr><td>Testes automatizados (total)</td><td>1.281 passando (0 falhas)</td></tr>
+      <tr><td>Módulos de domínio (includes/)</td><td>17</td></tr>
+      <tr><td>Controllers REST</td><td>29</td></tr>
+      <tr><td>Registros de rota REST</td><td>94</td></tr>
+      <tr><td>Tabelas próprias (wp_guardkids_*)</td><td>28</td></tr>
+      <tr><td>Migrations de banco</td><td>27</td></tr>
+      <tr><td>Commits à frente do remoto</td><td>0 (sincronizado)</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<!-- 2. IDENTIFICAÇÃO -->
+<section class="section pagebreak">
+  <div class="running">GuardKids WP — Relatório Geral · v1.41.0 · 10/08/2026</div>
+  <h2>2. Identificação do projeto</h2>
+  <table class="keytable">
+    <tr><td>Nome</td><td>GuardKids WP</td></tr>
+    <tr><td>Objetivo</td><td>Controle parental web premium: painel dos pais, painel infantil e navegador seguro, com PWA instalável e trilha educacional (Academy).</td></tr>
+    <tr><td>Tipo</td><td>Plugin WordPress distribuível, com dois apps React (Vite/TS) embarcados.</td></tr>
+    <tr><td>Autor</td><td>Djair Falcão</td></tr>
+    <tr><td>Requisitos</td><td>WordPress ≥ 6.4 · PHP ≥ 8.2</td></tr>
+    <tr><td>Namespace REST</td><td>guardkids/v1</td></tr>
+    <tr><td>Rotas públicas</td><td>/painel-pais (pais) · /painel-filho (filho, PWA)</td></tr>
+    <tr><td>Licença</td><td>GPL-2.0+</td></tr>
+    <tr><td>Produção</td><td>guardiaokids.site</td></tr>
+    <tr><td>Repositório</td><td>mouradjnet/guardkids-wp (privado)</td></tr>
+  </table>
+
+  <h3>Autenticação por painel</h3>
+  <table>
+    <thead><tr><th>Painel</th><th>Público</th><th>Mecanismo de autenticação</th></tr></thead>
+    <tbody>
+      <tr><td>app-parent</td><td>Responsável (desktop/mobile)</td><td>Cookie do WP + nonce; exige capability <code>manage_options</code></td></tr>
+      <tr><td>app-child</td><td>Criança (PWA mobile)</td><td>Token de dispositivo (32 bytes hex) no header <code>X-GuardKids-Token</code></td></tr>
+      <tr><td>Companion</td><td>App Android telemetria</td><td>Token de sessão com expiração + kill-switch + rate-limit</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<!-- 3. ARQUITETURA -->
+<section class="section pagebreak">
+  <div class="running">GuardKids WP — Relatório Geral · v1.41.0 · 10/08/2026</div>
+  <h2>3. Arquitetura</h2>
+  <p>A arquitetura é em camadas dentro de um plugin único. O núcleo PHP expõe uma API REST versionada; os dois
+  frontends React consomem essa API e são servidos pelo próprio WordPress em rotas dedicadas. Toda a configuração
+  vive em tabelas próprias (prefixo <b>wp_guardkids_*</b>), com versionamento de schema por migrations idempotentes.</p>
+
+  <h3>Camadas</h3>
+  <table>
+    <thead><tr><th>Camada</th><th>Local</th><th>Responsabilidade</th></tr></thead>
+    <tbody>
+      <tr><td>Bootstrap</td><td>guardkids.php · includes/Plugin.php</td><td>Constantes, autoloader PSR-4, ciclo de vida, migrations no init</td></tr>
+      <tr><td>Domínio</td><td>includes/ (17 módulos)</td><td>Regras de negócio: AI, Academy, Auth, Geo, Content, Medals, License…</td></tr>
+      <tr><td>API REST</td><td>api/RestApi.php + api/Controllers/ (29)</td><td>94 registros de rota sob guardkids/v1; validação, permissão, serialização</td></tr>
+      <tr><td>Persistência</td><td>database/migrations/ (27)</td><td>28 tabelas wp_guardkids_*; migrations idempotentes com DB_VERSION</td></tr>
+      <tr><td>Frontend pais</td><td>public/app-parent (React/Vite/TS)</td><td>SPA do responsável, ~15 páginas</td></tr>
+      <tr><td>Frontend filho</td><td>public/app-child (React/Vite/TS)</td><td>PWA instalável da criança, ~10 páginas</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Módulos de domínio (includes/)</h3>
+  <table>
+    <thead><tr><th>Módulo</th><th>Responsabilidade</th></tr></thead>
+    <tbody>
+      <tr><td>AI</td><td>Cliente Anthropic/Claude + serviço de insights pseudonimizados (Pro <code>ai_insights</code>)</td></tr>
+      <tr><td>Academy</td><td>Trilha educacional: aulas, quiz que credita XP, conclusão porteada pelo servidor</td></tr>
+      <tr><td>Auth</td><td>Autenticação, 2FA TOTP, PIN infantil, sessões</td></tr>
+      <tr><td>Avatars</td><td>Avatares da criança</td></tr>
+      <tr><td>Content</td><td>Biblioteca, moderação e recomendação de conteúdo</td></tr>
+      <tr><td>Geo</td><td>Geolocalização, zonas seguras, geocoding, PlaceTracker</td></tr>
+      <tr><td>Invite</td><td>Convites de responsáveis (co-guardiões)</td></tr>
+      <tr><td>License</td><td>Gate Pro, verificação e cache de revogação de licença</td></tr>
+      <tr><td>Maintenance</td><td>Rotinas de manutenção / limpeza</td></tr>
+      <tr><td>Medals</td><td>Medalhas / conquistas</td></tr>
+      <tr><td>Missions</td><td>Missões diárias</td></tr>
+      <tr><td>Notifications</td><td>Notificações por e-mail e Web Push</td></tr>
+      <tr><td>Privacy</td><td>LGPD: exportar e apagar dados</td></tr>
+      <tr><td>Progression</td><td>Progressão / XP / níveis</td></tr>
+      <tr><td>Schedule</td><td>Horários e limites de tempo</td></tr>
+      <tr><td>Security</td><td>Hardening, tokens, políticas de segurança</td></tr>
+      <tr><td>Ui</td><td>Registro das páginas/rotas dos SPAs</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<!-- 4. FUNCIONALIDADES -->
+<section class="section pagebreak">
+  <div class="running">GuardKids WP — Relatório Geral · v1.41.0 · 10/08/2026</div>
+  <h2>4. Funcionalidades</h2>
+
+  <h3>Painel dos pais (app-parent)</h3>
+  <ul>
+    <li><b>Dashboard</b> — visão geral e status online dos filhos (atualização automática via Web Push).</li>
+    <li><b>Filhos</b> — cadastro, pareamento e gestão de dispositivos.</li>
+    <li><b>Limites de tempo</b> — limite diário e por dia da semana.</li>
+    <li><b>Regras de sites</b> — bloqueio/liberação por site e categoria.</li>
+    <li><b>Modo de proteção</b> — perfis de restrição.</li>
+    <li><b>Localização</b> — mapa, local atual e Locais/Zonas Seguras (geofencing + endereço).</li>
+    <li><b>Aprovações &amp; pedidos</b> — fila de solicitações da criança.</li>
+    <li><b>Conteúdo</b> — dashboard de moderação e biblioteca.</li>
+    <li><b>Academy</b> — trilhas educacionais e progresso das aulas dos filhos.</li>
+    <li><b>Gamificação</b> — medalhas, missões e recompensas/loja.</li>
+    <li><b>Relatórios</b> — uso e eventos, com <b>insights de IA</b> (Pro) resumindo em linguagem natural.</li>
+    <li><b>Configurações</b> — conta, segurança (2FA/PIN/sessões), preferências.</li>
+    <li><b>Licença &amp; upgrade</b> — ativação Pro e planos.</li>
+  </ul>
+
+  <h3>Painel infantil (app-child · PWA)</h3>
+  <ul>
+    <li><b>Home</b> e <b>Mundo</b> — hub gamificado da criança.</li>
+    <li><b>Academy</b> — trilha de aulas com quiz que rende XP ao ser aprovado.</li>
+    <li><b>Navegador seguro</b> — navegação filtrada, tela de bloqueio.</li>
+    <li><b>Pedidos</b> — solicitar acesso/tempo ao responsável.</li>
+    <li><b>Loja &amp; Avatar</b> — resgate de recompensas e personalização.</li>
+    <li><b>Localização</b> — envio de posição e Locais.</li>
+    <li><b>Alertas</b> e <b>pareamento</b> (PairScreen) por token.</li>
+  </ul>
+
+  <h3>Plataforma transversal</h3>
+  <ul>
+    <li><b>Segurança da conta:</b> 2FA TOTP + códigos de recuperação, PIN infantil, sessões ativas, auto-logout.</li>
+    <li><b>Privacidade/LGPD:</b> exportar e apagar dados; insights de IA usam dados pseudonimizados.</li>
+    <li><b>Notificações:</b> e-mail (resumos diário/semanal) e Web Push (tela atualiza sozinha).</li>
+    <li><b>GuardKids Companion:</b> telemetria via app Android (tokens endurecidos).</li>
+    <li><b>Licenciamento Pro:</b> gate de recursos (incl. <code>ai_insights</code>) com verificação e cache de revogação.</li>
+  </ul>
+</section>
+
+<!-- 5. BANCO DE DADOS -->
+<section class="section pagebreak">
+  <div class="running">GuardKids WP — Relatório Geral · v1.41.0 · 10/08/2026</div>
+  <h2>5. Banco de dados</h2>
+  <p>São <b>28 tabelas próprias</b> (prefixo wp_guardkids_*), criadas e evoluídas por <b>27 migrations</b>
+  idempotentes. A versão de schema atual no disco é a <b>v27</b>, em paridade com produção. A migration mais
+  recente (027) cria a tabela <code>academy_child_lessons</code> (ledger anti-duplo de conclusão de aula pela
+  criança); a 026 adicionou o campo <code>icon</code> às zonas seguras e a tabela <code>child_place</code>.</p>
+
+  <table>
+    <thead><tr><th>Tabela</th><th>Tabela</th><th>Tabela</th></tr></thead>
+    <tbody>
+      <tr><td>children</td><td>requests</td><td>sites</td></tr>
+      <tr><td>categories</td><td>settings</td><td>locations</td></tr>
+      <tr><td>safe_zones</td><td>child_place</td><td>usage_events</td></tr>
+      <tr><td>guardians</td><td>guardian_invites</td><td>companion_devices</td></tr>
+      <tr><td>notifications</td><td>push_subscriptions</td><td>content_items</td></tr>
+      <tr><td>content_categories</td><td>content_favorites</td><td>content_history</td></tr>
+      <tr><td>content_recommendations</td><td>progression</td><td>progression_awards</td></tr>
+      <tr><td>mission_completions</td><td>medal_unlocks</td><td>rewards</td></tr>
+      <tr><td>reward_redemptions</td><td>guardian_push_subscriptions</td><td>guardian_push_dedup</td></tr>
+      <tr><td>academy_child_lessons</td><td>license / license_revoked</td><td>db_version</td></tr>
+    </tbody>
+  </table>
+
+  <div class="box info">
+    <b>Regra de migration (do projeto)</b>
+    Toda migration nova exige bumpar <code>GUARDKIDS_DB_VERSION</code> no mesmo commit — caso contrário o
+    <code>maybeRunMigrations</code> no init pula a execução. A constante está declarada em <b>27</b>,
+    sincronizada com a última migration.
+  </div>
+</section>
+
+<!-- 6. QUALIDADE E TESTES -->
+<section class="section pagebreak">
+  <div class="running">GuardKids WP — Relatório Geral · v1.41.0 · 10/08/2026</div>
+  <h2>6. Qualidade e testes</h2>
+  <p>Três suítes automatizadas foram executadas nesta análise (10/08/2026). Todas 100% verdes:</p>
+  <table>
+    <thead><tr><th>Suíte</th><th>Escopo</th><th>Testes</th><th>Resultado</th></tr></thead>
+    <tbody>
+      <tr><td>PHPUnit</td><td>Backend (API, domínio, migrations)</td><td>677 (1.867 asserções)</td><td>PASS</td></tr>
+      <tr><td>Vitest — app-parent</td><td>Painel dos pais (70 arquivos)</td><td>448</td><td>PASS</td></tr>
+      <tr><td>Vitest — app-child</td><td>PWA infantil (33 arquivos)</td><td>156</td><td>PASS</td></tr>
+      <tr><td><b>TOTAL</b></td><td>—</td><td><b>1.281</b></td><td>PASS</td></tr>
+    </tbody>
+  </table>
+  <ul>
+    <li>CI configurado em <b>.github/workflows/ci.yml</b>, com badge no README (branch master).</li>
+    <li>Cobertura reportada no Codecov (badge no README).</li>
+    <li>As linhas de log observadas na suíte PHP (geofence/push) são <b>casos de erro esperados</b> exercitados pelos próprios testes, não falhas.</li>
+  </ul>
+  <div class="box warn">
+    <b>Observação de documentação</b>
+    O README ainda exibe contagens defasadas (ex.: “tests 901 passing”, “17 controllers / 47 rotas”). A base real
+    hoje é <b>1.281 testes, 29 controllers e 94 registros de rota</b>. Vale atualizar o README na próxima leva.
+  </div>
+</section>
+
+<!-- 7. SEGURANÇA -->
+<section class="section pagebreak">
+  <div class="running">GuardKids WP — Relatório Geral · v1.41.0 · 10/08/2026</div>
+  <h2>7. Segurança e privacidade</h2>
+  <table>
+    <thead><tr><th>Área</th><th>Recurso</th></tr></thead>
+    <tbody>
+      <tr><td>Login do painel</td><td>2FA TOTP (otplib) + códigos de recuperação; login em 2 etapas</td></tr>
+      <tr><td>Acesso infantil</td><td>PIN dos pais para áreas sensíveis</td></tr>
+      <tr><td>Sessões</td><td>Lista de sessões ativas + encerrar outras; auto-logout por inatividade</td></tr>
+      <tr><td>Token do filho</td><td>32 bytes hex; enviado por header, nunca em querystring</td></tr>
+      <tr><td>Companion</td><td>Token com expiração, kill-switch, rate-limit e garbage collection</td></tr>
+      <tr><td>IA (Academy)</td><td>Dados pseudonimizados antes de sair para a Anthropic; recurso atrás do gate Pro <code>ai_insights</code></td></tr>
+      <tr><td>Licença</td><td>Gate Pro com verificação assinada e cache de revogação</td></tr>
+      <tr><td>Privacidade/LGPD</td><td>Exportar dados + apagar dados (direito ao esquecimento)</td></tr>
+      <tr><td>Cache/edge</td><td>Respostas sensíveis com no-store (fix de leitura de PIN em prod)</td></tr>
+    </tbody>
+  </table>
+  <p>O projeto tem histórico de smokes de segurança em produção (Web Push por dispositivo, leitura de PIN, status
+  online) e correções documentadas. Recomenda-se rodar a skill de auditoria de segurança defensiva antes de cada
+  release maior.</p>
+</section>
+
+<!-- 8. RELEASE E DEPLOY -->
+<section class="section pagebreak">
+  <div class="running">GuardKids WP — Relatório Geral · v1.41.0 · 10/08/2026</div>
+  <h2>8. Situação de release e deploy</h2>
+  <p>Diferente do relatório anterior (07/08), <b>não há mais divergência</b> entre o código local, o GitHub e a
+  produção — os três ambientes estão na mesma versão:</p>
+  <table>
+    <thead><tr><th>Ambiente</th><th>Versão</th><th>DB</th><th>Estado</th></tr></thead>
+    <tbody>
+      <tr><td>master local (disco)</td><td>1.41.0</td><td>v27</td><td>Sincronizado com origin; testes verdes</td></tr>
+      <tr><td>origin/master (GitHub)</td><td>1.41.0</td><td>v27</td><td>Recebeu todas as entregas; CI verde</td></tr>
+      <tr><td>Produção (guardiaokids.site)</td><td>1.41.0</td><td>v27</td><td>Última tag publicada: v1.41.0 (histórico documentado)</td></tr>
+    </tbody>
+  </table>
+
+  <div class="box ok">
+    <b>Entregas desde o relatório anterior</b>
+    Além da Localização Inteligente por endereço (que estava represada e foi publicada), a plataforma
+    <b>Academy</b> avançou até a Onda 5: trilhas que rendem XP (Onda 3), quiz que porteia a conclusão da aula com
+    o servidor dono do gabarito (Onda 4) e <b>insights de IA</b> para o responsável na tela de Relatórios
+    (Onda 5, recurso Pro <code>ai_insights</code>). A migration 027 (<code>academy_child_lessons</code>) subiu o
+    schema para v27.
+  </div>
+
+  <div class="box info">
+    <b>Processo de deploy (inalterado)</b>
+    Deploy em produção via SSH por chave (scp + <code>wp plugin install --force</code>); as migrations sobem
+    sozinhas no init pós-install (com a constante <code>GUARDKIDS_DB_VERSION</code> já bumpada). O build do zip de
+    release é feito entry-by-entry (nunca Compress-Archive), após rebuildar os dois apps.
+  </div>
+</section>
+
+<!-- 9. PENDÊNCIAS -->
+<section class="section pagebreak">
+  <div class="running">GuardKids WP — Relatório Geral · v1.41.0 · 10/08/2026</div>
+  <h2>9. Pendências, riscos e recomendações</h2>
+
+  <h3>Itens em aberto</h3>
+  <table>
+    <thead><tr><th>Prioridade</th><th>Item</th><th>Ação</th></tr></thead>
+    <tbody>
+      <tr><td>Média</td><td>Deploy manual</td><td>Automatizar via GitHub Actions (scp + wp plugin install)</td></tr>
+      <tr><td>Média</td><td>Sem E2E de navegador</td><td>Playwright cobrindo pai→filho→push→zona e Academy (aula→quiz→XP)</td></tr>
+      <tr><td>Média</td><td>README desatualizado</td><td>Atualizar contagens (1.281 testes, 29 controllers, 94 rotas)</td></tr>
+      <tr><td>Baixa</td><td>Custo da IA</td><td>Alerta de saldo da chave Anthropic dos insights (Pro)</td></tr>
+      <tr><td>Baixa</td><td>Auditoria de segurança</td><td>Rodar skill de segurança antes de cada release maior</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Pontos fortes</h3>
+  <ul>
+    <li>Cobertura de testes robusta e verde (1.281 casos) em 3 suítes.</li>
+    <li>Arquitetura limpa e modular (PSR-4, 17 módulos, migrations idempotentes).</li>
+    <li>Segurança madura: 2FA, PIN, sessões, auto-logout, LGPD, tokens endurecidos, pseudonimização na IA.</li>
+    <li>Produto amplo e coeso: controle parental + geofencing + gamificação + Academy/IA + Companion Android.</li>
+    <li>CI/CD e cobertura já instrumentados (GitHub Actions + Codecov).</li>
+    <li>Sem dívida de release: os três ambientes em paridade (v1.41.0 / DB v27).</li>
+  </ul>
+
+  <div class="box ok">
+    <b>Recomendação de próximo passo — Elevar a maturidade de entrega</b>
+    Com o produto em paridade e sem features represadas, o passo de maior valor é <b>automatizar o deploy</b>
+    (eliminando o SSH manual) e adicionar <b>E2E com Playwright</b>, blindando a evolução incremental. Em seguida,
+    publicar coverage no CI e instrumentar healthcheck pós-deploy + alerta de saldo da IA.
+  </div>
+</section>
+
+</body>
+</html>
