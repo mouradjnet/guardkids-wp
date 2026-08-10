@@ -176,7 +176,7 @@ pnpm test        # corrida única
 pnpm test:watch  # modo watch
 ```
 
-Cobre `api/client.ts` (auth dupla, parse de WP_Error), helpers (`requestDisplay`, `children`, `exportReportCsv`), diálogos (`AddChildDialog`, `PairDeviceDialog`, `PendingRequests`), navegação (`TopNav`/`SideNav`/`BottomNav`), `PremiumLock` + hook `useLicense` e todas as 12 páginas do parent (Dashboard, Children, SitesRules, TimeLimits, Approvals, Reports, Settings, License, Upgrade, Localizacao, ZonasSeguras, ProtectionMode). No `app-child`, cobre `usageTracker` + `locationTracker` e todas as 7 páginas (Home, Alerts, Blocked, Browser, PairScreen, Localizacao, Requests) — e2e Playwright opcional via `pnpm test:e2e` (depois de `pnpm test:e2e:install`).
+Cobre `api/client.ts` (auth dupla, parse de WP_Error), helpers (`requestDisplay`, `children`, `exportReportCsv`), diálogos (`AddChildDialog`, `PairDeviceDialog`, `PendingRequests`), navegação (`TopNav`/`SideNav`/`BottomNav`), `PremiumLock` + hook `useLicense` e todas as 16 páginas do parent (Dashboard, Children, SitesRules, TimeLimits, Approvals, Reports, Settings, License, Upgrade, Localizacao, ZonasSeguras, ProtectionMode, Academy, ContentDashboard, GamificationDashboard, Recompensas). No `app-child`, cobre `usageTracker` + `locationTracker` e todas as 11 páginas (Home, Alerts, Blocked, Browser, PairScreen, Localizacao, Requests, Academy, Avatar, Loja, Mundo) — e2e Playwright opcional via `pnpm test:e2e` (depois de `pnpm test:e2e:install`).
 
 **CI** roda os dois automaticamente em cada push/PR. Status: badge no topo.
 
