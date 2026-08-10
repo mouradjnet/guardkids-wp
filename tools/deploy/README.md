@@ -2,6 +2,28 @@
 
 Snippets prontos pra apply via SSH no servidor Hostinger.
 
+## Deploy automatizado (CI) — recomendado
+
+O workflow [`.github/workflows/deploy.yml`](../../.github/workflows/deploy.yml) faz o
+deploy ponta a ponta (build dos 2 apps → zip → scp → swap com backup → **healthcheck
+com rollback automático** → purge de cache). Dispara **ao dar push numa tag `v*`** ou
+pelo **botão manual** (Actions → *Deploy (produção)* → Run workflow).
+
+Configure uma vez em **Settings → Secrets and variables → Actions**:
+
+| Secret | Valor |
+|---|---|
+| `DEPLOY_SSH_KEY` | conteúdo da chave **privada** SSH |
+| `DEPLOY_SSH_HOST` | host ou IP do servidor |
+| `DEPLOY_SSH_USER` | usuário SSH |
+| `DEPLOY_SSH_PORT` | porta SSH |
+| `DEPLOY_SSH_SITE` | domínio sob `~/domains/` (ex.: `guardiaokids.site`) |
+
+Opcional: em **Settings → Environments → production**, ative *Required reviewers* pra
+exigir aprovação manual antes de cada deploy.
+
+O passo-a-passo manual abaixo continua válido como **fallback** e referência.
+
 ## Pré-requisito
 
 Acesso SSH ao servidor. Defina os valores do seu ambiente (NÃO commitar os reais):
