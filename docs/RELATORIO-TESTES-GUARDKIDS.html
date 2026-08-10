@@ -1,0 +1,340 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>GuardKids WP — Relatório Técnico de Auditoria e Testes</title>
+<style>
+  :root{
+    --navy:#1e2a3a; --green:#22a54a; --green-d:#1c8d3f; --green-l:#e7f6ec;
+    --ink:#222; --muted:#667; --line:#dfe4ea; --stripe:#f6f8fa;
+  }
+  *{box-sizing:border-box}
+  @page{ size:A4; margin:18mm 16mm 20mm; }
+  html,body{margin:0;padding:0}
+  body{ font:12.5px/1.55 -apple-system,"Segoe UI",Roboto,Arial,sans-serif; color:var(--ink); }
+  h1{ color:var(--navy) }
+  h2{ color:var(--green-d); font-size:19px; border-bottom:2px solid var(--green-l); padding-bottom:6px; margin:18px 0 8px }
+  h3{ color:var(--navy); font-size:14px; margin:14px 0 4px }
+  p{margin:.5em 0}
+  code{ background:#f2f4f7; padding:1px 4px; border-radius:3px; font-size:11.5px }
+  pre{ background:#0f1720; color:#d7e2ea; padding:10px 12px; border-radius:6px; font-size:11.5px; overflow:auto }
+  table{ border-collapse:collapse; width:100%; margin:10px 0 14px; font-size:11.5px }
+  th{ background:var(--green); color:#fff; text-align:left; padding:6px 9px; font-weight:600 }
+  td{ padding:6px 9px; border-bottom:1px solid var(--line); vertical-align:top }
+  tbody tr:nth-child(even){ background:var(--stripe) }
+  .keytable td:first-child{ background:var(--green-l); font-weight:600; width:34% }
+  ul{ margin:.4em 0 .8em; padding-left:18px } li{ margin:.22em 0 }
+  .box{ border-radius:6px; padding:9px 13px; margin:11px 0; font-size:12px }
+  .ok{ background:var(--green-l); border-left:4px solid var(--green) }
+  .info{ background:#eef4ff; border-left:4px solid #3f6fd6 }
+  .quote{ background:#f6f8fa; border-left:4px solid #9aa6b2; padding:8px 12px; color:#334; font-size:12px; border-radius:0 6px 6px 0 }
+  .section{ page-break-inside:auto }
+  .pagebreak{ page-break-before:always }
+  .bug{ border:1px solid var(--line); border-left:4px solid #e6a100; border-radius:0 6px 6px 0; padding:8px 12px; margin:9px 0; font-size:12px }
+  .bug b{ color:var(--navy) }
+  .cover{ page-break-after:always }
+  .cover .band{ background:var(--navy); color:#fff; margin:-18mm -16mm 0; padding:60mm 16mm 22mm; text-align:center; border-bottom:8px solid var(--green) }
+  .logo{ font-size:56px; font-weight:800; color:var(--green) }
+  .cover h1{ color:#fff; font-size:30px; margin:20px 0 6px }
+  .cover .sub{ color:#bcd; font-size:15px; margin:0 }
+  .cover .meta{ margin-top:60mm }
+  .running{ color:var(--muted); font-size:10.5px; border-bottom:1px solid var(--line); padding-bottom:4px; margin-bottom:8px }
+  .chk li{ list-style:none } .chk li::before{ content:"☑ "; color:var(--green-d); font-weight:700 }
+  .chk{ padding-left:2px }
+</style>
+</head>
+<body>
+
+<section class="cover">
+  <div class="band">
+    <div class="logo">GK</div>
+    <h1>GuardKids WP</h1>
+    <p class="sub">Relatório Técnico de Auditoria e Testes</p>
+  </div>
+  <table class="keytable meta">
+    <tr><td>Documento para</td><td>2M Engineering Studio</td></tr>
+    <tr><td>Data da auditoria</td><td>10/08/2026</td></tr>
+    <tr><td>Responsável técnico</td><td>Djair Falcão</td></tr>
+    <tr><td>Tipo</td><td>Auditoria técnica + documentação de testes (local e navegador)</td></tr>
+    <tr><td>Versão auditada</td><td><b>1.41.0</b> · schema de banco v27</td></tr>
+  </table>
+</section>
+
+<section class="section">
+  <div class="running">GuardKids WP — Auditoria e Testes · v1.41.0 · 10/08/2026</div>
+  <h2>Nota metodológica (leia primeiro)</h2>
+  <p>Para relatar com fidelidade, este documento separa duas classes de evidência:</p>
+  <ul>
+    <li>🟢 <b>VERIFICADO NESTA AUDITORIA (10/08/2026):</b> executado/observado diretamente agora — as três suítes de testes automatizados (PHPUnit + Vitest ×2), contagem de migrations/tabelas/controllers e estrutura de pastas. São fatos reproduzíveis com os comandos indicados.</li>
+    <li>🔵 <b>HISTÓRICO DOCUMENTADO:</b> validações manuais no navegador (smoke em produção) e deploys realizados ao longo do desenvolvimento, registrados no histórico do projeto. Não foram re-executados nesta sessão; estão marcados como tal.</li>
+  </ul>
+  <p>Onde há incerteza, o texto diz explicitamente.</p>
+
+  <h2>1. Identificação do projeto</h2>
+  <table class="keytable">
+    <tr><td>Nome</td><td>GuardKids WP</td></tr>
+    <tr><td>Objetivo</td><td>Plataforma de controle parental web premium: painel dos pais, painel infantil e navegador seguro, com PWA instalável. Acompanha/gerencia filhos, horários e zonas seguras (geofencing), modera conteúdo, oferece trilha educacional gamificada (Academy) com insights de IA para o responsável, além de gamificação (medalhas, missões, recompensas, progressão).</td></tr>
+    <tr><td>Tipo</td><td>Plugin WordPress (distribuível), com dois apps React embutidos (PWA)</td></tr>
+    <tr><td>Autor</td><td>Djair Falcão</td></tr>
+    <tr><td>Requisitos</td><td>WordPress ≥ 6.4 · PHP ≥ 8.2</td></tr>
+    <tr><td>Versão atual</td><td><b>1.41.0</b> (plugin) · schema de banco v27</td></tr>
+  </table>
+
+  <h3>Stack completa</h3>
+  <p><b>Backend (plugin PHP):</b> PHP 8.2+ (dev: 8.4.23); WordPress 6.4+ (hooks, REST, <code>$wpdb</code>);
+  arquitetura em camadas próprias — <code>includes/</code> (17 módulos) + <code>api/Controllers/</code> (29 controllers);
+  MySQL via <code>$wpdb</code> com migrations versionadas; 2FA/TOTP no wp-login; autoload PSR-4 próprio;
+  módulo <code>License</code> (chaves assinadas + license server); Web Push (pais e filhos); módulo <code>AI</code>
+  (cliente Anthropic/Claude) para os insights pseudonimizados da Academy (Pro <code>ai_insights</code>).</p>
+  <p><b>Frontend (2 PWAs React):</b> <code>app-parent</code> (painel dos pais) e <code>app-child</code>
+  (painel infantil / navegador seguro); React 19 + Vite 5 + TypeScript 6; Tailwind 3.4; TanStack Query 5;
+  react-leaflet 5; vite-plugin-pwa + Workbox; testes com Vitest 2 + Testing Library.</p>
+  <p><b>Infra / Deploy:</b> produção em guardiaokids.site (HTTPS, Hostinger); deploy via SSH por chave
+  (scp + <code>wp plugin install --force</code>); CI em GitHub Actions.</p>
+</section>
+
+<section class="section pagebreak">
+  <div class="running">GuardKids WP — Auditoria e Testes · v1.41.0 · 10/08/2026</div>
+  <h2>2. Status atual do projeto</h2>
+  <ul>
+    <li><b>O aplicativo está funcionando?</b> ✅ Sim. Em produção e com <b>1.281 testes automatizados verdes</b> (seção 4).</li>
+    <li><b>Fase:</b> Produção (produto maduro, versão 1.41.x). Recebe incrementos contínuos.</li>
+    <li><b>Conclusão aproximada:</b> <b>~98%.</b> As últimas grandes entregas (Localização Inteligente e a plataforma Academy completa, Ondas 1 a 5) já estão em produção. As pendências são de roadmap e automação de infraestrutura.</li>
+  </ul>
+  <div class="box ok">
+    <b>Situação de deploy</b><br>
+    🔵 <b>Produção:</b> v1.41.0 / DB v27 (histórico documentado — Academy Ondas 1–5, incluindo insights de IA, deployadas).<br>
+    🟢 <b>master local:</b> v1.41.0 / DB v27 — sincronizado com <code>origin/master</code>, sem commits pendentes. Não há feature represada aguardando release.
+  </div>
+
+  <h3>Módulos existentes</h3>
+  <p><b>Backend — <code>includes/</code> (17 módulos):</b> AI (cliente Anthropic + insights), Academy (trilha/quiz),
+  Auth, Avatars, Content, Geo, Invite, License, Maintenance, Medals, Missions, Notifications, Privacy,
+  Progression, Schedule, Security, Ui.</p>
+  <p><b>Backend — <code>api/Controllers/</code> (29 controllers):</b> Academy, ChildAcademy, Insights, Child,
+  ChildSelf, Companion, Content, Guardian, GuardianPush, Location, SafeZone, Geocode, Category, Avatar,
+  Gamification, Medal, Mission, Reward, Redemption, Reports, Request, Privacy, Security, TwoFactor, Sessions,
+  Settings, Site, License, Me.</p>
+  <p><b>Frontend:</b> Painel dos pais (<code>app-parent</code>) e Painel infantil / navegador seguro (<code>app-child</code>) — ambos PWAs React.</p>
+
+  <h3>Itens pendentes</h3>
+  <ul>
+    <li><b>Nenhuma feature represada de release</b> — o <code>master</code> está publicado e produção está na mesma versão (v1.41.0 / DB 27).</li>
+    <li>Itens de <b>roadmap</b> e de <b>automação de deploy/E2E</b> (sem bloqueio funcional) — ver seção 9.</li>
+  </ul>
+
+  <h2>3. Estrutura técnica analisada</h2>
+  <pre>guardkids-wp/
+├── guardkids.php            # bootstrap (header, versão, DB_VERSION)
+├── includes/                # 17 módulos de domínio (AI, Academy, Auth, Geo, License, ...)
+│   ├── Autoloader.php       # PSR-4 próprio
+│   └── Plugin.php           # composição/registro do plugin
+├── api/Controllers/         # 29 controllers REST
+├── database/migrations/     # 27 migrations versionadas (001 → 027)
+├── public/app-parent/       # PWA React — painel dos pais
+├── public/app-child/        # PWA React — painel infantil / navegador seguro
+├── tests/                   # PHPUnit (Unit / Integration / Support)
+├── tools/deploy/            # scripts de deploy SSH
+├── .github/workflows/       # CI (GitHub Actions)
+└── vendor/                  # dependências Composer</pre>
+  <p><b>Banco:</b> MySQL. <b>27 migrations</b> idempotentes (<code>001…027</code>), controladas por
+  <code>GUARDKIDS_DB_VERSION = 27</code>. <b>28 tabelas</b> customizadas (seção 7).</p>
+  <p><b>APIs:</b> REST do WordPress exposta pelos 29 controllers (94 registros de rota sob <code>guardkids/v1</code>),
+  cobrindo filhos e auto-serviço, guardião, companion, push, localização/zonas seguras, geocodificação,
+  conteúdo/categorias, Academy (trilha/quiz/conclusão) e insights de IA, gamificação, relatórios, privacidade,
+  segurança, 2FA, sessões, configurações, sites e licença.</p>
+</section>
+
+<section class="section pagebreak">
+  <div class="running">GuardKids WP — Auditoria e Testes · v1.41.0 · 10/08/2026</div>
+  <h2>4. Testes realizados localmente</h2>
+  <div class="quote">🟢 Todos os testes desta seção foram <b>executados nesta auditoria (10/08/2026)</b> e os resultados abaixo são reais.</div>
+
+  <h3>Teste 1 — Suíte PHPUnit (backend)</h3>
+  <p><b>Objetivo:</b> validar regras de negócio, migrations, geofencing, push, licenciamento, Academy/quiz, segurança e API.<br>
+  <b>Comando:</b> <code>php vendor/bin/phpunit --no-coverage</code><br>
+  <b>Resultado:</b> ✅ <b>OK — 677 testes, 1.867 asserções, 0 falhas.</b></p>
+  <pre>OK (677 tests, 1867 assertions)  ·  Time: ~45s  ·  Memory: 18 MB</pre>
+  <p><b>Problemas:</b> nenhum. Mensagens como <code>geofence falhou (fix salvo mesmo assim)</code> e
+  <code>push falhou: Undefined array key "endpoint"</code> são <b>testes de caminho de erro</b> — esperadas.</p>
+
+  <h3>Teste 2 — Suíte Vitest (app-parent · painel dos pais)</h3>
+  <p><b>Comando:</b> <code>cd public/app-parent &amp;&amp; npx vitest run</code><br>
+  <b>Resultado:</b> ✅ <b>OK — 448 testes aprovados (70 arquivos), 0 falhas.</b></p>
+
+  <h3>Teste 3 — Suíte Vitest (app-child · painel infantil)</h3>
+  <p><b>Comando:</b> <code>cd public/app-child &amp;&amp; npx vitest run</code><br>
+  <b>Resultado:</b> ✅ <b>OK — 156 testes aprovados (33 arquivos), 0 falhas.</b></p>
+
+  <h3>Teste 4 — Integridade de schema e migrations</h3>
+  <p><b>Resultado:</b> ✅ <b>OK — 27 migrations sequenciais, DB_VERSION = 27</b> (última: <code>027_academy_child_lessons.php</code>).
+  O par migration ↔ <code>GUARDKIDS_DB_VERSION</code> está sincronizado.</p>
+
+  <h3>Resumo dos testes automatizados</h3>
+  <table>
+    <thead><tr><th>Suíte</th><th>Ferramenta</th><th>Testes</th><th>Resultado</th></tr></thead>
+    <tbody>
+      <tr><td>Backend</td><td>PHPUnit</td><td>677 (1.867 asserções)</td><td>✅ 0 falhas</td></tr>
+      <tr><td>Painel dos pais</td><td>Vitest</td><td>448 (70 arquivos)</td><td>✅ 0 falhas</td></tr>
+      <tr><td>Painel infantil</td><td>Vitest</td><td>156 (33 arquivos)</td><td>✅ 0 falhas</td></tr>
+      <tr><td><b>TOTAL</b></td><td>—</td><td><b>1.281</b></td><td>✅ <b>0 falhas</b></td></tr>
+    </tbody>
+  </table>
+</section>
+
+<section class="section pagebreak">
+  <div class="running">GuardKids WP — Auditoria e Testes · v1.41.0 · 10/08/2026</div>
+  <h2>5. Testes realizados no navegador</h2>
+  <div class="quote">🔵 <b>HISTÓRICO DOCUMENTADO.</b> Validações no Chrome (inclusive smoke em produção, guardiaokids.site) ao longo do desenvolvimento. Não re-executadas nesta auditoria; a existência das telas foi confirmada em código.</div>
+  <table>
+    <thead><tr><th>Área</th><th>Resultado</th><th>Status</th></tr></thead>
+    <tbody>
+      <tr><td>Login / Autenticação (wp-login + apps)</td><td>Login funcional; 2FA no wp-login validado; auto-logout do painel-pais validado (histórico: BUG-002 do PIN, resolvido).</td><td>✅</td></tr>
+      <tr><td>Dashboard / Painel dos pais</td><td>Tela atualiza sozinha ao chegar push (sem F5); status Online deixou de congelar (BUG-003, resolvido).</td><td>✅</td></tr>
+      <tr><td>Filhos (cadastro/edição/exclusão)</td><td>Validado; "exclusão que não excluía" era duplicidade de slug (BUG-001), não bug de delete.</td><td>✅</td></tr>
+      <tr><td>Localização / Zonas seguras + endereço</td><td>Mapa (react-leaflet) e zonas validados; Localização Inteligente por endereço implementada, deployada e validada em produção.</td><td>✅</td></tr>
+      <tr><td>Academy (trilha + quiz + insights de IA)</td><td>Ondas 1–5 deployadas e smokadas; quiz credita XP só quando aprovado; insights de IA (Pro, pseudonimizados) validados E2E em produção com chave real.</td><td>✅</td></tr>
+      <tr><td>Notificações / Web Push (pais e filhos)</td><td>Push validado E2E; card in-app nos dois apps; toggle por aparelho corrigido (BUG-004, v1.36.16).</td><td>✅</td></tr>
+      <tr><td>Gamificação (medalhas/missões/recompensas)</td><td>Fluxos de conquista/resgate validados.</td><td>✅</td></tr>
+      <tr><td>Painel infantil / Navegador seguro</td><td>Experiência da criança + navegação segura + moderação validadas.</td><td>✅</td></tr>
+      <tr><td>Licenciamento (License)</td><td>Ativação/validação de chave assinada E2E (incl. recurso <code>ai_insights</code> liberado no Pro).</td><td>✅</td></tr>
+    </tbody>
+  </table>
+
+  <h2>6. Testes de funcionalidades</h2>
+  <table>
+    <thead><tr><th>Funcionalidade</th><th>Testado</th><th>Resultado</th><th>Observação</th></tr></thead>
+    <tbody>
+      <tr><td>Login</td><td>✅</td><td>Passou</td><td>wp-login + 2FA/TOTP + auto-logout</td></tr>
+      <tr><td>Cadastro</td><td>✅</td><td>Passou</td><td>Filhos, zonas seguras, recompensas, missões</td></tr>
+      <tr><td>Edição</td><td>✅</td><td>Passou</td><td>Perfis, horários, configurações</td></tr>
+      <tr><td>Exclusão</td><td>✅</td><td>Passou</td><td>BUG-001 era duplicidade, não delete</td></tr>
+      <tr><td>Busca</td><td>✅</td><td>Passou</td><td>Categorias/conteúdo; relatórios</td></tr>
+      <tr><td>Upload</td><td>✅</td><td>Passou</td><td>Avatares (Avatars/AvatarController)</td></tr>
+      <tr><td>Navegação</td><td>✅</td><td>Passou</td><td>2 PWAs React + navegador seguro</td></tr>
+      <tr><td>Formulários</td><td>✅</td><td>Passou</td><td>React + validação; cobertos por Vitest</td></tr>
+      <tr><td>Permissões</td><td>✅</td><td>Passou</td><td>Guardião × filho × companion; gate Pro <code>ai_insights</code></td></tr>
+      <tr><td>Academy / Quiz</td><td>✅</td><td>Passou</td><td>Trilha + quiz que credita XP; insights de IA (Pro)</td></tr>
+      <tr><td>Validações</td><td>✅</td><td>Passou</td><td>PHPUnit (677) + Vitest (604)</td></tr>
+    </tbody>
+  </table>
+  <div class="quote">Diferencial deste produto: <b>frontend com forte cobertura automatizada</b> (604 testes Vitest); total de <b>1.281 testes verdes</b>.</div>
+</section>
+
+<section class="section pagebreak">
+  <div class="running">GuardKids WP — Auditoria e Testes · v1.41.0 · 10/08/2026</div>
+  <h2>7. Testes de banco de dados</h2>
+  <ul>
+    <li><b>Banco:</b> MySQL (WordPress), acesso via <code>$wpdb</code>.</li>
+    <li><b>Tabelas (28 <code>guardkids_*</code>):</b> entre elas children, guardians, sites, safe_zones, child_place, categories, progression, progression_awards, medal_unlocks, mission_completions, rewards, reward_redemptions, notifications, push_subscriptions, guardian_push_subscriptions, guardian_push_dedup, companion_devices, usage_events, <b>academy_child_lessons</b>, além das tabelas de conteúdo, locais e configuração.</li>
+    <li><b>Migrações:</b> 🟢 27 migrations idempotentes (<code>001…027</code>), sincronizadas com <code>GUARDKIDS_DB_VERSION = 27</code>. Última: <code>027_academy_child_lessons</code> (ledger anti-duplo de conclusão de aula).</li>
+    <li><b>Testes:</b> 🟢 migrations exercitadas pela suíte PHPUnit (inclui caminho de falha <code>ALTER TABLE failed</code> validando a robustez do runner). Suíte 677/677 verde.</li>
+    <li><b>Problemas:</b> nenhum de integridade. Gotcha operacional: bump obrigatório de <code>GUARDKIDS_DB_VERSION</code> a cada migration — regra já seguida.</li>
+  </ul>
+
+  <h2>8. Erros encontrados</h2>
+  <div class="quote">Erros relevantes do ciclo de vida do produto. Todos os críticos abaixo estão <b>RESOLVIDOS</b>.</div>
+  <div class="bug"><b>BUG-001</b> — "Excluir filho" aparentemente não funcionava no mobile. <b>Causa:</b> filhos duplicados (slug anterior a <code>6e8c2ee</code>); a lista recarregava exibindo outro. <b>Solução:</b> deduplicação/normalização de slug. <b>Status:</b> ✅ RESOLVIDO.</div>
+  <div class="bug"><b>BUG-002</b> — Leitura do PIN dos pais retornava valor velho em produção. <b>Causa:</b> edge cache da Hostinger + header <code>Authorization</code> removido em prod. <b>Solução:</b> <code>no-store</code> em RestHeaders (v1.11.1). <b>Status:</b> ✅ RESOLVIDO.</div>
+  <div class="bug"><b>BUG-003</b> — Status "Online" e lista de pedidos congelavam com a aba aberta. <b>Solução:</b> heartbeat/<code>lastSeenAt</code> + a tela refaz a consulta (v1.36.11 → v1.36.14). <b>Status:</b> ✅ RESOLVIDO.</div>
+  <div class="bug"><b>BUG-004</b> — Toggle de Web Push "mentia" (não refletia o aparelho). <b>Solução:</b> <code>hasDeviceSubscription()</code> (v1.36.16). <b>Status:</b> ✅ RESOLVIDO.</div>
+  <div class="bug"><b>BUG-005</b> (operacional) — CSP sobrescrita pelo edge da Hostinger + cache por dias. <b>Solução:</b> cache-buster nas respostas sensíveis. <b>Status:</b> 🟡 MITIGADO (limitação da hospedagem).</div>
+</section>
+
+<section class="section pagebreak">
+  <div class="running">GuardKids WP — Auditoria e Testes · v1.41.0 · 10/08/2026</div>
+  <h2>9. Melhorias identificadas</h2>
+  <table>
+    <thead><tr><th>ID</th><th>Descrição</th><th>Prioridade</th></tr></thead>
+    <tbody>
+      <tr><td>MEL-001</td><td>Testes E2E (Playwright) do fluxo pai→filho→push→zona e da trilha Academy (aula→quiz→XP), complementando os 1.281 testes de unidade/componente.</td><td>Média</td></tr>
+      <tr><td>MEL-002</td><td>Automatizar o deploy (hoje SSH manual: scp + <code>wp plugin install --force</code>) via GitHub Actions.</td><td>Média</td></tr>
+      <tr><td>MEL-003</td><td>Documentar/monitorar limitações do edge Hostinger (CSP/cache/<code>Authorization</code>) com healthchecks pós-deploy.</td><td>Baixa</td></tr>
+      <tr><td>MEL-004</td><td>Publicar relatório de cobertura (Vitest coverage-v8 já instalado) no CI.</td><td>Baixa</td></tr>
+      <tr><td>MEL-005</td><td>Monitorar custo/consumo da IA (chave Anthropic dos insights) com alerta de saldo, para o Pro <code>ai_insights</code> não silenciar em produção.</td><td>Baixa</td></tr>
+    </tbody>
+  </table>
+
+  <h2>10. Segurança</h2>
+  <table>
+    <thead><tr><th>Aspecto</th><th>Avaliação</th></tr></thead>
+    <tbody>
+      <tr><td>Autenticação</td><td>🟢 2FA/TOTP no wp-login; auto-logout por inatividade; gestão de sessões ativas.</td></tr>
+      <tr><td>Proteção de dados</td><td>🟢 Módulo Privacy dedicado; insights de IA usam dados pseudonimizados antes de sair para a Anthropic; licença por chave assinada (sodium).</td></tr>
+      <tr><td>Controle de acesso</td><td>🟢 Separação guardião × filho × companion; hardening do token Companion; recursos premium atrás do gate (<code>ai_insights</code>).</td></tr>
+      <tr><td>Segredos</td><td>🟢 VAPID, license issuer.key e chave Anthropic fora do versionamento; chaves assinadas com a pubkey vigente.</td></tr>
+      <tr><td>Exposição de informações</td><td>🟡 Edge da Hostinger remove <code>Authorization</code> e cacheia respostas — mitigado com no-store/cache-buster (BUG-002/005).</td></tr>
+      <tr><td>Vulnerabilidades</td><td>🟢 Suíte de segurança coberta por PHPUnit; recomenda-se skill de auditoria + <code>npm audit</code>/SCA antes de cada release maior.</td></tr>
+    </tbody>
+  </table>
+  <p><b>Veredito:</b> postura forte para um produto em produção que lida com dados de crianças — 2FA, gestão de sessões, hardening de tokens, licenciamento assinado, pseudonimização na IA e módulo de privacidade dedicado.</p>
+</section>
+
+<section class="section pagebreak">
+  <div class="running">GuardKids WP — Auditoria e Testes · v1.41.0 · 10/08/2026</div>
+  <h2>11. Performance</h2>
+  <ul>
+    <li><b>Carregamento:</b> 🔵 PWAs Vite (build otimizado + service worker/Workbox → offline-first). Lighthouse não medido nesta auditoria.</li>
+    <li><b>Console:</b> 🔵 sem erros críticos no smoke de produção; não re-medido.</li>
+    <li><b>Memória (backend):</b> 🟢 PHPUnit completa em ~45s com pico de 18 MB — leve.</li>
+    <li><b>IA (insights):</b> 🟢 respostas cacheadas por hash (custo controlado) — evita reprocessar o mesmo agregado.</li>
+    <li><b>Lentidão:</b> nenhum ponto crítico; push em tempo real + polling de piso (online 30s / pedidos 60s) validados.</li>
+  </ul>
+
+  <h2>12. Experiência do usuário</h2>
+  <ul>
+    <li>🟢 Navegação fácil — dois apps enxutos e focados (pais / criança), instaláveis como PWA.</li>
+    <li>🟢 Organização consistente (Tailwind); mapas deixam a configuração de zonas intuitiva.</li>
+    <li>🟢 Informação em tempo real (tela atualiza sozinha ao chegar push); insights de IA resumem os relatórios em linguagem natural.</li>
+    <li>Pontos de melhoria: feedback visual claro quando o edge da hospedagem interferir (cache); evoluir a trilha da Academy com mais conteúdos.</li>
+  </ul>
+
+  <h2>13. Checklist final</h2>
+  <ul class="chk">
+    <li><b>Aplicativo inicia corretamente</b> — autoload PSR-4 + Plugin.php; PWAs buildam; em produção no ar.</li>
+    <li><b>Banco funciona</b> — 27 migrations íntegras, DB_VERSION 27, 28 tabelas; runner testado.</li>
+    <li><b>Login funciona</b> — wp-login + 2FA/TOTP + auto-logout + gestão de sessões.</li>
+    <li><b>Fluxos principais funcionam</b> — filhos, zonas, push, gamificação, Academy/quiz, navegador seguro, licença (histórico + 1.281 testes verdes).</li>
+    <li><b>Sem erros críticos</b> — 3 suítes 100% verdes; nenhum bug crítico aberto (BUG-005 é limitação operacional mitigada).</li>
+    <li><b>Pronto para usuário real</b> — já está em produção, incluindo as últimas features (Localização Inteligente e Academy Ondas 1–5).</li>
+  </ul>
+</section>
+
+<section class="section pagebreak">
+  <div class="running">GuardKids WP — Auditoria e Testes · v1.41.0 · 10/08/2026</div>
+  <h2>14. Conclusão técnica</h2>
+  <h3>Estado atual</h3>
+  <p>O GuardKids WP é um <b>produto maduro em produção (v1.41.0, local e no ar em paridade)</b>, com um diferencial
+  de qualidade raro: <b>cobertura de testes automatizados forte nas três camadas</b> — 677 PHPUnit + 448 + 156
+  Vitest = <b>1.281 testes verdes, 0 falhas</b>, todos reproduzidos nesta auditoria. Banco íntegro (27 migrations,
+  DB v27, 28 tabelas), segurança robusta (2FA, sessões, hardening de tokens, licenciamento assinado,
+  pseudonimização na IA) e experiência em tempo real (Web Push), além da nova plataforma <b>Academy</b>
+  (trilha + quiz + insights de IA) já em produção.</p>
+
+  <h3>Principais riscos</h3>
+  <ol>
+    <li><b>Deploy manual:</b> SSH (scp + <code>wp plugin install --force</code>) sujeito a erro humano — falta automação/CI.</li>
+    <li><b>Edge da hospedagem:</b> Hostinger sobrescreve CSP, cacheia respostas e remove <code>Authorization</code> — mitigado, mas exige vigilância.</li>
+    <li><b>Cobertura E2E:</b> os 1.281 testes são de unidade/componente; não há E2E de navegador ponta a ponta.</li>
+    <li><b>Custo da IA:</b> os insights dependem de saldo na chave Anthropic; sem monitoramento, o recurso Pro pode silenciar.</li>
+  </ol>
+
+  <h3>Próximas recomendações (ordem sugerida)</h3>
+  <ol>
+    <li>Pipeline de deploy no CI para eliminar o passo manual.</li>
+    <li>E2E com Playwright (incl. Academy) + coverage no CI.</li>
+    <li>Smoke automatizado em produção com healthcheck (edge/CSP/cache).</li>
+    <li>Monitoramento de custo da IA dos insights da Academy.</li>
+  </ol>
+
+  <div class="box ok">
+    <b>Parecer final:</b> produto sólido, seguro e em produção, com qualidade de testes acima da média do mercado.
+    Sem features represadas de release — a ação de maior valor agora é <b>automatizar o deploy e o E2E</b>,
+    blindando a evolução incremental que o produto vem sustentando.
+  </div>
+
+  <p style="color:var(--muted);font-size:11px;margin-top:16px">Relatório gerado em 10/08/2026 para o 2M Engineering Studio. Evidências 🟢 reproduzíveis via <code>php vendor/bin/phpunit</code> e <code>npx vitest run</code> em <code>public/app-parent</code> e <code>public/app-child</code>.</p>
+</section>
+
+</body>
+</html>
