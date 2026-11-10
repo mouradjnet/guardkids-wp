@@ -74,7 +74,35 @@ final class ChildAuthTest extends TestCase
             {
                 return 1;
             }
+
+            public function delete($table, $where, $where_format = null)
+            {
+                unset($this->store[$where['setting_key']]);
+                return 1;
+            }
         };
+    }
+
+    public function testRevokeForChildRemovesOnlyThatChildsTokens(): void
+    {
+        $auth  = new ChildAuth();
+        $mine1 = $auth->issueToken(7, 'Tablet');
+        $mine2 = $auth->issueToken(7, 'Celular');
+        $other = $auth->issueToken(8, 'Tablet do irmão');
+
+        self::assertSame(2, $auth->revokeForChild(7));
+
+        self::assertNull($auth->resolveChildId($this->requestWithToken($mine1['token'])));
+        self::assertNull($auth->resolveChildId($this->requestWithToken($mine2['token'])));
+        self::assertSame(8, $auth->resolveChildId($this->requestWithToken($other['token'])));
+        self::assertSame([8], $auth->pairedChildIds());
+    }
+
+    private function requestWithToken(string $token): WP_REST_Request
+    {
+        $req = new WP_REST_Request('GET', '/child/me');
+        $req->set_header('X-GuardKids-Token', $token);
+        return $req;
     }
 
     public function testIssueTokenReturnsHexTokenAndStoresChildId(): void

@@ -5,6 +5,7 @@ import {
   listChildren,
   pauseChild,
   resumeChild,
+  unpairChildDevices,
   updateChild,
   uploadAvatar,
 } from '../api/children';
@@ -141,6 +142,7 @@ function ChildProfileCard({ child, onPair, onEdit }: CardProps) {
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [pauseError, setPauseError] = useState<string | null>(null);
+  const [unpairError, setUnpairError] = useState<string | null>(null);
   const menuRef = useRef<HTMLDivElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -170,6 +172,15 @@ function ChildProfileCard({ child, onPair, onEdit }: CardProps) {
     mutationFn: () => deleteChild(child.id),
     onSuccess: invalidate,
     onError: (err) => setDeleteError(errorMessage(err)),
+  });
+
+  const unpairMutation = useMutation({
+    mutationFn: () => unpairChildDevices(child.id),
+    onSuccess: () => {
+      setUnpairError(null);
+      invalidate();
+    },
+    onError: (err) => setUnpairError(errorMessage(err)),
   });
 
   const avatarMutation = useMutation({
@@ -203,6 +214,14 @@ function ChildProfileCard({ child, onPair, onEdit }: CardProps) {
       setDeleteError(null);
       deleteMutation.mutate();
     }
+  };
+
+  const handleUnpair = () => {
+    setMenuOpen(false);
+    const ok = window.confirm(
+      `Desconectar os aparelhos de ${child.name}? O painel infantil para de funcionar neles até você parear de novo. Use se o aparelho foi perdido ou trocado.`,
+    );
+    if (ok) unpairMutation.mutate();
   };
 
   const handlePauseToggle = () => {
@@ -316,6 +335,15 @@ function ChildProfileCard({ child, onPair, onEdit }: CardProps) {
                     <MenuItem icon="tablet_mac" onClick={handlePairClick}>
                       Parear dispositivo
                     </MenuItem>
+                    {child.paired && (
+                      <MenuItem
+                        icon="phonelink_erase"
+                        onClick={handleUnpair}
+                        disabled={unpairMutation.isPending}
+                      >
+                        Desconectar aparelhos
+                      </MenuItem>
+                    )}
                     <MenuItem icon="edit" onClick={handleEditClick}>
                       Editar
                     </MenuItem>
@@ -357,6 +385,11 @@ function ChildProfileCard({ child, onPair, onEdit }: CardProps) {
           {deleteError && (
             <p role="alert" className="mt-1 text-label-sm text-error">
               Falha ao excluir: {deleteError}
+            </p>
+          )}
+          {unpairError && (
+            <p role="alert" className="mt-1 text-label-sm text-error">
+              Falha ao desconectar: {unpairError}
             </p>
           )}
         </div>

@@ -153,6 +153,15 @@ final class ChildSelfController
             );
         }
 
+        // Bloqueio global da conta após erros seguidos (ver ChildPin).
+        if (($wait = $this->pin->lockedSeconds()) > 0) {
+            return new WP_Error(
+                'pin_locked',
+                'Muitas tentativas erradas. O PIN está bloqueado por um tempo.',
+                ['status' => 429, 'retryAfter' => $wait],
+            );
+        }
+
         return rest_ensure_response(['ok' => $this->pin->verify((string) $req->get_param('pin'))]);
     }
 

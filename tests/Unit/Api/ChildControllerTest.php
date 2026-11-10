@@ -119,9 +119,19 @@ final class ChildControllerTest extends TestCase
                 return 1;
             }
 
+            public function query($sql)
+            {
+                $this->log[] = ['method' => 'query', 'args' => [$sql]];
+                return 0;
+            }
+
             public function delete($table, $where, $where_format = null)
             {
                 $this->log[] = ['method' => 'delete', 'args' => [$table, $where]];
+                if (isset($where['setting_key'])) {
+                    unset($this->tokenRows[$where['setting_key']]);
+                    return 1;
+                }
                 $id = (int) ($where['id'] ?? 0);
                 if (isset($this->rows[$id])) {
                     unset($this->rows[$id]);
@@ -407,12 +417,58 @@ final class ChildControllerTest extends TestCase
 
         (new ChildController())->destroy($req);
 
-        $placeDeletes = array_values(array_filter(
+        $deletes = array_column(array_values(array_filter(
             $this->wpdb->log,
-            static fn ($e): bool => $e['method'] === 'delete'
-                && str_contains((string) ($e['args'][0] ?? ''), 'child_place'),
-        ));
-        self::assertNotEmpty($placeDeletes);
-        self::assertSame(5, $placeDeletes[0]['args'][1]['child_id']);
+            static fn ($e): bool => $e['method'] === 'query',
+        )), 'args');
+        $sqls = array_map(static fn (array $a): string => (string) $a[0], $deletes);
+        self::assertContains('DELETE FROM wp_guardkids_child_place WHERE child_id = 5', $sqls);
+    }
+
+    public function testDestroyErasesEveryChildTableAndRevokesTokens(): void
+    {
+        $this->wpdb->rows[5] = ['id' => 5, 'name' => 'Lucas'];
+        $this->wpdb->tokenRows['child_token:aaa'] = (string) json_encode(['childId' => 5]);
+        $this->wpdb->tokenRows['child_token:bbb'] = (string) json_encode(['childId' => 6]);
+
+        $req = new WP_REST_Request('DELETE', '/children/5');
+        $req['id'] = 5;
+        (new ChildController())->destroy($req);
+
+        $sqls = array_map(
+            static fn (array $e): string => (string) $e['args'][0],
+            array_values(array_filter($this->wpdb->log, static fn ($e): bool => $e['method'] === 'query')),
+        );
+        foreach (\GuardKids\Database\Schema::CHILD_TABLES as $table) {
+            self::assertContains("DELETE FROM wp_guardkids_{$table} WHERE child_id = 5", $sqls);
+        }
+        self::assertSame(['child_token:bbb'], array_keys($this->wpdb->tokenRows));
+    }
+
+    public function testRevokeDeviceTokensRemovesOnlyThatChildsTokens(): void
+    {
+        $this->wpdb->rows[5] = ['id' => 5, 'name' => 'Lucas'];
+        $this->wpdb->tokenRows['child_token:aaa'] = (string) json_encode(['childId' => 5]);
+        $this->wpdb->tokenRows['child_token:ccc'] = (string) json_encode(['childId' => 5]);
+        $this->wpdb->tokenRows['child_token:bbb'] = (string) json_encode(['childId' => 6]);
+
+        $req = new WP_REST_Request('DELETE', '/children/5/pair');
+        $req['id'] = 5;
+        $res = (new ChildController())->revokeDeviceTokens($req);
+
+        self::assertInstanceOf(WP_REST_Response::class, $res);
+        self::assertSame(['revoked' => 2, 'childId' => 5], $res->get_data());
+        self::assertSame(['child_token:bbb'], array_keys($this->wpdb->tokenRows));
+        self::assertArrayHasKey(5, $this->wpdb->rows); // o perfil continua
+    }
+
+    public function testRevokeDeviceTokensReturns404ForMissingChild(): void
+    {
+        $req = new WP_REST_Request('DELETE', '/children/99/pair');
+        $req['id'] = 99;
+        $res = (new ChildController())->revokeDeviceTokens($req);
+
+        self::assertInstanceOf(WP_Error::class, $res);
+        self::assertSame(404, $res->get_error_data()['status']);
     }
 }

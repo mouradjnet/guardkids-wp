@@ -35,6 +35,11 @@ final class ChildPinTest extends TestCase
 
             public function get_var($sql, $x = 0, $y = 0)
             {
+                // `SELECT id` → null: set() sempre cai no insert, que sobrescreve
+                // o store (o update deste fake não grava nada).
+                if (str_starts_with((string) $sql, 'SELECT id')) {
+                    return null;
+                }
                 if (preg_match("/setting_key = '([^']+)'/", (string) $sql, $m) === 1) {
                     return $this->store[$m[1]] ?? null;
                 }
@@ -115,5 +120,82 @@ final class ChildPinTest extends TestCase
         $pin->clear();
         self::assertFalse($pin->isSet());
         self::assertFalse($pin->verify('1234'));
+    }
+
+    /** @return array{0: ChildPin, 1: \Closure(int): void} PIN 1234 + avançar relógio */
+    private function pinWithClock(): array
+    {
+        $now = 1_000_000;
+        $pin = new ChildPin(null, static function () use (&$now): int {
+            return $now;
+        });
+        $pin->set('1234');
+        $advance = static function (int $seconds) use (&$now): void {
+            $now += $seconds;
+        };
+        return [$pin, $advance];
+    }
+
+    public function testLocksAfterMaxFailures(): void
+    {
+        [$pin] = $this->pinWithClock();
+        for ($i = 0; $i < ChildPin::MAX_FAILURES; $i++) {
+            self::assertFalse($pin->verify('0000'));
+        }
+        self::assertSame(ChildPin::LOCK_SECONDS, $pin->lockedSeconds());
+        // Travado: nem o PIN certo passa.
+        self::assertFalse($pin->verify('1234'));
+    }
+
+    public function testUnlocksAfterWindowAndCorrectPinResetsCounter(): void
+    {
+        [$pin, $advance] = $this->pinWithClock();
+        for ($i = 0; $i < ChildPin::MAX_FAILURES; $i++) {
+            $pin->verify('0000');
+        }
+        $advance(ChildPin::LOCK_SECONDS);
+        self::assertSame(0, $pin->lockedSeconds());
+        self::assertTrue($pin->verify('1234'));
+
+        // Contador zerado: mais 4 erros não travam.
+        for ($i = 0; $i < ChildPin::MAX_FAILURES - 1; $i++) {
+            $pin->verify('0000');
+        }
+        self::assertSame(0, $pin->lockedSeconds());
+    }
+
+    public function testLockDoublesEachRoundUpToCap(): void
+    {
+        [$pin, $advance] = $this->pinWithClock();
+        $expected = ChildPin::LOCK_SECONDS;
+        for ($round = 1; $round <= 9; $round++) {
+            for ($i = 0; $i < ChildPin::MAX_FAILURES; $i++) {
+                $pin->verify('0000');
+            }
+            self::assertSame(min($expected, ChildPin::MAX_LOCK_SECONDS), $pin->lockedSeconds(), "rodada {$round}");
+            $advance($pin->lockedSeconds());
+            $expected *= 2;
+        }
+    }
+
+    public function testMalformedPinDoesNotCountAsFailure(): void
+    {
+        [$pin] = $this->pinWithClock();
+        for ($i = 0; $i < ChildPin::MAX_FAILURES * 2; $i++) {
+            $pin->verify('12');
+        }
+        self::assertSame(0, $pin->lockedSeconds());
+    }
+
+    public function testSettingNewPinClearsLock(): void
+    {
+        [$pin] = $this->pinWithClock();
+        for ($i = 0; $i < ChildPin::MAX_FAILURES; $i++) {
+            $pin->verify('0000');
+        }
+        self::assertGreaterThan(0, $pin->lockedSeconds());
+        $pin->set('5678');
+        self::assertSame(0, $pin->lockedSeconds());
+        self::assertTrue($pin->verify('5678'));
     }
 }

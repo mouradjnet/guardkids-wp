@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace GuardKids\Tests\Unit\Privacy;
 
+use GuardKids\Database\Schema;
 use GuardKids\Privacy\PrivacyExporter;
 use PHPUnit\Framework\TestCase;
 
@@ -49,6 +50,14 @@ final class PrivacyExporterTest extends TestCase
         self::assertSame([['id' => 1, 'name' => 'Lucas']], $out['tables']['children']);
         self::assertArrayHasKey('guardians', $out['tables']);
         self::assertArrayHasKey('companion_devices', $out['tables']);
+    }
+
+    public function testCollectExportsEverySchemaTable(): void
+    {
+        $out = (new PrivacyExporter($this->wpdb))->collect();
+
+        self::assertSame(Schema::TABLES, array_keys($out['tables']));
+        self::assertArrayNotHasKey('guardian_invites', $out['tables']); // não existe: é coluna de guardians
     }
 
     public function testCollectOmitsTokenKeysFromSettings(): void

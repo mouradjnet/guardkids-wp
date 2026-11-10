@@ -533,6 +533,22 @@ final class CompanionControllerTest extends TestCase
         self::assertFalse($res->get_data()['ok']);
     }
 
+    public function testVerifyPinReturns429WhileLocked(): void
+    {
+        $token = str_repeat('4', 64);
+        $this->seedActiveDeviceWithToken($token, 7);
+        (new \GuardKids\Auth\ChildPin())->set('1234');
+        (new \GuardKids\Database\SettingsRepository())->set('child_pin:attempts', [
+            'failures' => \GuardKids\Auth\ChildPin::MAX_FAILURES, 'lockedUntil' => time() + 600,
+        ]);
+
+        $res = (new CompanionController())->verifyPin($this->verifyPinRequest($token, '1234'));
+
+        self::assertInstanceOf(WP_Error::class, $res);
+        self::assertSame('pin_locked', $res->get_error_code());
+        self::assertSame(429, $res->get_error_data()['status']);
+    }
+
     public function testVerifyPinReturns403WhenPinNotSet(): void
     {
         $token = str_repeat('3', 64);

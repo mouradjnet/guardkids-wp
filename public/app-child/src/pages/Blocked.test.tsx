@@ -1,6 +1,7 @@
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { ApiError } from '../api/client';
 import { Blocked } from './Blocked';
 
 const { verifyPinMock } = vi.hoisted(() => ({ verifyPinMock: vi.fn() }));
@@ -103,7 +104,9 @@ describe('Blocked', () => {
 });
 
 describe('Blocked · desbloqueio por PIN', () => {
-  beforeEach(() => verifyPinMock.mockReset());
+  beforeEach(() => {
+    verifyPinMock.mockReset();
+  });
 
   it('não mostra o desbloqueio por PIN sem lockedMode + pinUnlockEnabled', () => {
     render(<Blocked onNavigate={() => {}} reason="bedtime" unlockAt={null} lockedMode />);
@@ -153,6 +156,31 @@ describe('Blocked · desbloqueio por PIN', () => {
     await user.click(screen.getByRole('button', { name: /liberar/i }));
 
     expect(await screen.findByRole('alert')).toHaveTextContent(/pin incorreto/i);
+    expect(onPinUnlock).not.toHaveBeenCalled();
+  });
+
+  it('PIN bloqueado (429) mostra aviso de bloqueio, não erro genérico', async () => {
+    verifyPinMock.mockImplementation(async () => {
+      throw new ApiError('pin_locked', 'Muitas tentativas', 429);
+    });
+    const onPinUnlock = vi.fn();
+    const user = userEvent.setup();
+    render(
+      <Blocked
+        onNavigate={() => {}}
+        reason="bedtime"
+        unlockAt={null}
+        lockedMode
+        pinUnlockEnabled
+        onPinUnlock={onPinUnlock}
+      />,
+    );
+
+    await user.click(screen.getByRole('button', { name: /desbloquear com pin/i }));
+    await user.type(screen.getByLabelText(/pin dos responsáveis/i), '1234');
+    await user.click(screen.getByRole('button', { name: /liberar/i }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(/bloqueado por alguns minutos/i);
     expect(onPinUnlock).not.toHaveBeenCalled();
   });
 });

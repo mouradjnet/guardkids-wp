@@ -70,6 +70,9 @@ jobs:
           VERSION=$(grep -oP '^\s*\*\s*Version:\s*\K.+' guardkids.php | tr -d '[:space:]')
           if [ -z "$VERSION" ]; then echo "Não achei a Version em guardkids.php"; exit 1; fi
           echo "VERSION=$VERSION" >> "$GITHUB_ENV"
+          DB_VERSION=$(grep -oE "GUARDKIDS_DB_VERSION', *[0-9]+" guardkids.php | grep -oE '[0-9]+$')
+          if [ -z "$DB_VERSION" ]; then echo "Não achei GUARDKIDS_DB_VERSION em guardkids.php"; exit 1; fi
+          echo "DB_VERSION=$DB_VERSION" >> "$GITHUB_ENV"
           php scripts/build-release-zip.php guardkids-wp.zip
           echo "Zip da v$VERSION pronto:"; ls -la guardkids-wp.zip
 
@@ -105,15 +108,28 @@ jobs:
           ssh -i ~/.ssh/deploy_key -p "$DEPLOY_SSH_PORT" \
               -o BatchMode=yes -o UserKnownHostsFile=~/.ssh/known_hosts \
               "$DEPLOY_SSH_USER@$DEPLOY_SSH_HOST" \
-              "export DEPLOY_VERSION='$VERSION' DEPLOY_SITE='$DEPLOY_SSH_SITE'; bash -s" <<'REMOTE'
+              "export DEPLOY_VERSION='$VERSION' DEPLOY_DB_VERSION='$DB_VERSION' DEPLOY_SITE='$DEPLOY_SSH_SITE'; bash -s" <<'REMOTE'
           set -euo pipefail
           PLUGINS="$HOME/domains/$DEPLOY_SITE/public_html/wp-content/plugins"
           WPROOT="$HOME/domains/$DEPLOY_SITE/public_html"
           ZIP="/tmp/guardkids-wp-deploy.zip"
           test -f "$ZIP"
 
+          # Backups FORA do webroot: dentro de plugins/ o WP listava as cópias
+          # como plugins e os arquivos ficavam acessíveis por HTTP.
+          BACKUPS="$HOME/backups/guardkids-wp"
+          mkdir -p "$BACKUPS"
+          TS=$(date +%Y%m%d-%H%M%S)
+          BAK="$BACKUPS/plugin-$TS"
+          DUMP="$BACKUPS/db-$TS.sql.gz"
+
+          # Dump do banco ANTES do swap: as migrations rodam no 1º request e o
+          # rollback de arquivos não desfaz schema. Falhou o dump → aborta.
+          (cd "$WPROOT" && wp db export - | gzip > "$DUMP")
+          test -s "$DUMP"
+          echo "Backup do banco: $DUMP"
+
           cd "$PLUGINS"
-          BAK="guardkids-wp.bak-$(date +%Y%m%d-%H%M%S)"
           if [ -d guardkids-wp ]; then cp -r guardkids-wp "$BAK"; fi
 
           rm -rf guardkids-wp
@@ -125,27 +141,36 @@ jobs:
           GOT=$(wp plugin get guardkids-wp --field=version 2>/dev/null || echo ERR)
           HOME_CODE=$(curl -s -o /dev/null -w '%{http_code}' "https://$DEPLOY_SITE/" || echo 000)
           PANEL_CODE=$(curl -s -o /dev/null -w '%{http_code}' "https://$DEPLOY_SITE/painel-pais" || echo 000)
+          # REST do plugin: /me responde 200 até pra anônimo. O request também
+          # dispara as migrations pendentes (plugins_loaded) antes do db_version.
+          REST_CODE=$(curl -s -o /dev/null -w '%{http_code}' "https://$DEPLOY_SITE/wp-json/guardkids/v1/me?_=$TS" || echo 000)
+          DBV=$(wp option get guardkids_db_version 2>/dev/null || echo ERR)
 
           ok=1
           [ "$GOT" = "$DEPLOY_VERSION" ] || ok=0
           echo "$HOME_CODE"  | grep -qE '^(200|301|302)$' || ok=0
           echo "$PANEL_CODE" | grep -qE '^(200|301|302)$' || ok=0
+          [ "$REST_CODE" = "200" ] || ok=0
+          [ "$DBV" = "$DEPLOY_DB_VERSION" ] || ok=0
 
           if [ "$ok" -ne 1 ]; then
-            echo "HEALTHCHECK FALHOU — version=$GOT (esperado $DEPLOY_VERSION) home=$HOME_CODE panel=$PANEL_CODE"
-            echo "Fazendo rollback..."
+            echo "HEALTHCHECK FALHOU — version=$GOT (esperado $DEPLOY_VERSION) home=$HOME_CODE panel=$PANEL_CODE rest=$REST_CODE db_version=$DBV (esperado $DEPLOY_DB_VERSION)"
+            echo "Fazendo rollback dos arquivos..."
             cd "$PLUGINS"
             rm -rf guardkids-wp
             [ -d "$BAK" ] && mv "$BAK" guardkids-wp
             (cd "$WPROOT" && wp litespeed-purge all >/dev/null 2>&1) || true
+            echo "O banco NÃO é restaurado automaticamente. Se a migration rodou e quebrou algo:"
+            echo "  gunzip -c $DUMP | wp db import -   (dentro de $WPROOT)"
             exit 1
           fi
 
-          echo "Deploy OK — guardkids-wp $GOT (home=$HOME_CODE painel=$PANEL_CODE)"
-          echo "db_version=$(wp option get guardkids_db_version 2>/dev/null || echo '?')"
+          echo "Deploy OK — guardkids-wp $GOT db_version=$DBV (home=$HOME_CODE painel=$PANEL_CODE rest=$REST_CODE)"
           wp litespeed-purge all >/dev/null 2>&1 || true
 
-          # Poda backups: mantém os 3 mais recentes
-          cd "$PLUGINS"
-          ls -1dt guardkids-wp.bak-* 2>/dev/null | tail -n +4 | xargs -r rm -rf
+          # Poda backups: mantém os 3 mais recentes de cada tipo
+          ls -1dt "$BACKUPS"/plugin-* 2>/dev/null | tail -n +4 | xargs -r rm -rf
+          ls -1t "$BACKUPS"/db-*.sql.gz 2>/dev/null | tail -n +4 | xargs -r rm -f
+          # Remove cópias antigas que ficavam dentro de plugins/ (formato anterior)
+          ls -1d "$PLUGINS"/guardkids-wp.bak-* 2>/dev/null | xargs -r rm -rf
           REMOTE

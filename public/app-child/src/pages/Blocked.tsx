@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { verifyPin } from '../api/child';
+import { ApiError } from '../api/client';
 import type { ScheduleReason } from '../api/types';
 import { Icon } from '../components/Icon';
 import type { PageId } from '../data/mockData';
@@ -181,8 +182,12 @@ function PinUnlock({ onUnlock }: { onUnlock: () => void }) {
         setError('PIN incorreto.');
         setPin('');
       }
-    } catch {
-      setError('Não foi possível verificar agora. Tente de novo.');
+    } catch (err) {
+      setError(
+        err instanceof ApiError && err.status === 429
+          ? 'Muitas tentativas erradas. O PIN está bloqueado por alguns minutos.'
+          : 'Não foi possível verificar agora. Tente de novo.',
+      );
     } finally {
       setPending(false);
     }

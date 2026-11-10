@@ -476,11 +476,19 @@ final class RestApi
         ]);
 
         register_rest_route(self::NAMESPACE, '/children/(?P<id>\d+)/pair', [
-            'methods'             => \WP_REST_Server::CREATABLE,
-            'callback'            => [$controller, 'issueDeviceToken'],
-            'permission_callback' => [self::class, 'requireAdmin'],
-            'args'                => [
-                'label' => ['type' => 'string', 'sanitize_callback' => 'sanitize_text_field'],
+            [
+                'methods'             => \WP_REST_Server::CREATABLE,
+                'callback'            => [$controller, 'issueDeviceToken'],
+                'permission_callback' => [self::class, 'requireAdmin'],
+                'args'                => [
+                    'label' => ['type' => 'string', 'sanitize_callback' => 'sanitize_text_field'],
+                ],
+            ],
+            [
+                // Aparelho perdido/trocado: revoga todos os tokens do filho.
+                'methods'             => \WP_REST_Server::DELETABLE,
+                'callback'            => [$controller, 'revokeDeviceTokens'],
+                'permission_callback' => [self::class, 'requireAdmin'],
             ],
         ]);
 
