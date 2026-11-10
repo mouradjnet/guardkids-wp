@@ -74,6 +74,22 @@ final class ChildAuth
     }
 
     /**
+     * Revoga todos os tokens de dispositivo de um filho (aparelho perdido,
+     * trocado, ou filho excluído). Devolve quantos foram removidos.
+     */
+    public function revokeForChild(int $childId): int
+    {
+        $revoked = 0;
+        foreach ($this->settings->valuesByPrefix(self::KEY_PREFIX) as $key => $payload) {
+            if (is_array($payload) && (int) ($payload['childId'] ?? 0) === $childId) {
+                $this->settings->deleteByKey((string) $key);
+                $revoked++;
+            }
+        }
+        return $revoked;
+    }
+
+    /**
      * Lê o token do request, valida e devolve o childId, ou null.
      */
     public function resolveChildId(WP_REST_Request $request): ?int

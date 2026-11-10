@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace GuardKids\Tests\Unit\Privacy;
 
+use GuardKids\Database\Schema;
 use GuardKids\Privacy\PrivacyEraser;
 use PHPUnit\Framework\TestCase;
 
@@ -45,8 +46,19 @@ final class PrivacyEraserTest extends TestCase
         (new PrivacyEraser($this->wpdb))->wipeAll();
 
         foreach ($this->wpdb->queries as $sql) {
-            self::assertStringNotContainsString('guardkids_guardians', $sql);
-            self::assertStringNotContainsString('guardkids_guardian_invites', $sql);
+            self::assertStringNotContainsString('guardkids_guardians ', $sql . ' ');
+            self::assertStringNotContainsString('guardkids_guardian_push_subscriptions', $sql);
+            self::assertStringNotContainsString('guardkids_content_items', $sql);
+            self::assertStringNotContainsString('guardkids_content_categories', $sql);
+        }
+    }
+
+    public function testWipeAllCoversEveryChildDataTable(): void
+    {
+        $summary = (new PrivacyEraser($this->wpdb))->wipeAll();
+
+        foreach (Schema::CHILD_TABLES as $table) {
+            self::assertArrayHasKey($table, $summary, "{$table} tem dado de criança e ficava para trás");
         }
     }
 
@@ -54,7 +66,7 @@ final class PrivacyEraserTest extends TestCase
     {
         (new PrivacyEraser($this->wpdb))->wipeAll();
 
-        self::assertCount(9, $this->wpdb->queries);
+        self::assertCount(count(Schema::erasableTables()), $this->wpdb->queries);
         foreach ($this->wpdb->queries as $sql) {
             self::assertStringStartsWith('DELETE FROM', $sql);
         }

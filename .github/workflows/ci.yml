@@ -128,7 +128,8 @@ jobs:
 
   app-child:
     name: app-child (vitest + build + e2e + PWA)
-    runs-on: ubuntu-latest
+    # Fixo em 24.04: o Playwright ainda não suporta chromium no ubuntu-latest (26.04).
+    runs-on: ubuntu-24.04
     defaults:
       run:
         working-directory: public/app-child

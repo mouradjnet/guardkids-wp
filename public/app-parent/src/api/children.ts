@@ -91,6 +91,13 @@ export function pairChildDevice(id: number, label?: string): Promise<DeviceToken
   });
 }
 
+/** Revoga todos os aparelhos pareados do filho (perdido/trocado). */
+export function unpairChildDevices(id: number): Promise<{ revoked: number; childId: number }> {
+  return apiFetch<{ revoked: number; childId: number }>(`/children/${id}/pair`, {
+    method: 'DELETE',
+  });
+}
+
 export function pauseChild(id: number): Promise<Child> {
   return apiFetch<Child>(`/children/${id}/pause`, { method: 'POST' });
 }

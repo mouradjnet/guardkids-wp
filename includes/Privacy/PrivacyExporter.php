@@ -4,19 +4,15 @@ declare(strict_types=1);
 
 namespace GuardKids\Privacy;
 
+use GuardKids\Database\Schema;
+
 /**
- * Agrega todas as tabelas do plugin num array exportável (download JSON).
- * Omite as keys reservadas de token de `settings` (`child_token:*`,
- * `companion_token:*`) — mesmo critério do SettingsController.
+ * Agrega todas as tabelas do plugin ({@see Schema::TABLES}) num array
+ * exportável (download JSON). Omite as keys reservadas de token de `settings`
+ * (`child_token:*`, `companion_token:*`) — mesmo critério do SettingsController.
  */
 final class PrivacyExporter
 {
-    private const TABLES = [
-        'children', 'categories', 'requests', 'sites', 'settings',
-        'usage_events', 'locations', 'safe_zones', 'guardians',
-        'guardian_invites', 'companion_devices',
-    ];
-
     private readonly \wpdb $db;
 
     public function __construct(?\wpdb $db = null)
@@ -34,7 +30,7 @@ final class PrivacyExporter
     public function collect(): array
     {
         $tables = [];
-        foreach (self::TABLES as $suffix) {
+        foreach (Schema::TABLES as $suffix) {
             $rows = $this->db->get_results(
                 'SELECT * FROM ' . $this->db->prefix . 'guardkids_' . $suffix,
                 ARRAY_A,

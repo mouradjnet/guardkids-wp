@@ -10,6 +10,7 @@ use GuardKids\Database\ChildRepository;
 use GuardKids\Database\SafeZoneRepository;
 use GuardKids\Database\UsageEventRepository;
 use GuardKids\License\Gate;
+use GuardKids\Privacy\ChildDataEraser;
 use WP_Error;
 use WP_REST_Request;
 use WP_REST_Response;
@@ -246,8 +247,23 @@ final class ChildController
         if (! $this->repo->delete($id)) {
             return new WP_Error('db_error', 'Falha ao deletar.', ['status' => 500]);
         }
-        (new ChildPlaceRepository())->deleteByChild($id);
+        // Sem FKs: apaga os dados da criança nas tabelas filhas + tokens de aparelho.
+        (new ChildDataEraser())->erase($id);
         return rest_ensure_response(['deleted' => true, 'id' => $id]);
+    }
+
+    /**
+     * Desconecta todos os aparelhos (PWA) do filho: revoga os tokens. Usado
+     * quando o aparelho é perdido ou trocado — o pai pareia de novo depois.
+     */
+    public function revokeDeviceTokens(WP_REST_Request $req): WP_REST_Response|WP_Error
+    {
+        $id = (int) $req['id'];
+        if ($this->repo->findById($id) === null) {
+            return new WP_Error('not_found', 'Filho não encontrado.', ['status' => 404]);
+        }
+        $revoked = (new ChildAuth())->revokeForChild($id);
+        return rest_ensure_response(['revoked' => $revoked, 'childId' => $id]);
     }
 
     public function pause(WP_REST_Request $req): WP_REST_Response|WP_Error

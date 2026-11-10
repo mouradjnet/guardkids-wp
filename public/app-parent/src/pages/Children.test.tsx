@@ -15,6 +15,7 @@ const {
   deleteChildMock,
   uploadAvatarMock,
   pairMock,
+  unpairMock,
 } = vi.hoisted(() => ({
   listChildrenMock: vi.fn(),
   createChildMock: vi.fn(),
@@ -24,6 +25,7 @@ const {
   deleteChildMock: vi.fn(),
   uploadAvatarMock: vi.fn(),
   pairMock: vi.fn(),
+  unpairMock: vi.fn(),
 }));
 vi.mock('../api/children', () => ({
   listChildren: listChildrenMock,
@@ -34,6 +36,7 @@ vi.mock('../api/children', () => ({
   deleteChild: deleteChildMock,
   uploadAvatar: uploadAvatarMock,
   pairChildDevice: pairMock,
+  unpairChildDevices: unpairMock,
 }));
 
 import { Children } from './Children';
@@ -99,6 +102,7 @@ describe('Children page', () => {
     deleteChildMock.mockReset();
     uploadAvatarMock.mockReset();
     pairMock.mockReset();
+    unpairMock.mockReset();
   });
 
   it('shows loading state initially', () => {
@@ -316,6 +320,71 @@ describe('Children page', () => {
     const alert = await screen.findByRole('alert');
     expect(alert).toHaveTextContent(/falha ao pausar/i);
     expect(alert).toHaveTextContent(/rede caiu/i);
+  });
+
+  it('só mostra "Desconectar aparelhos" quando o filho tem aparelho pareado', async () => {
+    listChildrenMock.mockResolvedValue([{ ...lucas, paired: true }]);
+    const user = userEvent.setup();
+    renderPage();
+
+    await screen.findByText('Lucas');
+    await user.click(screen.getByRole('button', { name: /mais ações/i }));
+    expect(screen.getByRole('menuitem', { name: /desconectar aparelhos/i })).toBeInTheDocument();
+  });
+
+  it('não mostra "Desconectar aparelhos" para filho sem aparelho', async () => {
+    listChildrenMock.mockResolvedValue([lucas]);
+    const user = userEvent.setup();
+    renderPage();
+
+    await screen.findByText('Lucas');
+    await user.click(screen.getByRole('button', { name: /mais ações/i }));
+    expect(screen.queryByRole('menuitem', { name: /desconectar aparelhos/i })).toBeNull();
+  });
+
+  it('confirma e desconecta os aparelhos do filho', async () => {
+    listChildrenMock.mockResolvedValue([{ ...lucas, paired: true }]);
+    unpairMock.mockResolvedValue({ revoked: 1, childId: 1 });
+    const user = userEvent.setup();
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
+    renderPage();
+
+    await screen.findByText('Lucas');
+    await user.click(screen.getByRole('button', { name: /mais ações/i }));
+    await user.click(screen.getByRole('menuitem', { name: /desconectar aparelhos/i }));
+
+    expect(confirmSpy).toHaveBeenCalled();
+    await waitFor(() => expect(unpairMock).toHaveBeenCalledWith(1));
+    expect(deleteChildMock).not.toHaveBeenCalled();
+  });
+
+  it('não desconecta quando o confirm é cancelado', async () => {
+    listChildrenMock.mockResolvedValue([{ ...lucas, paired: true }]);
+    const user = userEvent.setup();
+    vi.spyOn(window, 'confirm').mockReturnValue(false);
+    renderPage();
+
+    await screen.findByText('Lucas');
+    await user.click(screen.getByRole('button', { name: /mais ações/i }));
+    await user.click(screen.getByRole('menuitem', { name: /desconectar aparelhos/i }));
+
+    expect(unpairMock).not.toHaveBeenCalled();
+  });
+
+  it('mostra erro visível quando desconectar falha', async () => {
+    listChildrenMock.mockResolvedValue([{ ...lucas, paired: true }]);
+    unpairMock.mockRejectedValue(new ApiError('rest_forbidden', 'Sem permissão', 403));
+    const user = userEvent.setup();
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+    renderPage();
+
+    await screen.findByText('Lucas');
+    await user.click(screen.getByRole('button', { name: /mais ações/i }));
+    await user.click(screen.getByRole('menuitem', { name: /desconectar aparelhos/i }));
+
+    const alert = await screen.findByRole('alert');
+    expect(alert).toHaveTextContent(/falha ao desconectar/i);
+    expect(alert).not.toHaveTextContent(/falha ao excluir/i);
   });
 
   afterEach(() => {
