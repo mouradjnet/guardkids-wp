@@ -124,10 +124,16 @@ jobs:
           DUMP="$BACKUPS/db-$TS.sql.gz"
 
           # Dump do banco ANTES do swap: as migrations rodam no 1º request e o
-          # rollback de arquivos não desfaz schema. Falhou o dump → aborta.
-          (cd "$WPROOT" && wp db export - | gzip > "$DUMP")
-          test -s "$DUMP"
-          echo "Backup do banco: $DUMP"
+          # rollback de arquivos não desfaz schema. Best-effort: na Hostinger o
+          # `wp db export` já saiu 255 sem mensagem (mysqldump indisponível) —
+          # abortar aqui travaria todo deploy. Falhou → avisa e segue.
+          if (cd "$WPROOT" && wp db export - | gzip > "$DUMP") && [ "$(gzip -dc "$DUMP" | head -c 1 | wc -c)" -gt 0 ]; then
+            echo "Backup do banco: $DUMP"
+          else
+            rm -f "$DUMP"
+            DUMP=""
+            echo "::warning::wp db export falhou — deploy segue SEM backup do banco"
+          fi
 
           cd "$PLUGINS"
           if [ -d guardkids-wp ]; then cp -r guardkids-wp "$BAK"; fi
@@ -160,8 +166,12 @@ jobs:
             rm -rf guardkids-wp
             [ -d "$BAK" ] && mv "$BAK" guardkids-wp
             (cd "$WPROOT" && wp litespeed-purge all >/dev/null 2>&1) || true
-            echo "O banco NÃO é restaurado automaticamente. Se a migration rodou e quebrou algo:"
-            echo "  gunzip -c $DUMP | wp db import -   (dentro de $WPROOT)"
+            echo "O banco NÃO é restaurado automaticamente."
+            if [ -n "$DUMP" ]; then
+              echo "Se a migration rodou e quebrou algo: gunzip -c $DUMP | wp db import -   (dentro de $WPROOT)"
+            else
+              echo "Não há dump deste deploy (wp db export falhou)."
+            fi
             exit 1
           fi
 
